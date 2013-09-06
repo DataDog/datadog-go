@@ -1,3 +1,5 @@
+// Copyright 2013 Ooyala, Inc.
+
 /*
 Package dogstatsd provides a Go DogStatsD client. DogStatsD extends StatsD - adding tags and
 histograms. Refer to http://docs.datadoghq.com/guides/dogstatsd/ for information about DogStatsD.

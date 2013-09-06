@@ -1,3 +1,5 @@
+// Copyright 2013 Ooyala, Inc.
+
 package dogstatsd
 
 import (
