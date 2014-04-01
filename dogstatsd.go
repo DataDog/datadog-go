@@ -48,6 +48,9 @@ func New(addr string) (*Client, error) {
 
 // send handles sampling and sends the message over UDP. It also adds global namespace prefixes and tags.
 func (c *Client) send(name string, value string, tags []string, rate float64) error {
+	if c == nil {
+		return nil
+	}
 	if rate < 1 {
 		if rand.Float64() < rate {
 			value = fmt.Sprintf("%s|@%f", value, rate)
