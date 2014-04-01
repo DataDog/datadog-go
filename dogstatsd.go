@@ -96,3 +96,8 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	stat := fmt.Sprintf("%s|s", value)
 	return c.send(name, stat, tags, rate)
 }
+
+// Close the client connection
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
