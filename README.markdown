@@ -4,7 +4,7 @@ Package dogstatsd provides a Go DogStatsD client. DogStatsD extends StatsD - add
 
 ## Get the code
 
-    $ go get github.com/ooyala/go-dogstatsd
+    $ go get github.com/xsleonard/go-dogstatsd
 
 ## Usage
 
@@ -27,8 +27,12 @@ Run the tests with:
 
 ## Documentation
 
-Please see: http://godoc.org/github.com/ooyala/go-dogstatsd
+Please see: http://godoc.org/github.com/xsleonard/go-dogstatsd
 
 ## License
 
 go-dogstatsd is released under the [MIT license](http://www.opensource.org/licenses/mit-license.php).
+
+## Authors
+
+Original source by [ooyala](https://github.com/ooyala/go-dogstatsd).  This is a fork.
