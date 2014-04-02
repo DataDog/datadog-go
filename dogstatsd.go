@@ -99,5 +99,8 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 
 // Close the client connection
 func (c *Client) Close() error {
+	if c == nil {
+		return nil
+	}
 	return c.conn.Close()
 }

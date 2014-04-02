@@ -31,6 +31,15 @@ var dogstatsdTests = []struct {
 	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
 }
 
+func assertNotPanics(t *testing.T, f func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatal(r)
+		}
+	}()
+	f()
+}
+
 func TestClient(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
@@ -73,4 +82,14 @@ func TestClient(t *testing.T) {
 			t.Errorf("Expected: %s. Actual: %s", tt.Expected, string(message))
 		}
 	}
+}
+
+func TestNilSafe(t *testing.T) {
+	var c *Client = nil
+	assertNotPanics(t, func() { c.Close() })
+	assertNotPanics(t, func() { c.Count("", 0, nil, 1) })
+	assertNotPanics(t, func() { c.Histogram("", 0, nil, 1) })
+	assertNotPanics(t, func() { c.Gauge("", 0, nil, 1) })
+	assertNotPanics(t, func() { c.Set("", "", nil, 1) })
+	assertNotPanics(t, func() { c.send("", "", nil, 1) })
 }
