@@ -19,6 +19,10 @@ Package dogstatsd provides a Go DogStatsD client. DogStatsD extends StatsD - add
     append(c.Tags, "us-east-1a")
     err = c.Gauge("request.duration", 1.2, nil, 1)
 
+## Buffering Client
+
+Dogstatsd accepts packets with multiple statsd payloads in them.  Using the BufferingClient via `NewBufferingClient` will buffer up commands and send them when the buffer is reached or after 100msec.
+
 ## Development
 
 Run the tests with:
