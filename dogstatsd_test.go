@@ -3,6 +3,7 @@
 package dogstatsd
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -85,7 +86,7 @@ func TestClient(t *testing.T) {
 	}
 }
 
-func TestBufferingClient(t *testing.T) {
+func TestBufferedClient(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -104,10 +105,10 @@ func TestBufferingClient(t *testing.T) {
 	}
 
 	bufferLength := 5
-	client := &BufferingClient{
+	client := &Client{
 		conn:         conn,
 		commands:     make([]string, 0, bufferLength),
-		BufferLength: bufferLength,
+		bufferLength: bufferLength,
 	}
 
 	client.Namespace = "foo."
@@ -123,7 +124,7 @@ func TestBufferingClient(t *testing.T) {
 	}
 
 	client.Set("ss", "xx", nil, 1)
-	err = client.send()
+	err = client.flush()
 	if err != nil {
 		t.Errorf("Error sending: %s", err)
 	}
@@ -164,4 +165,49 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() { c.Gauge("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Set("", "", nil, 1) })
 	assertNotPanics(t, func() { c.send("", "", nil, 1) })
+}
+
+// These benchmarks show that using a buffer instead of sprintf-ing together
+// a bunch of intermediate strings is 4-5x faster
+
+func BenchmarkFormatNew(b *testing.B) {
+	b.StopTimer()
+	c := &Client{}
+	c.Namespace = "foo.bar."
+	c.Tags = []string{"app:foo", "host:bar"}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		c.format("system.cpu.idle", "10", []string{"foo"}, 1)
+		c.format("system.cpu.load", "0.1", nil, 0.9)
+	}
+}
+
+// Old formatting function, added to client for tests
+func (c *Client) format_old(name, value string, tags []string, rate float64) string {
+	if rate < 1 {
+		value = fmt.Sprintf("%s|@%f", value, rate)
+	}
+	if c.Namespace != "" {
+		name = fmt.Sprintf("%s%s", c.Namespace, name)
+	}
+
+	tags = append(c.Tags, tags...)
+	if len(tags) > 0 {
+		value = fmt.Sprintf("%s|#%s", value, strings.Join(tags, ","))
+	}
+
+	return fmt.Sprintf("%s:%s", name, value)
+
+}
+
+func BenchmarkFormatOld(b *testing.B) {
+	b.StopTimer()
+	c := &Client{}
+	c.Namespace = "foo.bar."
+	c.Tags = []string{"app:foo", "host:bar"}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		c.format_old("system.cpu.idle", "10", []string{"foo"}, 1)
+		c.format_old("system.cpu.load", "0.1", nil, 0.9)
+	}
 }
