@@ -119,6 +119,7 @@ func (c *Client) append(cmd string) error {
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
 		if err := c.flush(); err != nil {
+			c.Unlock()
 			return err
 		}
 	}
