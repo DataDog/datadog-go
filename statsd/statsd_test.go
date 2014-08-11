@@ -167,6 +167,15 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() { c.send("", "", nil, 1) })
 }
 
+func TestEvents(t *testing.T) {
+	e := NewEvent("Hello", "Something happened to my event")
+	s, err := e.Encode()
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(s)
+}
+
 // These benchmarks show that using a buffer instead of sprintf-ing together
 // a bunch of intermediate strings is 4-5x faster
 

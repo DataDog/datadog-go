@@ -186,3 +186,100 @@ func (c *Client) Close() error {
 	c.stop = true
 	return c.conn.Close()
 }
+
+type Event struct {
+	Title          string
+	Text           string
+	DateHappened   time.Time
+	Hostname       string
+	AggregationKey string
+	Priority       string
+	SourceTypeName string
+	AlertType      string
+	Tags           []string
+}
+
+func NewEvent(title, text string) *Event {
+	return &Event{
+		Title: title,
+		Text:  text,
+	}
+}
+
+func (e Event) Check() error {
+	if len(e.Title) == 0 {
+		return fmt.Errorf("statsd.Event title is required.")
+	}
+	if len(e.Text) == 0 {
+		return fmt.Errorf("statsd.Event text is required.")
+	}
+	switch e.Priority {
+	case "", "normal", "low":
+	default:
+		return fmt.Errorf(`Invalid statsd.Event priority "%s", must be one of: ("normal", "low")`, e.Priority)
+	}
+	switch e.AlertType {
+	case "", "info", "error", "warning", "success":
+	default:
+		return fmt.Errorf(`Invalid statsd.Event alert type "%s", must be one of: ("info", "error", "warning", "success")`, e.AlertType)
+	}
+	return nil
+}
+
+func (e Event) Encode() (string, error) {
+	err := e.Check()
+	if err != nil {
+		return "", err
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("_e{")
+	buffer.WriteString(strconv.FormatInt(int64(len(e.Title)), 10))
+	buffer.WriteRune(',')
+	buffer.WriteString(strconv.FormatInt(int64(len(e.Text)), 10))
+	buffer.WriteString("}:")
+	buffer.WriteString(e.Title)
+	buffer.WriteRune('|')
+	buffer.WriteString(e.Text)
+
+	if !e.DateHappened.IsZero() {
+		buffer.WriteString("|d:")
+		buffer.WriteString(strconv.FormatInt(int64(e.DateHappened.Unix()), 10))
+	}
+
+	if len(e.Hostname) != 0 {
+		buffer.WriteString("|h:")
+		buffer.WriteString(e.Hostname)
+	}
+
+	if len(e.AggregationKey) != 0 {
+		buffer.WriteString("|k:")
+		buffer.WriteString(e.AggregationKey)
+
+	}
+
+	if len(e.Priority) != 0 {
+		buffer.WriteString("|p:")
+		buffer.WriteString(e.Priority)
+	}
+
+	if len(e.SourceTypeName) != 0 {
+		buffer.WriteString("|s:")
+		buffer.WriteString(e.SourceTypeName)
+	}
+
+	if len(e.AlertType) != 0 {
+		buffer.WriteString("|t:")
+		buffer.WriteString(e.AlertType)
+	}
+
+	if len(e.Tags) != 0 {
+		buffer.WriteString("|#")
+		buffer.WriteString(e.Tags[0])
+		for _, tag := range e.Tags[1:] {
+			buffer.WriteString(",")
+			buffer.WriteString(tag)
+		}
+	}
+
+	return buffer.String(), nil
+}
