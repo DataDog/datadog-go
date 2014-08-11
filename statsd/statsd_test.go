@@ -1,6 +1,6 @@
 // Copyright 2013 Ooyala, Inc.
 
-package dogstatsd
+package statsd
 
 import (
 	"fmt"

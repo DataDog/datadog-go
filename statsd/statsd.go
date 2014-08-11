@@ -6,7 +6,7 @@ histograms. Refer to http://docs.datadoghq.com/guides/dogstatsd/ for information
 
 Example Usage:
 		// Create the client
-		c, err := dogstatsd.New("127.0.0.1:8125")
+		c, err := statsd.New("127.0.0.1:8125")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -16,9 +16,10 @@ Example Usage:
 		append(c.Tags, "us-east-1a")
 		err = c.Gauge("request.duration", 1.2, nil, 1)
 
-dogstatsd is based on go-statsd-client.
+statsd is based on go-statsd-client.
 */
-package dogstatsd
+
+package statsd
 
 import (
 	"bytes"
