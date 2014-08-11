@@ -18,7 +18,7 @@ if err != nil {
 // Prefix every metric with the app name
 c.Namespace = "flubber."
 // Send the EC2 availability zone as a tag with every metric
-append(c.Tags, "us-east-1a")
+c.Tags = append(c.Tags, "us-east-1a")
 err = c.Gauge("request.duration", 1.2, nil, 1)
 ```
 
