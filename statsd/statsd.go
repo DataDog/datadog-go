@@ -18,7 +18,6 @@ Example Usage:
 
 statsd is based on go-statsd-client.
 */
-
 package statsd
 
 import (
@@ -183,7 +182,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	return c.send(name, stat, tags, rate)
 }
 
-// Event sends the provided Event
+// Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
 	stat, err := e.Encode(c.Tags...)
 	if err != nil {
@@ -192,13 +191,13 @@ func (c *Client) Event(e *Event) error {
 	return c.sendMsg(stat)
 }
 
-// SimpleEvent sends an event with the provided title and text
+// SimpleEvent sends an event with the provided title and text.
 func (c *Client) SimpleEvent(title, text string) error {
 	e := NewEvent(title, text)
 	return c.Event(e)
 }
 
-// Close the client connection
+// Close the client connection.
 func (c *Client) Close() error {
 	if c == nil {
 		return nil
