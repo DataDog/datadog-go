@@ -32,7 +32,8 @@ import (
 	"time"
 )
 
-// A Client is a handle for sending udp messages to dogstatsd.
+// A Client is a handle for sending udp messages to dogstatsd.  It is safe to
+// use one Client from multiple goroutines simultaneously.
 type Client struct {
 	conn net.Conn
 	// Namespace to prepend to all statsd calls
