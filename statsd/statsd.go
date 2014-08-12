@@ -140,7 +140,9 @@ func (c *Client) sendMsg(msg string) error {
 	if c.bufferLength > 0 {
 		return c.append(msg)
 	}
+	c.Lock()
 	_, err := c.conn.Write([]byte(msg))
+	c.Unlock()
 	return err
 }
 
