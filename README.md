@@ -4,6 +4,9 @@ Packages in `datadog-go` provide Go clients for various APIs at [DataDog](http:/
 
 ## Statsd
 
+[![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/DataDog/datadog-go/statsd)
+[![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](http://opensource.org/licenses/MIT)
+
 The [statsd](https://github.com/DataDog/datadog-go/tree/master/statsd) package provides a client for
 [dogstatsd](http://docs.datadoghq.com/guides/dogstatsd/):
 
