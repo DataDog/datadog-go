@@ -32,8 +32,7 @@ import (
 	"time"
 )
 
-// Client is the default dogstatsd client.  It always sends out stats to dogstatsd
-// as requested.
+// A Client is a handle for sending udp messages to dogstatsd.
 type Client struct {
 	conn net.Conn
 	// Namespace to prepend to all statsd calls
@@ -48,8 +47,7 @@ type Client struct {
 	sync.Mutex
 }
 
-// New returns a pointer to a new Client and an error.
-// addr must have the format "hostname:port"
+// New returns a pointer to a new Client given an addr in the format "hostname:port".
 func New(addr string) (*Client, error) {
 	conn, err := net.Dial("udp", addr)
 	if err != nil {
@@ -137,6 +135,15 @@ func (c *Client) flush() error {
 	return err
 }
 
+func (c *Client) sendMsg(msg string) error {
+	// if this client is buffered, then we'll just append this
+	if c.bufferLength > 0 {
+		return c.append(msg)
+	}
+	_, err := c.conn.Write([]byte(msg))
+	return err
+}
+
 // send handles sampling and sends the message over UDP. It also adds global namespace prefixes and tags.
 func (c *Client) send(name, value string, tags []string, rate float64) error {
 	if c == nil {
@@ -146,36 +153,46 @@ func (c *Client) send(name, value string, tags []string, rate float64) error {
 		return nil
 	}
 	data := c.format(name, value, tags, rate)
-	// if this client is buffered, then we'll just append this
-	if c.bufferLength > 0 {
-		return c.append(data)
-	}
-	_, err := c.conn.Write([]byte(data))
-	return err
+	return c.sendMsg(data)
 }
 
-// Gauges measure the value of a metric at a particular time
+// Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
 	stat := fmt.Sprintf("%f|g", value)
 	return c.send(name, stat, tags, rate)
 }
 
-// Counters track how many times something happened per second
+// Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
 	stat := fmt.Sprintf("%d|c", value)
 	return c.send(name, stat, tags, rate)
 }
 
-// Histograms track the statistical distribution of a set of values
+// Histogram tracks the statistical distribution of a set of values.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
 	stat := fmt.Sprintf("%f|h", value)
 	return c.send(name, stat, tags, rate)
 }
 
-// Sets count the number of unique elements in a group
+// Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
 	stat := fmt.Sprintf("%s|s", value)
 	return c.send(name, stat, tags, rate)
+}
+
+// Event sends the provided Event
+func (c *Client) Event(e *Event) error {
+	stat, err := e.Encode(c.Tags...)
+	if err != nil {
+		return err
+	}
+	return c.sendMsg(stat)
+}
+
+// SimpleEvent sends an event with the provided title and text
+func (c *Client) SimpleEvent(title, text string) error {
+	e := NewEvent(title, text)
+	return c.Event(e)
 }
 
 // Close the client connection
@@ -192,31 +209,51 @@ func (c *Client) Close() error {
 type eventAlertType string
 
 const (
-	Info    eventAlertType = "info"
-	Error   eventAlertType = "error"
+	// Info is the "info" AlertType for events
+	Info eventAlertType = "info"
+	// Error is the "error" AlertType for events
+	Error eventAlertType = "error"
+	// Warning is the "warning" AlertType for events
 	Warning eventAlertType = "warning"
+	// Success is the "success" AlertType for events
 	Success eventAlertType = "success"
 )
 
 type eventPriority string
 
 const (
+	// Normal is the "normal" Priority for events
 	Normal eventPriority = "normal"
-	Low    eventPriority = "low"
+	// Low is the "low" Priority for events
+	Low eventPriority = "low"
 )
 
+// An Event is an object that can be posted to your DataDog event stream.
 type Event struct {
-	Title          string
-	Text           string
-	DateHappened   time.Time
-	Hostname       string
+	// Title of the event.  Required.
+	Title string
+	// Text is the description of the event.  Required.
+	Text string
+	// Timestamp is a timestamp for the event.  If not provided, the dogstatsd
+	// server will set this to the current time.
+	Timestamp time.Time
+	// Hostname for the event.
+	Hostname string
+	// AggregationKey groups this event with others of the same key.
 	AggregationKey string
-	Priority       eventPriority
+	// Priority of the event.  Can be statsd.Low or statsd.Normal.
+	Priority eventPriority
+	// SourceTypeName is a source type for the event.
 	SourceTypeName string
-	AlertType      eventAlertType
-	Tags           []string
+	// AlertType can be statsd.Info, statsd.Error, statsd.Warning, or statsd.Success.
+	// If absent, the default value applied by the dogstatsd server is Info.
+	AlertType eventAlertType
+	// Tags for the event.
+	Tags []string
 }
 
+// NewEvent creates a new event with the given title and text.  Error checking
+// against these values is done at send-time, or upon running e.Check.
 func NewEvent(title, text string) *Event {
 	return &Event{
 		Title: title,
@@ -224,17 +261,21 @@ func NewEvent(title, text string) *Event {
 	}
 }
 
+// Check verifies that an event is valid.
 func (e Event) Check() error {
 	if len(e.Title) == 0 {
-		return fmt.Errorf("statsd.Event title is required.")
+		return fmt.Errorf("statsd.Event title is required")
 	}
 	if len(e.Text) == 0 {
-		return fmt.Errorf("statsd.Event text is required.")
+		return fmt.Errorf("statsd.Event text is required")
 	}
 	return nil
 }
 
-func (e Event) Encode() (string, error) {
+// Encode returns the dogstatsd wire protocol representation for an event.
+// Tags may be passed which will be added to the encoded output but not to
+// the Event's list of tags, eg. for default tags.
+func (e Event) Encode(tags ...string) (string, error) {
 	err := e.Check()
 	if err != nil {
 		return "", err
@@ -249,9 +290,9 @@ func (e Event) Encode() (string, error) {
 	buffer.WriteRune('|')
 	buffer.WriteString(e.Text)
 
-	if !e.DateHappened.IsZero() {
+	if !e.Timestamp.IsZero() {
 		buffer.WriteString("|d:")
-		buffer.WriteString(strconv.FormatInt(int64(e.DateHappened.Unix()), 10))
+		buffer.WriteString(strconv.FormatInt(int64(e.Timestamp.Unix()), 10))
 	}
 
 	if len(e.Hostname) != 0 {
@@ -280,10 +321,13 @@ func (e Event) Encode() (string, error) {
 		buffer.WriteString(string(e.AlertType))
 	}
 
-	if len(e.Tags) != 0 {
+	if len(tags)+len(e.Tags) > 0 {
+		all := make([]string, 0, len(tags)+len(e.Tags))
+		all = append(all, tags...)
+		all = append(all, e.Tags...)
 		buffer.WriteString("|#")
-		buffer.WriteString(e.Tags[0])
-		for _, tag := range e.Tags[1:] {
+		buffer.WriteString(all[0])
+		for _, tag := range all[1:] {
 			buffer.WriteString(",")
 			buffer.WriteString(tag)
 		}

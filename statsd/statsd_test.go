@@ -4,6 +4,7 @@ package statsd
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"strings"
@@ -134,7 +135,7 @@ func TestBufferedClient(t *testing.T) {
 	}
 
 	buffer := make([]byte, 4096)
-	n, err := server.Read(buffer)
+	n, err := io.ReadAtLeast(server, buffer, 1)
 	result := string(buffer[:n])
 
 	if err != nil {
@@ -155,10 +156,50 @@ func TestBufferedClient(t *testing.T) {
 		}
 	}
 
+	client.Event(&Event{Title: "title1", Text: "text1", Priority: Normal, AlertType: Success, Tags: []string{"tagg"}})
+	client.SimpleEvent("event1", "text1")
+
+	if len(client.commands) != 2 {
+		t.Errorf("Expected to find %d commands, but found %d\n", 2, len(client.commands))
+	}
+
+	err = client.flush()
+
+	if err != nil {
+		t.Errorf("Error sending: %s", err)
+	}
+
+	if len(client.commands) != 0 {
+		t.Errorf("Expecting send to flush commands, but found %d\n", len(client.commands))
+	}
+
+	buffer = make([]byte, 1024)
+	n, err = io.ReadAtLeast(server, buffer, 1)
+	result = string(buffer[:n])
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if n == 0 {
+		t.Errorf("Read 0 bytes but expected more.")
+	}
+
+	expected = []string{
+		`_e{6,5}:title1|text1|p:normal|t:success|#dd:2,tagg`,
+		`_e{6,5}:event1|text1|#dd:2`,
+	}
+
+	for i, res := range strings.Split(result, "\n") {
+		if res != expected[i] {
+			t.Errorf("Got `%s`, expected `%s`", res, expected[i])
+		}
+	}
+
 }
 
 func TestNilSafe(t *testing.T) {
-	var c *Client = nil
+	var c *Client
 	assertNotPanics(t, func() { c.Close() })
 	assertNotPanics(t, func() { c.Count("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Histogram("", 0, nil, 1) })
@@ -210,6 +251,19 @@ func TestEvents(t *testing.T) {
 	if _, err := e.Encode(); err == nil {
 		t.Errorf("Expected error on empty Text.")
 	}
+
+	e = NewEvent("hello", "world")
+	s, err := e.Encode("tag1", "tag2")
+	if err != nil {
+		t.Error(err)
+	}
+	expected := "_e{5,5}:hello|world|#tag1,tag2"
+	if s != expected {
+		t.Errorf("Expected %s, got %s", expected, s)
+	}
+	if len(e.Tags) != 0 {
+		t.Errorf("Modified event in place illegally.")
+	}
 }
 
 // These benchmarks show that using a buffer instead of sprintf-ing together
@@ -228,7 +282,7 @@ func BenchmarkFormatNew(b *testing.B) {
 }
 
 // Old formatting function, added to client for tests
-func (c *Client) format_old(name, value string, tags []string, rate float64) string {
+func (c *Client) formatOld(name, value string, tags []string, rate float64) string {
 	if rate < 1 {
 		value = fmt.Sprintf("%s|@%f", value, rate)
 	}
@@ -252,7 +306,7 @@ func BenchmarkFormatOld(b *testing.B) {
 	c.Tags = []string{"app:foo", "host:bar"}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		c.format_old("system.cpu.idle", "10", []string{"foo"}, 1)
-		c.format_old("system.cpu.load", "0.1", nil, 0.9)
+		c.formatOld("system.cpu.idle", "10", []string{"foo"}, 1)
+		c.formatOld("system.cpu.load", "0.1", nil, 0.9)
 	}
 }
