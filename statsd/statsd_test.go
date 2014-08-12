@@ -168,12 +168,48 @@ func TestNilSafe(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	e := NewEvent("Hello", "Something happened to my event")
-	s, err := e.Encode()
-	if err != nil {
-		t.Error(err)
+	matrix := []struct {
+		event   *Event
+		encoded string
+	}{
+		{
+			NewEvent("Hello", "Something happened to my event"),
+			`_e{5,30}:Hello|Something happened to my event`,
+		}, {
+			&Event{Title: "hi", Text: "okay", AggregationKey: "foo"},
+			`_e{2,4}:hi|okay|k:foo`,
+		}, {
+			&Event{Title: "hi", Text: "okay", AggregationKey: "foo", AlertType: Info},
+			`_e{2,4}:hi|okay|k:foo|t:info`,
+		}, {
+			&Event{Title: "hi", Text: "w/e", AlertType: Error, Priority: Normal},
+			`_e{2,3}:hi|w/e|p:normal|t:error`,
+		}, {
+			&Event{Title: "hi", Text: "uh", Tags: []string{"host:foo", "app:bar"}},
+			`_e{2,2}:hi|uh|#host:foo,app:bar`,
+		},
 	}
-	fmt.Println(s)
+
+	for _, m := range matrix {
+		r, err := m.event.Encode()
+		if err != nil {
+			t.Errorf("Error encoding: %s\n", err)
+			continue
+		}
+		if r != m.encoded {
+			t.Errorf("Expected `%s`, got `%s`\n", m.encoded, r)
+		}
+	}
+
+	e := NewEvent("", "hi")
+	if _, err := e.Encode(); err == nil {
+		t.Errorf("Expected error on empty Title.")
+	}
+
+	e = NewEvent("hi", "")
+	if _, err := e.Encode(); err == nil {
+		t.Errorf("Expected error on empty Text.")
+	}
 }
 
 // These benchmarks show that using a buffer instead of sprintf-ing together

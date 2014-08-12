@@ -187,15 +187,33 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
+// Events support
+
+type eventAlertType string
+
+const (
+	Info    eventAlertType = "info"
+	Error   eventAlertType = "error"
+	Warning eventAlertType = "warning"
+	Success eventAlertType = "success"
+)
+
+type eventPriority string
+
+const (
+	Normal eventPriority = "normal"
+	Low    eventPriority = "low"
+)
+
 type Event struct {
 	Title          string
 	Text           string
 	DateHappened   time.Time
 	Hostname       string
 	AggregationKey string
-	Priority       string
+	Priority       eventPriority
 	SourceTypeName string
-	AlertType      string
+	AlertType      eventAlertType
 	Tags           []string
 }
 
@@ -212,16 +230,6 @@ func (e Event) Check() error {
 	}
 	if len(e.Text) == 0 {
 		return fmt.Errorf("statsd.Event text is required.")
-	}
-	switch e.Priority {
-	case "", "normal", "low":
-	default:
-		return fmt.Errorf(`Invalid statsd.Event priority "%s", must be one of: ("normal", "low")`, e.Priority)
-	}
-	switch e.AlertType {
-	case "", "info", "error", "warning", "success":
-	default:
-		return fmt.Errorf(`Invalid statsd.Event alert type "%s", must be one of: ("info", "error", "warning", "success")`, e.AlertType)
 	}
 	return nil
 }
@@ -259,7 +267,7 @@ func (e Event) Encode() (string, error) {
 
 	if len(e.Priority) != 0 {
 		buffer.WriteString("|p:")
-		buffer.WriteString(e.Priority)
+		buffer.WriteString(string(e.Priority))
 	}
 
 	if len(e.SourceTypeName) != 0 {
@@ -269,7 +277,7 @@ func (e Event) Encode() (string, error) {
 
 	if len(e.AlertType) != 0 {
 		buffer.WriteString("|t:")
-		buffer.WriteString(e.AlertType)
+		buffer.WriteString(string(e.AlertType))
 	}
 
 	if len(e.Tags) != 0 {
