@@ -8,16 +8,16 @@ Refer to http://docs.datadoghq.com/guides/dogstatsd/ for information about DogSt
 
 Example Usage:
 
-	// Create the client
-	c, err := statsd.New("127.0.0.1:8125")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Prefix every metric with the app name
-	c.Namespace = "flubber."
-	// Send the EC2 availability zone as a tag with every metric
-	c.Tags = append(c.Tags, "us-east-1a")
-	err = c.Gauge("request.duration", 1.2, nil, 1)
+    // Create the client
+    c, err := statsd.New("127.0.0.1:8125")
+    if err != nil {
+        log.Fatal(err)
+    }
+    // Prefix every metric with the app name
+    c.Namespace = "flubber."
+    // Send the EC2 availability zone as a tag with every metric
+    c.Tags = append(c.Tags, "us-east-1a")
+    err = c.Gauge("request.duration", 1.2, nil, 1)
 
 statsd is based on go-statsd-client.
 */
@@ -52,7 +52,11 @@ type Client struct {
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port".
 func New(addr string) (*Client, error) {
-	conn, err := net.Dial("udp", addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialUDP("udp", nil, udpAddr)
 	if err != nil {
 		return nil, err
 	}
