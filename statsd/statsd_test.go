@@ -100,7 +100,7 @@ func TestBufferedClient(t *testing.T) {
 	}
 	defer server.Close()
 
-	conn, err := net.Dial("udp", addr)
+	conn, err := net.DialUDP("udp", nil, udpAddr)
 	if err != nil {
 		t.Fatal(err)
 	}
