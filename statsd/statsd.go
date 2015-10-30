@@ -295,6 +295,21 @@ func (c *Client) SimpleEvent(title, text string) error {
 	return c.Event(e)
 }
 
+// ServiceCheck sends the provided ServiceCheck.
+func (c *Client) ServiceCheck(sc *ServiceCheck) error {
+	stat, err := sc.Encode(c.Tags...)
+	if err != nil {
+		return err
+	}
+	return c.sendMsg(stat)
+}
+
+// SimpleServiceCheck sends an serviceCheck with the provided name and status.
+func (c *Client) SimpleServiceCheck(name string, status serviceCheckStatus) error {
+	sc := NewServiceCheck(name, status)
+	return c.ServiceCheck(sc)
+}
+
 // Close the client connection.
 func (c *Client) Close() error {
 	if c == nil {
@@ -433,6 +448,102 @@ func (e Event) Encode(tags ...string) (string, error) {
 			buffer.WriteString(",")
 			buffer.WriteString(tag)
 		}
+	}
+
+	return buffer.String(), nil
+}
+
+// ServiceCheck support
+
+type serviceCheckStatus byte
+
+const (
+	// Ok is the "ok" ServiceCheck status
+	Ok serviceCheckStatus = 0
+	// Warn is the "warning" ServiceCheck status
+	Warn serviceCheckStatus = 1
+	// Critical is the "critical" ServiceCheck status
+	Critical serviceCheckStatus = 2
+	// Unknown is the "unknown" ServiceCheck status
+	Unknown serviceCheckStatus = 3
+)
+
+// An ServiceCheck is an object that contains status of DataDog service check.
+type ServiceCheck struct {
+	// Name of the service check.  Required.
+	Name string
+	// Status of service check.  Required.
+	Status serviceCheckStatus
+	// Timestamp is a timestamp for the serviceCheck.  If not provided, the dogstatsd
+	// server will set this to the current time.
+	Timestamp time.Time
+	// Hostname for the serviceCheck.
+	Hostname string
+	// A message describing the current state of the serviceCheck.
+	Message string
+	// Tags for the serviceCheck.
+	Tags []string
+}
+
+// NewServiceCheck creates a new serviceCheck with the given name and status.  Error checking
+// against these values is done at send-time, or upon running sc.Check.
+func NewServiceCheck(name string, status serviceCheckStatus) *ServiceCheck {
+	return &ServiceCheck{
+		Name:   name,
+		Status: status,
+	}
+}
+
+// Check verifies that an event is valid.
+func (sc ServiceCheck) Check() error {
+	if len(sc.Name) == 0 {
+		return fmt.Errorf("statsd.ServiceCheck name is required")
+	}
+	if byte(sc.Status) < 0 || byte(sc.Status) > 3 {
+		return fmt.Errorf("statsd.ServiceCheck status has invalid value")
+	}
+	return nil
+}
+
+// Encode returns the dogstatsd wire protocol representation for an serviceCheck.
+// Tags may be passed which will be added to the encoded output but not to
+// the Event's list of tags, eg. for default tags.
+func (sc ServiceCheck) Encode(tags ...string) (string, error) {
+	err := sc.Check()
+	if err != nil {
+		return "", err
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("_sc|")
+	buffer.WriteString(sc.Name)
+	buffer.WriteRune('|')
+	buffer.WriteString(strconv.FormatInt(int64(sc.Status), 10))
+
+	if !sc.Timestamp.IsZero() {
+		buffer.WriteString("|d:")
+		buffer.WriteString(strconv.FormatInt(int64(sc.Timestamp.Unix()), 10))
+	}
+
+	if len(sc.Hostname) != 0 {
+		buffer.WriteString("|h:")
+		buffer.WriteString(sc.Hostname)
+	}
+
+	if len(tags)+len(sc.Tags) > 0 {
+		all := make([]string, 0, len(tags)+len(sc.Tags))
+		all = append(all, tags...)
+		all = append(all, sc.Tags...)
+		buffer.WriteString("|#")
+		buffer.WriteString(all[0])
+		for _, tag := range all[1:] {
+			buffer.WriteString(",")
+			buffer.WriteString(tag)
+		}
+	}
+
+	if len(sc.Message) != 0 {
+		buffer.WriteString("|m:")
+		buffer.WriteString(sc.Message)
 	}
 
 	return buffer.String(), nil
