@@ -34,7 +34,7 @@ import (
 	"time"
 )
 
-const MaxPayloadSize = 65507
+const MaxPayloadSize = 1432
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
