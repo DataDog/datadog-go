@@ -34,6 +34,8 @@ import (
 	"time"
 )
 
+const MaxPayloadSize = 65527
+
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
@@ -133,10 +135,43 @@ func (c *Client) append(cmd string) error {
 	return nil
 }
 
+func joinMaxSize(a []string, sep string, maxSize int) []string {
+	if len(a) == 0 {
+		return []string{""}
+	}
+	if len(a) == 1 {
+		return a
+	}
+	n := len(sep) * (len(a) - 1)
+	for i := 0; i < len(a); i++ {
+		n += len(a[i])
+	}
+	splitSize := (n / maxSize) + 1
+	lastIndex := 0
+	container := make([]string, splitSize)
+	n = -1
+	sepLen := len(sep)
+	for i := 0; i < len(a); i++ {
+		if n+len(a[i])+sepLen > maxSize {
+			container = append(container, strings.Join(a[lastIndex:i], sep))
+			lastIndex = i
+			n = -1
+		}
+		n += len(a[i]) + len(sep)
+	}
+	return container
+}
+
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
-	data := strings.Join(c.commands, "\n")
-	_, err := c.conn.Write([]byte(data))
+	data := joinMaxSize(c.commands, "\n", MaxPayloadSize)
+	var err error
+	for i := 0; i < len(data); i++ {
+		_, e := c.conn.Write([]byte(data[i]))
+		if e != nil {
+			err = e
+		}
+	}
 	// clear the slice with a slice op, doesn't realloc
 	c.commands = c.commands[:0]
 	return err
