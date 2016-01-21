@@ -296,15 +296,17 @@ func (e Event) Encode(tags ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	text := e.escapedText()
+
 	var buffer bytes.Buffer
 	buffer.WriteString("_e{")
 	buffer.WriteString(strconv.FormatInt(int64(len(e.Title)), 10))
 	buffer.WriteRune(',')
-	buffer.WriteString(strconv.FormatInt(int64(len(e.Text)), 10))
+	buffer.WriteString(strconv.FormatInt(int64(len(text)), 10))
 	buffer.WriteString("}:")
 	buffer.WriteString(e.Title)
 	buffer.WriteRune('|')
-	buffer.WriteString(e.Text)
+	buffer.WriteString(text)
 
 	if !e.Timestamp.IsZero() {
 		buffer.WriteString("|d:")
@@ -350,4 +352,8 @@ func (e Event) Encode(tags ...string) (string, error) {
 	}
 
 	return buffer.String(), nil
+}
+
+func (e Event) escapedText() string {
+	return strings.Replace(e.text, "\n", "\\n", -1)
 }
