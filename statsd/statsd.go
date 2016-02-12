@@ -355,5 +355,5 @@ func (e Event) Encode(tags ...string) (string, error) {
 }
 
 func (e Event) escapedText() string {
-	return strings.Replace(e.text, "\n", "\\n", -1)
+	return strings.Replace(e.Text, "\n", "\\n", -1)
 }
