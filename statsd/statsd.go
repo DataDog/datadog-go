@@ -514,6 +514,8 @@ func (sc ServiceCheck) Encode(tags ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	message := sc.escapedMessage()
+
 	var buffer bytes.Buffer
 	buffer.WriteString("_sc|")
 	buffer.WriteString(sc.Name)
@@ -542,9 +544,9 @@ func (sc ServiceCheck) Encode(tags ...string) (string, error) {
 		}
 	}
 
-	if len(sc.Message) != 0 {
+	if len(message) != 0 {
 		buffer.WriteString("|m:")
-		buffer.WriteString(sc.Message)
+		buffer.WriteString(message)
 	}
 
 	return buffer.String(), nil
@@ -552,4 +554,7 @@ func (sc ServiceCheck) Encode(tags ...string) (string, error) {
 
 func (e Event) escapedText() string {
 	return strings.Replace(e.Text, "\n", "\\n", -1)
+	
+func (sc ServiceCheck) escapedMessage() string {
+	return strings.Replace(sc.Message, "\n", "\\n", -1)
 }
