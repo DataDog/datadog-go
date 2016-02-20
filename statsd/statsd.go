@@ -556,5 +556,6 @@ func (e Event) escapedText() string {
 	return strings.Replace(e.Text, "\n", "\\n", -1)
 	
 func (sc ServiceCheck) escapedMessage() string {
-	return strings.Replace(sc.Message, "\n", "\\n", -1)
+	msg := strings.Replace(sc.Message, "\n", "\\n", -1)
+	return strings.Replace(msg, "m:", `m\:`, -1)
 }
