@@ -25,6 +25,7 @@ package statsd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -34,7 +35,15 @@ import (
 	"time"
 )
 
-const MaxPayloadSize = 1432
+// MaxPayloadSize defines the maximum size for a UDP packet, 1432 bytes is
+// optimal for regular networks with an MTU of 1500 so packets don't get
+// fragmented. It's generally recommended not to fragment UDP packets as losing
+// a single fragment will cause the entire packet to be lost.
+// This can be increased if your network has a greater MTU or your
+// don't mind UDP packets getting fragmented. The theoretical limit is 65467
+// (65535 bytes Max UDP packet size - 8byte UDP header - 60byte max IP headers)
+// any number greater than that will see data loss.
+var MaxPayloadSize = 1432
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
@@ -123,42 +132,50 @@ func (c *Client) watch() {
 
 func (c *Client) append(cmd string) error {
 	c.Lock()
+	defer c.Unlock()
 	c.commands = append(c.commands, cmd)
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
 		if err := c.flush(); err != nil {
-			c.Unlock()
 			return err
 		}
 	}
-	c.Unlock()
 	return nil
 }
 
 func joinMaxSize(a []string, sep string, maxSize int) []string {
-	if len(a) == 0 {
-		return []string{""}
+	length := len(a)
+	sepLength := len(sep)
+	if length == 0 {
+		return []string{}
 	}
-	if len(a) == 1 {
+	if length == 1 {
 		return a
 	}
-	n := len(sep) * (len(a) - 1)
-	for i := 0; i < len(a); i++ {
+	n := sepLength * (length - 1)
+	for i := 0; i < length; i++ {
 		n += len(a[i])
 	}
 	splitSize := (n / maxSize) + 1
 	lastIndex := 0
-	container := make([]string, splitSize)
-	n = -1
-	sepLen := len(sep)
-	for i := 0; i < len(a); i++ {
-		if n+len(a[i])+sepLen > maxSize {
+	container := make([]string, 0, splitSize)
+	// start with a length of minus separator length as we won't have a trailing
+	// separator. In the end there will be one less separator than elements.
+	n = -sepLength
+	var i int
+	for i = 0; i < length; i++ {
+		if n+len(a[i])+sepLength > maxSize {
 			container = append(container, strings.Join(a[lastIndex:i], sep))
 			lastIndex = i
-			n = -1
+			n = -sepLength
 		}
-		n += len(a[i]) + len(sep)
+		n += len(a[i]) + sepLength
 	}
+	// check if we have anything left to append
+	if n > -sepLength {
+		container = append(container, strings.Join(a[lastIndex:i], sep))
+	}
+
 	return container
 }
 
@@ -180,6 +197,10 @@ func (c *Client) flush() error {
 func (c *Client) sendMsg(msg string) error {
 	// if this client is buffered, then we'll just append this
 	if c.bufferLength > 0 {
+		// return an error if message is bigger than MaxPayloadSize
+		if len(msg) > MaxPayloadSize {
+			return errors.New("message size exceeds MaxPayloadSize, consider increasing it")
+		}
 		return c.append(msg)
 	}
 	c.Lock()
