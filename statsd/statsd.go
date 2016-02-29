@@ -35,14 +35,17 @@ import (
 	"time"
 )
 
-// MaxPayloadSize defines the maximum size for a UDP packet, 1432 bytes is
-// optimal for regular networks with an MTU of 1500 so packets don't get
-// fragmented. It's generally recommended not to fragment UDP packets as losing
-// a single fragment will cause the entire packet to be lost.
-// This can be increased if your network has a greater MTU or your
-// don't mind UDP packets getting fragmented. The theoretical limit is 65467
-// (65535 bytes Max UDP packet size - 8byte UDP header - 60byte max IP headers)
-// any number greater than that will see data loss.
+/*
+MaxPayloadSize defines the maximum payload size for a UDP datagram, 1432 bytes
+is optimal for regular networks with an MTU of 1500 so datagrams don't get
+fragmented. It's generally recommended not to fragment UDP datagrams as losing
+a single fragment will cause the entire datagram to be lost.
+
+This can be increased if your network has a greater MTU or you don't mind UDP
+datagrams getting fragmented. The theoretical limit is 65467
+(65535 bytes Max UDP datagram size - 8byte UDP header - 60byte max IP headers)
+any number greater than that will see data loss.
+*/
 var MaxPayloadSize = 1432
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
