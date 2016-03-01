@@ -155,16 +155,11 @@ func joinMaxSize(a []string, sep string, maxSize int) []string {
 	if length == 1 {
 		return a
 	}
-	n := sepLength * (length - 1)
-	for i := 0; i < length; i++ {
-		n += len(a[i])
-	}
-	splitSize := (n / maxSize) + 1
+	var container []string
 	lastIndex := 0
-	container := make([]string, 0, splitSize)
 	// start with a length of minus separator length as we won't have a trailing
 	// separator. In the end there will be one less separator than elements.
-	n = -sepLength
+	n := -sepLength
 	var i int
 	for i = 0; i < length; i++ {
 		if n+len(a[i])+sepLength > maxSize {
