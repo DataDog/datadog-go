@@ -25,6 +25,7 @@ package statsd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -33,6 +34,19 @@ import (
 	"sync"
 	"time"
 )
+
+/*
+MaxPayloadSize defines the maximum payload size for a UDP datagram, 1432 bytes
+is optimal for regular networks with an MTU of 1500 so datagrams don't get
+fragmented. It's generally recommended not to fragment UDP datagrams as losing
+a single fragment will cause the entire datagram to be lost.
+
+This can be increased if your network has a greater MTU or you don't mind UDP
+datagrams getting fragmented. The theoretical limit is 65467
+(65535 bytes Max UDP datagram size - 8byte UDP header - 60byte max IP headers)
+any number greater than that will see data loss.
+*/
+const MaxPayloadSize = 1432
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
@@ -121,22 +135,58 @@ func (c *Client) watch() {
 
 func (c *Client) append(cmd string) error {
 	c.Lock()
+	defer c.Unlock()
 	c.commands = append(c.commands, cmd)
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
 		if err := c.flush(); err != nil {
-			c.Unlock()
 			return err
 		}
 	}
-	c.Unlock()
 	return nil
+}
+
+func joinMaxSize(a []string, sep string, maxSize int) []string {
+	length := len(a)
+	sepLength := len(sep)
+	if length == 0 {
+		return []string{}
+	}
+	if length == 1 {
+		return a
+	}
+	var container []string
+	lastIndex := 0
+	// start with a length of minus separator length as we won't have a trailing
+	// separator. In the end there will be one less separator than elements.
+	n := -sepLength
+	var i int
+	for i = 0; i < length; i++ {
+		if n+len(a[i])+sepLength > maxSize {
+			container = append(container, strings.Join(a[lastIndex:i], sep))
+			lastIndex = i
+			n = -sepLength
+		}
+		n += len(a[i]) + sepLength
+	}
+	// check if we have anything left to append
+	if n > -sepLength {
+		container = append(container, strings.Join(a[lastIndex:i], sep))
+	}
+
+	return container
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
-	data := strings.Join(c.commands, "\n")
-	_, err := c.conn.Write([]byte(data))
+	data := joinMaxSize(c.commands, "\n", MaxPayloadSize)
+	var err error
+	for i := 0; i < len(data); i++ {
+		_, e := c.conn.Write([]byte(data[i]))
+		if e != nil {
+			err = e
+		}
+	}
 	// clear the slice with a slice op, doesn't realloc
 	c.commands = c.commands[:0]
 	return err
@@ -145,6 +195,10 @@ func (c *Client) flush() error {
 func (c *Client) sendMsg(msg string) error {
 	// if this client is buffered, then we'll just append this
 	if c.bufferLength > 0 {
+		// return an error if message is bigger than MaxPayloadSize
+		if len(msg) > MaxPayloadSize {
+			return errors.New("message size exceeds MaxPayloadSize, consider increasing it")
+		}
 		return c.append(msg)
 	}
 	c.Lock()

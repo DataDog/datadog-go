@@ -198,6 +198,63 @@ func TestBufferedClient(t *testing.T) {
 
 }
 
+func TestJoinMaxSize(t *testing.T) {
+	elements := []string{"abc", "abcd", "ab"}
+	res := joinMaxSize(elements, " ", 8)
+	if len(res) != 2 {
+		t.Errorf("Join result should have size 2, was: %d - %+v", len(res), res)
+	}
+
+	if res[0] != "abc abcd" {
+		t.Errorf("Join should have first and second elements with sepatator, found: %s", res[0])
+	}
+
+	if res[1] != "ab" {
+		t.Errorf("Join of one element should be element without separator, found: %s", res[1])
+	}
+
+	res = joinMaxSize(elements, " ", 9)
+	if len(res) != 2 {
+		t.Errorf("Join result should have size 2, was: %d - %+v", len(res), res)
+	}
+
+	res = joinMaxSize(elements, " ", 10)
+	if len(res) != 2 {
+		t.Errorf("Join result should have size 2, was: %d - %+v", len(res), res)
+	}
+
+	res = joinMaxSize(elements, " ", 11)
+	if len(res) != 1 {
+		t.Errorf("Join result should have size 1, was: %d - %+v", len(res), res)
+	}
+
+	res = joinMaxSize(elements, "    ", 8)
+	if len(res) != 3 {
+		t.Errorf("Separator is long, join result should have size 3, was: %d - %+v", len(res), res)
+	}
+
+	res = joinMaxSize(elements, " ", 20)
+	if len(res) != 1 {
+		t.Errorf("Max size is high, join result should have size 1, was: %d - %+v", len(res), res)
+	}
+
+	if res[0] != "abc abcd ab" {
+		t.Error("Join should have elements with sepatator")
+	}
+}
+
+func testSendMsg(t *testing.T) {
+	c := Client{bufferLength: 1}
+	err := c.sendMsg(strings.Repeat("x", MaxPayloadSize))
+	if err != nil {
+		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxPayloadSize, got: %s", err.Error())
+	}
+	err = c.sendMsg(strings.Repeat("x", MaxPayloadSize+1))
+	if err == nil {
+		t.Error("Expected error to be returned if message size is bigger that MaxPayloadSize")
+	}
+}
+
 func TestNilSafe(t *testing.T) {
 	var c *Client
 	assertNotPanics(t, func() { c.Close() })
