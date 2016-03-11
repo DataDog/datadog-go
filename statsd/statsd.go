@@ -46,7 +46,7 @@ datagrams getting fragmented. The theoretical limit is 65467
 (65535 bytes Max UDP datagram size - 8byte UDP header - 60byte max IP headers)
 any number greater than that will see data loss.
 */
-var MaxPayloadSize = 1432
+const MaxPayloadSize = 1432
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
@@ -146,49 +146,79 @@ func (c *Client) append(cmd string) error {
 	return nil
 }
 
-func joinMaxSize(a []string, sep string, maxSize int) []string {
-	length := len(a)
+func joinMaxSize(cmds []string, sep string, maxSize int) ([]string, []int) {
+	var buffer bytes.Buffer
+	buffer.Reset() //just to be sure...
+
+	frames := make([]string, 0)
+	ncmds := make([]int, 0)
 	sepLength := len(sep)
-	if length == 0 {
-		return []string{}
-	}
-	if length == 1 {
-		return a
-	}
-	var container []string
-	lastIndex := 0
-	// start with a length of minus separator length as we won't have a trailing
-	// separator. In the end there will be one less separator than elements.
-	n := -sepLength
-	var i int
-	for i = 0; i < length; i++ {
-		if n+len(a[i])+sepLength > maxSize {
-			container = append(container, strings.Join(a[lastIndex:i], sep))
-			lastIndex = i
-			n = -sepLength
+
+	elem := 0
+	for _, cmd := range cmds {
+		var needed int
+
+		if elem == 0 {
+			needed = len(cmd)
+		} else {
+			needed = sepLength + len(cmd)
 		}
-		n += len(a[i]) + sepLength
-	}
-	// check if we have anything left to append
-	if n > -sepLength {
-		container = append(container, strings.Join(a[lastIndex:i], sep))
+
+		if buffer.Len()+needed <= maxSize {
+			if elem != 0 {
+				buffer.WriteString(sep)
+			}
+			buffer.WriteString(cmd)
+			elem++
+		} else if elem == 0 {
+			//if a single command is too big, flush it and hope the UDP fragmented packets
+			//don't get dropped.
+			frames = append(frames, cmd)
+			ncmds = append(ncmds, 1)
+		} else {
+			frames = append(frames, buffer.String())
+			ncmds = append(ncmds, elem)
+			buffer.Reset()
+			buffer.WriteString(cmd)
+			elem = 1
+		}
 	}
 
-	return container
+	//add whatever is left!
+	frames = append(frames, buffer.String())
+	ncmds = append(ncmds, elem)
+
+	return frames, ncmds
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
-	data := joinMaxSize(c.commands, "\n", MaxPayloadSize)
+	frames, flushable := joinMaxSize(c.commands, "\n", MaxPayloadSize)
 	var err error
-	for i := 0; i < len(data); i++ {
-		_, e := c.conn.Write([]byte(data[i]))
+	cmdsFlushed := 0
+	for i, data := range frames {
+		_, e := c.conn.Write([]byte(data))
 		if e != nil {
 			err = e
+			for j := 0; j < i; j++ {
+				cmdsFlushed += flushable[j]
+			}
+			break
 		}
 	}
+	if err == nil {
+		for _, flushed := range flushable {
+			cmdsFlushed += flushed
+		}
+	}
+
 	// clear the slice with a slice op, doesn't realloc
-	c.commands = c.commands[:0]
+	if cmdsFlushed == len(c.commands) {
+		c.commands = c.commands[:0]
+	} else {
+		//this case would cause an eventual realloc in the future...
+		c.commands = c.commands[cmdsFlushed:]
+	}
 	return err
 }
 
