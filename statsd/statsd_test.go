@@ -198,6 +198,132 @@ func TestBufferedClient(t *testing.T) {
 
 }
 
+func TestJoinMaxSize(t *testing.T) {
+	elements := []string{"abc", "abcd", "ab", "xyz", "foobaz", "x", "wwxxyyzz"}
+	res, n := joinMaxSize(elements, " ", 8)
+
+	if n[0] != 2 {
+		t.Errorf("Was expecting 2 elements in first frame but got: %v", n[0])
+	}
+	if res[0] != "abc abcd" {
+		t.Errorf("Join should have first and second elements with sepatator, found: %s", res[0])
+	}
+	if n[1] != 2 {
+		t.Errorf("Was expecting 1 element in second frame but got: %v - %v", n[1], n)
+	}
+	if res[1] != "ab xyz" {
+		t.Errorf("Join should have second elements with sepatator, found: %s", res[1])
+	}
+	if n[2] != 2 {
+		t.Errorf("Was expecting 1 element in second frame but got: %v - %v", n[2], n)
+	}
+	if res[2] != "foobaz x" {
+		t.Errorf("Join should have second elements with sepatator, found: %s", res[2])
+	}
+	if n[3] != 1 {
+		t.Errorf("Was expecting 1 element in second frame but got: %v - %v", n[1], n)
+	}
+	if res[3] != "wwxxyyzz" {
+		t.Errorf("Join should have second elements with sepatator, found: %s", res[1])
+	}
+
+	res, n = joinMaxSize(elements, " ", 11)
+	if n[0] != 3 {
+		t.Errorf("Was expecting 3 elements in first and single frame but got: %v", n[0])
+	}
+	if res[0] != "abc abcd ab" {
+		t.Errorf("Join should have returned \"abc abcd ab\" with sepatator, found: %s", res[0])
+	}
+	if n[1] != 2 {
+		t.Errorf("Was expecting 3 elements in first and single frame but got: %v", n[1])
+	}
+	if res[1] != "xyz foobaz" {
+		t.Errorf("Join should have returned \"abc abcd ab\" with sepatator, found: %s", res[1])
+	}
+	if n[2] != 2 {
+		t.Errorf("Was expecting 3 elements in first and single frame but got: %v", n[2])
+	}
+	if res[2] != "x wwxxyyzz" {
+		t.Errorf("Join should have returned \"abc abcd ab\" with sepatator, found: %s", res[2])
+	}
+
+	res, n = joinMaxSize(elements, "    ", 8)
+	if n[0] != 1 {
+		t.Errorf("Separator is long, expected a single element in first frame but got: %d - %v", n[0], res)
+	}
+	if res[0] != "abc" {
+		t.Errorf("Join should have returned \"abc\" with sepatator, found: %s", res)
+	}
+	if n[1] != 1 {
+		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[1], res)
+	}
+	if res[1] != "abcd" {
+		t.Errorf("Join should have returned \"abcd\" with sepatator, found: %s", res[1])
+	}
+	if n[2] != 1 {
+		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[2], res)
+	}
+	if res[2] != "ab" {
+		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[2])
+	}
+	if n[3] != 1 {
+		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[3], res)
+	}
+	if res[3] != "xyz" {
+		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[3])
+	}
+	if n[4] != 1 {
+		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[4], res)
+	}
+	if res[4] != "foobaz" {
+		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[4])
+	}
+	if n[5] != 1 {
+		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[5], res)
+	}
+	if res[5] != "x" {
+		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[5])
+	}
+	if n[6] != 1 {
+		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[6], res)
+	}
+	if res[6] != "wwxxyyzz" {
+		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[6])
+	}
+
+	res, n = joinMaxSize(elements, "  ", 13)
+	if n[0] != 3 {
+		t.Errorf("Even though element is greater then max size we hope fragementation wont drop it. %d - %v", n[0], res)
+	}
+	if res[0] != "abc  abcd  ab" {
+		t.Errorf("Join should have returned \"abc\" with sepatator, found: %s", res[0])
+	}
+	if n[1] != 2 {
+		t.Errorf("Even though element is greater then max size we hope fragementation wont drop it. %d - %v", n[1], res)
+	}
+	if res[1] != "xyz  foobaz" {
+		t.Errorf("Join should have returned \"abcd\" with sepatator, found: %s", res[1])
+	}
+	if n[2] != 2 {
+		t.Errorf("Even though element is greater then max size we hope fragementation wont drop it. %d - %v", n[2], res)
+	}
+	if res[2] != "x  wwxxyyzz" {
+		t.Errorf("Join should have returned \"abcd\" with sepatator, found: %s", res[2])
+	}
+}
+
+func testSendMsg(t *testing.T) {
+	c := Client{bufferLength: 1}
+	err := c.sendMsg(strings.Repeat("x", MaxPayloadSize))
+	if err != nil {
+		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxPayloadSize, got: %s", err.Error())
+	}
+	err = c.sendMsg(strings.Repeat("x", MaxPayloadSize+1))
+	if err == nil {
+		t.Error("Expected error to be returned if message size is bigger that MaxPayloadSize")
+	}
+}
+
 func TestNilSafe(t *testing.T) {
 	var c *Client
 	assertNotPanics(t, func() { c.Close() })
@@ -263,6 +389,79 @@ func TestEvents(t *testing.T) {
 	}
 	if len(e.Tags) != 0 {
 		t.Errorf("Modified event in place illegally.")
+	}
+}
+
+func TestServiceChecks(t *testing.T) {
+	matrix := []struct {
+		serviceCheck *ServiceCheck
+		encoded      string
+	}{
+		{
+			NewServiceCheck("DataCatService", Ok),
+			`_sc|DataCatService|0`,
+		}, {
+			NewServiceCheck("DataCatService", Warn),
+			`_sc|DataCatService|1`,
+		}, {
+			NewServiceCheck("DataCatService", Critical),
+			`_sc|DataCatService|2`,
+		}, {
+			NewServiceCheck("DataCatService", Unknown),
+			`_sc|DataCatService|3`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat"},
+			`_sc|DataCatService|0|h:DataStation.Cat`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes valuable message"},
+			`_sc|DataCatService|0|h:DataStation.Cat|m:Here goes valuable message`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here are some cyrillic chars: к л м н о п р с т у ф х ц ч ш"},
+			`_sc|DataCatService|0|h:DataStation.Cat|m:Here are some cyrillic chars: к л м н о п р с т у ф х ц ч ш`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes valuable message", Tags: []string{"host:foo", "app:bar"}},
+			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes valuable message`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes \n that should be escaped", Tags: []string{"host:foo", "app:bar"}},
+			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes \n that should be escaped`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes m: that should be escaped", Tags: []string{"host:foo", "app:bar"}},
+			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes m\: that should be escaped`,
+		},
+	}
+
+	for _, m := range matrix {
+		r, err := m.serviceCheck.Encode()
+		if err != nil {
+			t.Errorf("Error encoding: %s\n", err)
+			continue
+		}
+		if r != m.encoded {
+			t.Errorf("Expected `%s`, got `%s`\n", m.encoded, r)
+		}
+	}
+
+	sc := NewServiceCheck("", Ok)
+	if _, err := sc.Encode(); err == nil {
+		t.Errorf("Expected error on empty Name.")
+	}
+
+	sc = NewServiceCheck("sc", serviceCheckStatus(5))
+	if _, err := sc.Encode(); err == nil {
+		t.Errorf("Expected error on invalid status value.")
+	}
+
+	sc = NewServiceCheck("hello", Warn)
+	s, err := sc.Encode("tag1", "tag2")
+	if err != nil {
+		t.Error(err)
+	}
+	expected := "_sc|hello|1|#tag1,tag2"
+	if s != expected {
+		t.Errorf("Expected %s, got %s", expected, s)
+	}
+	if len(sc.Tags) != 0 {
+		t.Errorf("Modified serviceCheck in place illegally.")
 	}
 }
 

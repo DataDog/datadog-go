@@ -25,6 +25,7 @@ package statsd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -33,6 +34,19 @@ import (
 	"sync"
 	"time"
 )
+
+/*
+MaxPayloadSize defines the maximum payload size for a UDP datagram, 1432 bytes
+is optimal for regular networks with an MTU of 1500 so datagrams don't get
+fragmented. It's generally recommended not to fragment UDP datagrams as losing
+a single fragment will cause the entire datagram to be lost.
+
+This can be increased if your network has a greater MTU or you don't mind UDP
+datagrams getting fragmented. The theoretical limit is 65467
+(65535 bytes Max UDP datagram size - 8byte UDP header - 60byte max IP headers)
+any number greater than that will see data loss.
+*/
+const MaxPayloadSize = 1432
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
@@ -121,30 +135,100 @@ func (c *Client) watch() {
 
 func (c *Client) append(cmd string) error {
 	c.Lock()
+	defer c.Unlock()
 	c.commands = append(c.commands, cmd)
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
 		if err := c.flush(); err != nil {
-			c.Unlock()
 			return err
 		}
 	}
-	c.Unlock()
 	return nil
+}
+
+func joinMaxSize(cmds []string, sep string, maxSize int) ([]string, []int) {
+	var buffer bytes.Buffer
+	buffer.Reset() //just to be sure...
+
+	frames := make([]string, 0)
+	ncmds := make([]int, 0)
+	sepLength := len(sep)
+
+	elem := 0
+	for _, cmd := range cmds {
+		var needed int
+
+		if elem == 0 {
+			needed = len(cmd)
+		} else {
+			needed = sepLength + len(cmd)
+		}
+
+		if buffer.Len()+needed <= maxSize {
+			if elem != 0 {
+				buffer.WriteString(sep)
+			}
+			buffer.WriteString(cmd)
+			elem++
+		} else if elem == 0 {
+			//if a single command is too big, flush it and hope the UDP fragmented packets
+			//don't get dropped.
+			frames = append(frames, cmd)
+			ncmds = append(ncmds, 1)
+		} else {
+			frames = append(frames, buffer.String())
+			ncmds = append(ncmds, elem)
+			buffer.Reset()
+			buffer.WriteString(cmd)
+			elem = 1
+		}
+	}
+
+	//add whatever is left!
+	frames = append(frames, buffer.String())
+	ncmds = append(ncmds, elem)
+
+	return frames, ncmds
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
-	data := strings.Join(c.commands, "\n")
-	_, err := c.conn.Write([]byte(data))
+	frames, flushable := joinMaxSize(c.commands, "\n", MaxPayloadSize)
+	var err error
+	cmdsFlushed := 0
+	for i, data := range frames {
+		_, e := c.conn.Write([]byte(data))
+		if e != nil {
+			err = e
+			for j := 0; j < i; j++ {
+				cmdsFlushed += flushable[j]
+			}
+			break
+		}
+	}
+	if err == nil {
+		for _, flushed := range flushable {
+			cmdsFlushed += flushed
+		}
+	}
+
 	// clear the slice with a slice op, doesn't realloc
-	c.commands = c.commands[:0]
+	if cmdsFlushed == len(c.commands) {
+		c.commands = c.commands[:0]
+	} else {
+		//this case would cause an eventual realloc in the future...
+		c.commands = c.commands[cmdsFlushed:]
+	}
 	return err
 }
 
 func (c *Client) sendMsg(msg string) error {
 	// if this client is buffered, then we'll just append this
 	if c.bufferLength > 0 {
+		// return an error if message is bigger than MaxPayloadSize
+		if len(msg) > MaxPayloadSize {
+			return errors.New("message size exceeds MaxPayloadSize, consider increasing it")
+		}
 		return c.append(msg)
 	}
 	c.Lock()
@@ -209,6 +293,21 @@ func (c *Client) Event(e *Event) error {
 func (c *Client) SimpleEvent(title, text string) error {
 	e := NewEvent(title, text)
 	return c.Event(e)
+}
+
+// ServiceCheck sends the provided ServiceCheck.
+func (c *Client) ServiceCheck(sc *ServiceCheck) error {
+	stat, err := sc.Encode(c.Tags...)
+	if err != nil {
+		return err
+	}
+	return c.sendMsg(stat)
+}
+
+// SimpleServiceCheck sends an serviceCheck with the provided name and status.
+func (c *Client) SimpleServiceCheck(name string, status serviceCheckStatus) error {
+	sc := NewServiceCheck(name, status)
+	return c.ServiceCheck(sc)
 }
 
 // Close the client connection.
@@ -354,6 +453,109 @@ func (e Event) Encode(tags ...string) (string, error) {
 	return buffer.String(), nil
 }
 
+// ServiceCheck support
+
+type serviceCheckStatus byte
+
+const (
+	// Ok is the "ok" ServiceCheck status
+	Ok serviceCheckStatus = 0
+	// Warn is the "warning" ServiceCheck status
+	Warn serviceCheckStatus = 1
+	// Critical is the "critical" ServiceCheck status
+	Critical serviceCheckStatus = 2
+	// Unknown is the "unknown" ServiceCheck status
+	Unknown serviceCheckStatus = 3
+)
+
+// An ServiceCheck is an object that contains status of DataDog service check.
+type ServiceCheck struct {
+	// Name of the service check.  Required.
+	Name string
+	// Status of service check.  Required.
+	Status serviceCheckStatus
+	// Timestamp is a timestamp for the serviceCheck.  If not provided, the dogstatsd
+	// server will set this to the current time.
+	Timestamp time.Time
+	// Hostname for the serviceCheck.
+	Hostname string
+	// A message describing the current state of the serviceCheck.
+	Message string
+	// Tags for the serviceCheck.
+	Tags []string
+}
+
+// NewServiceCheck creates a new serviceCheck with the given name and status.  Error checking
+// against these values is done at send-time, or upon running sc.Check.
+func NewServiceCheck(name string, status serviceCheckStatus) *ServiceCheck {
+	return &ServiceCheck{
+		Name:   name,
+		Status: status,
+	}
+}
+
+// Check verifies that an event is valid.
+func (sc ServiceCheck) Check() error {
+	if len(sc.Name) == 0 {
+		return fmt.Errorf("statsd.ServiceCheck name is required")
+	}
+	if byte(sc.Status) < 0 || byte(sc.Status) > 3 {
+		return fmt.Errorf("statsd.ServiceCheck status has invalid value")
+	}
+	return nil
+}
+
+// Encode returns the dogstatsd wire protocol representation for an serviceCheck.
+// Tags may be passed which will be added to the encoded output but not to
+// the Event's list of tags, eg. for default tags.
+func (sc ServiceCheck) Encode(tags ...string) (string, error) {
+	err := sc.Check()
+	if err != nil {
+		return "", err
+	}
+	message := sc.escapedMessage()
+
+	var buffer bytes.Buffer
+	buffer.WriteString("_sc|")
+	buffer.WriteString(sc.Name)
+	buffer.WriteRune('|')
+	buffer.WriteString(strconv.FormatInt(int64(sc.Status), 10))
+
+	if !sc.Timestamp.IsZero() {
+		buffer.WriteString("|d:")
+		buffer.WriteString(strconv.FormatInt(int64(sc.Timestamp.Unix()), 10))
+	}
+
+	if len(sc.Hostname) != 0 {
+		buffer.WriteString("|h:")
+		buffer.WriteString(sc.Hostname)
+	}
+
+	if len(tags)+len(sc.Tags) > 0 {
+		all := make([]string, 0, len(tags)+len(sc.Tags))
+		all = append(all, tags...)
+		all = append(all, sc.Tags...)
+		buffer.WriteString("|#")
+		buffer.WriteString(all[0])
+		for _, tag := range all[1:] {
+			buffer.WriteString(",")
+			buffer.WriteString(tag)
+		}
+	}
+
+	if len(message) != 0 {
+		buffer.WriteString("|m:")
+		buffer.WriteString(message)
+	}
+
+	return buffer.String(), nil
+}
+
 func (e Event) escapedText() string {
 	return strings.Replace(e.Text, "\n", "\\n", -1)
+}
+
+func (sc ServiceCheck) escapedMessage() string {
+	msg := strings.Replace(sc.Message, "\n", "\\n", -1)
+	return strings.Replace(msg, "m:", `m\:`, -1)
 }
