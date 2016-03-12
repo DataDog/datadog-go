@@ -36,17 +36,23 @@ import (
 )
 
 /*
-MaxPayloadSize defines the maximum payload size for a UDP datagram, 1432 bytes
+OptimalPayloadSize defines the optimal payload size for a UDP datagram, 1432 bytes
 is optimal for regular networks with an MTU of 1500 so datagrams don't get
 fragmented. It's generally recommended not to fragment UDP datagrams as losing
 a single fragment will cause the entire datagram to be lost.
 
 This can be increased if your network has a greater MTU or you don't mind UDP
-datagrams getting fragmented. The theoretical limit is 65467
-(65535 bytes Max UDP datagram size - 8byte UDP header - 60byte max IP headers)
-any number greater than that will see data loss.
+datagrams getting fragmented. The practical limit is MaxUDPPayloadSize
 */
-const MaxPayloadSize = 1432
+const OptimalPayloadSize = 1432
+
+/*
+MaxUDPPayloadSize defines the maximum payload size for a UDP datagram.
+Its value comes from the calculation: 65535 bytes Max UDP datagram size -
+8byte UDP header - 60byte max IP headers
+any number greater than that will see frames being cut out.
+*/
+const MaxUDPPayloadSize = 65467
 
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
@@ -60,6 +66,7 @@ type Client struct {
 	bufferLength int
 	flushTime    time.Duration
 	commands     []string
+	buffer       bytes.Buffer
 	stop         bool
 	sync.Mutex
 }
@@ -134,8 +141,6 @@ func (c *Client) watch() {
 }
 
 func (c *Client) append(cmd string) error {
-	c.Lock()
-	defer c.Unlock()
 	c.commands = append(c.commands, cmd)
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
@@ -146,70 +151,69 @@ func (c *Client) append(cmd string) error {
 	return nil
 }
 
-func joinMaxSize(cmds []string, sep string, maxSize int) ([]string, []int) {
-	var buffer bytes.Buffer
-	buffer.Reset() //just to be sure...
+func (c *Client) joinMaxSize(cmds []string, sep string, maxSize int) ([][]byte, []int) {
+	c.buffer.Reset() //clear buffer
 
-	frames := make([]string, 0)
-	ncmds := make([]int, 0)
-	sepLength := len(sep)
+	var frames [][]byte
+	var ncmds []int
+	sepBytes := []byte(sep)
 
 	elem := 0
 	for _, cmd := range cmds {
-		var needed int
+		needed := len(cmd)
 
-		if elem == 0 {
-			needed = len(cmd)
-		} else {
-			needed = sepLength + len(cmd)
+		//if a single command is too big, flush it and hope the UDP fragmented packet
+		//doesn't get dropped.
+		if needed > maxSize {
+			frames = append(frames, []byte(cmd))
+			ncmds = append(ncmds, 1)
+			continue
 		}
 
-		if buffer.Len()+needed <= maxSize {
+		if elem != 0 {
+			needed = needed + len(sep)
+		}
+
+		if c.buffer.Len()+needed <= maxSize {
 			if elem != 0 {
-				buffer.WriteString(sep)
+				c.buffer.Write(sepBytes)
 			}
-			buffer.WriteString(cmd)
+			c.buffer.WriteString(cmd)
 			elem++
-		} else if elem == 0 {
-			//if a single command is too big, flush it and hope the UDP fragmented packets
-			//don't get dropped.
-			frames = append(frames, cmd)
-			ncmds = append(ncmds, 1)
 		} else {
-			frames = append(frames, buffer.String())
+			tmpBuf := make([]byte, c.buffer.Len())
+			copy(tmpBuf, c.buffer.Bytes())
+			frames = append(frames, tmpBuf)
 			ncmds = append(ncmds, elem)
-			buffer.Reset()
-			buffer.WriteString(cmd)
+			c.buffer.Reset()
+			c.buffer.WriteString(cmd)
 			elem = 1
 		}
 	}
 
-	//add whatever is left!
-	frames = append(frames, buffer.String())
-	ncmds = append(ncmds, elem)
+	//add whatever is left! if there's actually something
+	if c.buffer.Len() > 0 {
+		tmpBuf := make([]byte, c.buffer.Len())
+		copy(tmpBuf, c.buffer.Bytes())
+		frames = append(frames, tmpBuf)
+		ncmds = append(ncmds, elem)
+	}
 
 	return frames, ncmds
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
-	frames, flushable := joinMaxSize(c.commands, "\n", MaxPayloadSize)
+	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
 	var err error
 	cmdsFlushed := 0
 	for i, data := range frames {
-		_, e := c.conn.Write([]byte(data))
+		_, e := c.conn.Write(data)
 		if e != nil {
 			err = e
-			for j := 0; j < i; j++ {
-				cmdsFlushed += flushable[j]
-			}
 			break
 		}
-	}
-	if err == nil {
-		for _, flushed := range flushable {
-			cmdsFlushed += flushed
-		}
+		cmdsFlushed += flushable[i]
 	}
 
 	// clear the slice with a slice op, doesn't realloc
@@ -224,16 +228,16 @@ func (c *Client) flush() error {
 
 func (c *Client) sendMsg(msg string) error {
 	// if this client is buffered, then we'll just append this
+	c.Lock()
+	defer c.Unlock()
 	if c.bufferLength > 0 {
-		// return an error if message is bigger than MaxPayloadSize
-		if len(msg) > MaxPayloadSize {
-			return errors.New("message size exceeds MaxPayloadSize, consider increasing it")
+		// return an error if message is bigger than OptimalPayloadSize
+		if len(msg) > MaxUDPPayloadSize {
+			return errors.New("message size exceeds MaxUDPPayloadSize")
 		}
 		return c.append(msg)
 	}
-	c.Lock()
 	_, err := c.conn.Write([]byte(msg))
-	c.Unlock()
 	return err
 }
 

@@ -199,126 +199,130 @@ func TestBufferedClient(t *testing.T) {
 }
 
 func TestJoinMaxSize(t *testing.T) {
+	c := Client{}
 	elements := []string{"abc", "abcd", "ab", "xyz", "foobaz", "x", "wwxxyyzz"}
-	res, n := joinMaxSize(elements, " ", 8)
+	res, n := c.joinMaxSize(elements, " ", 8)
 
 	if n[0] != 2 {
 		t.Errorf("Was expecting 2 elements in first frame but got: %v", n[0])
 	}
-	if res[0] != "abc abcd" {
+	if string(res[0]) != "abc abcd" {
+		for _, r := range res {
+			fmt.Printf("res: %s\n", r)
+		}
 		t.Errorf("Join should have first and second elements with sepatator, found: %s", res[0])
 	}
 	if n[1] != 2 {
 		t.Errorf("Was expecting 1 element in second frame but got: %v - %v", n[1], n)
 	}
-	if res[1] != "ab xyz" {
+	if string(res[1]) != "ab xyz" {
 		t.Errorf("Join should have second elements with sepatator, found: %s", res[1])
 	}
 	if n[2] != 2 {
 		t.Errorf("Was expecting 1 element in second frame but got: %v - %v", n[2], n)
 	}
-	if res[2] != "foobaz x" {
+	if string(res[2]) != "foobaz x" {
 		t.Errorf("Join should have second elements with sepatator, found: %s", res[2])
 	}
 	if n[3] != 1 {
 		t.Errorf("Was expecting 1 element in second frame but got: %v - %v", n[1], n)
 	}
-	if res[3] != "wwxxyyzz" {
+	if string(res[3]) != "wwxxyyzz" {
 		t.Errorf("Join should have second elements with sepatator, found: %s", res[1])
 	}
 
-	res, n = joinMaxSize(elements, " ", 11)
+	res, n = c.joinMaxSize(elements, " ", 11)
 	if n[0] != 3 {
 		t.Errorf("Was expecting 3 elements in first and single frame but got: %v", n[0])
 	}
-	if res[0] != "abc abcd ab" {
+	if string(res[0]) != "abc abcd ab" {
 		t.Errorf("Join should have returned \"abc abcd ab\" with sepatator, found: %s", res[0])
 	}
 	if n[1] != 2 {
 		t.Errorf("Was expecting 3 elements in first and single frame but got: %v", n[1])
 	}
-	if res[1] != "xyz foobaz" {
+	if string(res[1]) != "xyz foobaz" {
 		t.Errorf("Join should have returned \"abc abcd ab\" with sepatator, found: %s", res[1])
 	}
 	if n[2] != 2 {
 		t.Errorf("Was expecting 3 elements in first and single frame but got: %v", n[2])
 	}
-	if res[2] != "x wwxxyyzz" {
+	if string(res[2]) != "x wwxxyyzz" {
 		t.Errorf("Join should have returned \"abc abcd ab\" with sepatator, found: %s", res[2])
 	}
 
-	res, n = joinMaxSize(elements, "    ", 8)
+	res, n = c.joinMaxSize(elements, "    ", 8)
 	if n[0] != 1 {
 		t.Errorf("Separator is long, expected a single element in first frame but got: %d - %v", n[0], res)
 	}
-	if res[0] != "abc" {
+	if string(res[0]) != "abc" {
 		t.Errorf("Join should have returned \"abc\" with sepatator, found: %s", res)
 	}
 	if n[1] != 1 {
 		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[1], res)
 	}
-	if res[1] != "abcd" {
+	if string(res[1]) != "abcd" {
 		t.Errorf("Join should have returned \"abcd\" with sepatator, found: %s", res[1])
 	}
 	if n[2] != 1 {
 		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[2], res)
 	}
-	if res[2] != "ab" {
+	if string(res[2]) != "ab" {
 		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[2])
 	}
 	if n[3] != 1 {
 		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[3], res)
 	}
-	if res[3] != "xyz" {
+	if string(res[3]) != "xyz" {
 		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[3])
 	}
 	if n[4] != 1 {
 		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[4], res)
 	}
-	if res[4] != "foobaz" {
+	if string(res[4]) != "foobaz" {
 		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[4])
 	}
 	if n[5] != 1 {
 		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[5], res)
 	}
-	if res[5] != "x" {
+	if string(res[5]) != "x" {
 		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[5])
 	}
 	if n[6] != 1 {
 		t.Errorf("Separator is long, expected a single element in second frame but got: %d - %v", n[6], res)
 	}
-	if res[6] != "wwxxyyzz" {
+	if string(res[6]) != "wwxxyyzz" {
 		t.Errorf("Join should have returned \"ab\" with sepatator, found: %s", res[6])
 	}
 
-	res, n = joinMaxSize(elements, "  ", 13)
+	res, n = c.joinMaxSize(elements, "  ", 13)
 	if n[0] != 3 {
 		t.Errorf("Even though element is greater then max size we hope fragementation wont drop it. %d - %v", n[0], res)
 	}
-	if res[0] != "abc  abcd  ab" {
+	if string(res[0]) != "abc  abcd  ab" {
 		t.Errorf("Join should have returned \"abc\" with sepatator, found: %s", res[0])
 	}
 	if n[1] != 2 {
 		t.Errorf("Even though element is greater then max size we hope fragementation wont drop it. %d - %v", n[1], res)
 	}
-	if res[1] != "xyz  foobaz" {
+	if string(res[1]) != "xyz  foobaz" {
 		t.Errorf("Join should have returned \"abcd\" with sepatator, found: %s", res[1])
 	}
 	if n[2] != 2 {
 		t.Errorf("Even though element is greater then max size we hope fragementation wont drop it. %d - %v", n[2], res)
 	}
-	if res[2] != "x  wwxxyyzz" {
+	if string(res[2]) != "x  wwxxyyzz" {
 		t.Errorf("Join should have returned \"abcd\" with sepatator, found: %s", res[2])
 	}
 }
 
 func testSendMsg(t *testing.T) {
 	c := Client{bufferLength: 1}
-	err := c.sendMsg(strings.Repeat("x", MaxPayloadSize))
+	err := c.sendMsg(strings.Repeat("x", OptimalPayloadSize))
 	if err != nil {
 		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxPayloadSize, got: %s", err.Error())
 	}
-	err = c.sendMsg(strings.Repeat("x", MaxPayloadSize+1))
+	err = c.sendMsg(strings.Repeat("x", OptimalPayloadSize+1))
 	if err == nil {
 		t.Error("Expected error to be returned if message size is bigger that MaxPayloadSize")
 	}
