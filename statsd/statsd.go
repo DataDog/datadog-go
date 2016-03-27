@@ -157,21 +157,14 @@ func (c *Client) joinMaxSize(cmds []string, sep string, maxSize int) ([][]byte, 
 	var frames [][]byte
 	var ncmds []int
 	sepBytes := []byte(sep)
+	sepLen := len(sep)
 
 	elem := 0
 	for _, cmd := range cmds {
 		needed := len(cmd)
 
-		//if a single command is too big, flush it and hope the UDP fragmented packet
-		//doesn't get dropped.
-		if needed > maxSize {
-			frames = append(frames, []byte(cmd))
-			ncmds = append(ncmds, 1)
-			continue
-		}
-
 		if elem != 0 {
-			needed = needed + len(sep)
+			needed = needed + sepLen
 		}
 
 		if c.buffer.Len()+needed <= maxSize {
@@ -181,11 +174,9 @@ func (c *Client) joinMaxSize(cmds []string, sep string, maxSize int) ([][]byte, 
 			c.buffer.WriteString(cmd)
 			elem++
 		} else {
-			tmpBuf := make([]byte, c.buffer.Len())
-			copy(tmpBuf, c.buffer.Bytes())
-			frames = append(frames, tmpBuf)
+			frames = append(frames, copyAndResetBuffer(&c.buffer))
 			ncmds = append(ncmds, elem)
-			c.buffer.Reset()
+			// if cmd is bigger than maxSize it will get flushed on next loop
 			c.buffer.WriteString(cmd)
 			elem = 1
 		}
@@ -193,13 +184,18 @@ func (c *Client) joinMaxSize(cmds []string, sep string, maxSize int) ([][]byte, 
 
 	//add whatever is left! if there's actually something
 	if c.buffer.Len() > 0 {
-		tmpBuf := make([]byte, c.buffer.Len())
-		copy(tmpBuf, c.buffer.Bytes())
-		frames = append(frames, tmpBuf)
+		frames = append(frames, copyAndResetBuffer(&c.buffer))
 		ncmds = append(ncmds, elem)
 	}
 
 	return frames, ncmds
+}
+
+func copyAndResetBuffer(buf *bytes.Buffer) []byte {
+	tmpBuf := make([]byte, buf.Len())
+	copy(tmpBuf, buf.Bytes())
+	buf.Reset()
+	return tmpBuf
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
