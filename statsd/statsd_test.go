@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 var dogstatsdTests = []struct {
@@ -105,7 +106,7 @@ func TestBufferedClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bufferLength := 5
+	bufferLength := 8
 	client := &Client{
 		conn:         conn,
 		commands:     make([]string, 0, bufferLength),
@@ -115,13 +116,18 @@ func TestBufferedClient(t *testing.T) {
 	client.Namespace = "foo."
 	client.Tags = []string{"dd:2"}
 
+	dur, _ := time.ParseDuration("123us")
+
+	client.Incr("ic", nil, 1)
+	client.Decr("dc", nil, 1)
 	client.Count("cc", 1, nil, 1)
 	client.Gauge("gg", 10, nil, 1)
 	client.Histogram("hh", 1, nil, 1)
+	client.Timing("tt", dur, nil, 1)
 	client.Set("ss", "ss", nil, 1)
 
-	if len(client.commands) != 4 {
-		t.Errorf("Expected client to have buffered 4 commands, but found %d\n", len(client.commands))
+	if len(client.commands) != 7 {
+		t.Errorf("Expected client to have buffered 7 commands, but found %d\n", len(client.commands))
 	}
 
 	client.Set("ss", "xx", nil, 1)
@@ -143,9 +149,12 @@ func TestBufferedClient(t *testing.T) {
 	}
 
 	expected := []string{
+		`foo.ic:1|c|#dd:2`,
+		`foo.dc:-1|c|#dd:2`,
 		`foo.cc:1|c|#dd:2`,
 		`foo.gg:10.000000|g|#dd:2`,
 		`foo.hh:1.000000|h|#dd:2`,
+		`foo.tt:0.123000|ms|#dd:2`,
 		`foo.ss:ss|s|#dd:2`,
 		`foo.ss:xx|s|#dd:2`,
 	}
