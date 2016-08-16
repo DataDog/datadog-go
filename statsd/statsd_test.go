@@ -408,6 +408,79 @@ func TestEvents(t *testing.T) {
 	}
 }
 
+func TestServiceChecks(t *testing.T) {
+	matrix := []struct {
+		serviceCheck *ServiceCheck
+		encoded      string
+	}{
+		{
+			NewServiceCheck("DataCatService", Ok),
+			`_sc|DataCatService|0`,
+		}, {
+			NewServiceCheck("DataCatService", Warn),
+			`_sc|DataCatService|1`,
+		}, {
+			NewServiceCheck("DataCatService", Critical),
+			`_sc|DataCatService|2`,
+		}, {
+			NewServiceCheck("DataCatService", Unknown),
+			`_sc|DataCatService|3`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat"},
+			`_sc|DataCatService|0|h:DataStation.Cat`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes valuable message"},
+			`_sc|DataCatService|0|h:DataStation.Cat|m:Here goes valuable message`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here are some cyrillic chars: к л м н о п р с т у ф х ц ч ш"},
+			`_sc|DataCatService|0|h:DataStation.Cat|m:Here are some cyrillic chars: к л м н о п р с т у ф х ц ч ш`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes valuable message", Tags: []string{"host:foo", "app:bar"}},
+			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes valuable message`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes \n that should be escaped", Tags: []string{"host:foo", "app:bar"}},
+			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes \n that should be escaped`,
+		}, {
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes m: that should be escaped", Tags: []string{"host:foo", "app:bar"}},
+			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes m\: that should be escaped`,
+		},
+	}
+
+	for _, m := range matrix {
+		r, err := m.serviceCheck.Encode()
+		if err != nil {
+			t.Errorf("Error encoding: %s\n", err)
+			continue
+		}
+		if r != m.encoded {
+			t.Errorf("Expected `%s`, got `%s`\n", m.encoded, r)
+		}
+	}
+
+	sc := NewServiceCheck("", Ok)
+	if _, err := sc.Encode(); err == nil {
+		t.Errorf("Expected error on empty Name.")
+	}
+
+	sc = NewServiceCheck("sc", serviceCheckStatus(5))
+	if _, err := sc.Encode(); err == nil {
+		t.Errorf("Expected error on invalid status value.")
+	}
+
+	sc = NewServiceCheck("hello", Warn)
+	s, err := sc.Encode("tag1", "tag2")
+	if err != nil {
+		t.Error(err)
+	}
+	expected := "_sc|hello|1|#tag1,tag2"
+	if s != expected {
+		t.Errorf("Expected %s, got %s", expected, s)
+	}
+	if len(sc.Tags) != 0 {
+		t.Errorf("Modified serviceCheck in place illegally.")
+	}
+}
+
 // These benchmarks show that using a buffer instead of sprintf-ing together
 // a bunch of intermediate strings is 4-5x faster
 
