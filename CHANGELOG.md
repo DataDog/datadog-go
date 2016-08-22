@@ -6,8 +6,8 @@ Changes
 ### Details
 We hadn't been properly versioning this project. We will begin to do so with this
 `1.0.0` release. We had some contributions in the past and would like to thank the
-contributors [@aviau][] @sschepens [@abtris][] @tummychow [@gphat][] @diasjorge [@victortrac][]
-[@seiffert][] and [@w-vi][], in no particular order, for their work.
+contributors [@aviau][], [@sschepens][], [@jovanbrankus][],  [@abtris][], [@tummychow][], [@gphat][], [@diasjorge][],
+[@victortrac][], [@seiffert][] and [@w-vi][], in no particular order, for their work.
 
 Below, for reference, the latest improvements made in 07/2016 - 08/2016
 
