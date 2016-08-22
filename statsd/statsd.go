@@ -272,10 +272,25 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	return c.send(name, stat, tags, rate)
 }
 
+// Decr is just Count of 1
+func (c *Client) Decr(name string, tags []string, rate float64) error {
+	return c.send(name, "-1|c", tags, rate)
+}
+
+// Incr is just Count of 1
+func (c *Client) Incr(name string, tags []string, rate float64) error {
+	return c.send(name, "1|c", tags, rate)
+}
+
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
 	stat := fmt.Sprintf("%s|s", value)
 	return c.send(name, stat, tags, rate)
+}
+
+// Timing sends timing information, it is an alias for TimeInMilliseconds
+func (c *Client) Timing(name string, value time.Duration, tags []string, rate float64) error {
+	return c.TimeInMilliseconds(name, value.Seconds()*1000, tags, rate)
 }
 
 // TimeInMilliseconds sends timing information in milliseconds.
