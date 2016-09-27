@@ -471,7 +471,7 @@ func TestServiceChecks(t *testing.T) {
 		t.Errorf("Expected error on empty Name.")
 	}
 
-	sc = NewServiceCheck("sc", serviceCheckStatus(5))
+	sc = NewServiceCheck("sc", ServiceCheckStatus(5))
 	if _, err := sc.Encode(); err == nil {
 		t.Errorf("Expected error on invalid status value.")
 	}

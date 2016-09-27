@@ -325,7 +325,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
-func (c *Client) SimpleServiceCheck(name string, status serviceCheckStatus) error {
+func (c *Client) SimpleServiceCheck(name string, status ServiceCheckStatus) error {
 	sc := NewServiceCheck(name, status)
 	return c.ServiceCheck(sc)
 }
@@ -475,17 +475,17 @@ func (e Event) Encode(tags ...string) (string, error) {
 
 // ServiceCheck support
 
-type serviceCheckStatus byte
+type ServiceCheckStatus byte
 
 const (
 	// Ok is the "ok" ServiceCheck status
-	Ok serviceCheckStatus = 0
+	Ok ServiceCheckStatus = 0
 	// Warn is the "warning" ServiceCheck status
-	Warn serviceCheckStatus = 1
+	Warn ServiceCheckStatus = 1
 	// Critical is the "critical" ServiceCheck status
-	Critical serviceCheckStatus = 2
+	Critical ServiceCheckStatus = 2
 	// Unknown is the "unknown" ServiceCheck status
-	Unknown serviceCheckStatus = 3
+	Unknown ServiceCheckStatus = 3
 )
 
 // An ServiceCheck is an object that contains status of DataDog service check.
@@ -493,7 +493,7 @@ type ServiceCheck struct {
 	// Name of the service check.  Required.
 	Name string
 	// Status of service check.  Required.
-	Status serviceCheckStatus
+	Status ServiceCheckStatus
 	// Timestamp is a timestamp for the serviceCheck.  If not provided, the dogstatsd
 	// server will set this to the current time.
 	Timestamp time.Time
@@ -507,7 +507,7 @@ type ServiceCheck struct {
 
 // NewServiceCheck creates a new serviceCheck with the given name and status.  Error checking
 // against these values is done at send-time, or upon running sc.Check.
-func NewServiceCheck(name string, status serviceCheckStatus) *ServiceCheck {
+func NewServiceCheck(name string, status ServiceCheckStatus) *ServiceCheck {
 	return &ServiceCheck{
 		Name:   name,
 		Status: status,
