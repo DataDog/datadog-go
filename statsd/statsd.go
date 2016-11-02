@@ -121,10 +121,10 @@ func (c *Client) format(name, value string, tags []string, rate float64) string 
 	tags = append(tagCopy, tags...)
 	if len(tags) > 0 {
 		buf.WriteString("|#")
-		buf.WriteString(tags[0])
+		buf.WriteString(removeNewlines(tags[0]))
 		for _, tag := range tags[1:] {
 			buf.WriteString(",")
-			buf.WriteString(tag)
+			buf.WriteString(removeNewlines(tag))
 		}
 	}
 	return buf.String()
@@ -463,10 +463,10 @@ func (e Event) Encode(tags ...string) (string, error) {
 		all = append(all, tags...)
 		all = append(all, e.Tags...)
 		buffer.WriteString("|#")
-		buffer.WriteString(all[0])
+		buffer.WriteString(removeNewlines(all[0]))
 		for _, tag := range all[1:] {
 			buffer.WriteString(",")
-			buffer.WriteString(tag)
+			buffer.WriteString(removeNewlines(tag))
 		}
 	}
 
@@ -556,10 +556,10 @@ func (sc ServiceCheck) Encode(tags ...string) (string, error) {
 		all = append(all, tags...)
 		all = append(all, sc.Tags...)
 		buffer.WriteString("|#")
-		buffer.WriteString(all[0])
+		buffer.WriteString(removeNewlines(all[0]))
 		for _, tag := range all[1:] {
 			buffer.WriteString(",")
-			buffer.WriteString(tag)
+			buffer.WriteString(removeNewlines(tag))
 		}
 	}
 
@@ -578,4 +578,8 @@ func (e Event) escapedText() string {
 func (sc ServiceCheck) escapedMessage() string {
 	msg := strings.Replace(sc.Message, "\n", "\\n", -1)
 	return strings.Replace(msg, "m:", `m\:`, -1)
+}
+
+func removeNewlines(str string) string {
+	return strings.Replace(str, "\n", "", -1)
 }
