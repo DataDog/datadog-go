@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"strconv"
@@ -114,19 +115,8 @@ func (c *Client) format(name, value string, tags []string, rate float64) string 
 		buf.WriteString(strconv.FormatFloat(rate, 'f', -1, 64))
 	}
 
-	// do not append to c.Tags directly, because it's shared
-	// across all invocations of this function
-	tagCopy := make([]string, len(c.Tags), len(c.Tags)+len(tags))
-	copy(tagCopy, c.Tags)
-	tags = append(tagCopy, tags...)
-	if len(tags) > 0 {
-		buf.WriteString("|#")
-		buf.WriteString(removeNewlines(tags[0]))
-		for _, tag := range tags[1:] {
-			buf.WriteString(",")
-			buf.WriteString(removeNewlines(tag))
-		}
-	}
+	writeTagString(&buf, c.Tags, tags)
+
 	return buf.String()
 }
 
@@ -458,17 +448,7 @@ func (e Event) Encode(tags ...string) (string, error) {
 		buffer.WriteString(string(e.AlertType))
 	}
 
-	if len(tags)+len(e.Tags) > 0 {
-		all := make([]string, 0, len(tags)+len(e.Tags))
-		all = append(all, tags...)
-		all = append(all, e.Tags...)
-		buffer.WriteString("|#")
-		buffer.WriteString(removeNewlines(all[0]))
-		for _, tag := range all[1:] {
-			buffer.WriteString(",")
-			buffer.WriteString(removeNewlines(tag))
-		}
-	}
+	writeTagString(&buffer, tags, e.Tags)
 
 	return buffer.String(), nil
 }
@@ -551,17 +531,7 @@ func (sc ServiceCheck) Encode(tags ...string) (string, error) {
 		buffer.WriteString(sc.Hostname)
 	}
 
-	if len(tags)+len(sc.Tags) > 0 {
-		all := make([]string, 0, len(tags)+len(sc.Tags))
-		all = append(all, tags...)
-		all = append(all, sc.Tags...)
-		buffer.WriteString("|#")
-		buffer.WriteString(removeNewlines(all[0]))
-		for _, tag := range all[1:] {
-			buffer.WriteString(",")
-			buffer.WriteString(removeNewlines(tag))
-		}
-	}
+	writeTagString(&buffer, tags, sc.Tags)
 
 	if len(message) != 0 {
 		buffer.WriteString("|m:")
@@ -582,4 +552,24 @@ func (sc ServiceCheck) escapedMessage() string {
 
 func removeNewlines(str string) string {
 	return strings.Replace(str, "\n", "", -1)
+}
+
+func writeTagString(w io.Writer, tagList1, tagList2 []string) {
+	// the tag lists may be shared with other callers, so we cannot modify
+	// them in any way (which means we cannot append to them either)
+	// therefore we must make an entirely separate copy just for this call
+	totalLen := len(tagList1) + len(tagList2)
+	if totalLen == 0 {
+		return
+	}
+	tags := make([]string, 0, totalLen)
+	tags = append(tags, tagList1...)
+	tags = append(tags, tagList2...)
+
+	io.WriteString(w, "|#")
+	io.WriteString(w, removeNewlines(tags[0]))
+	for _, tag := range tags[1:] {
+		io.WriteString(w, ",")
+		io.WriteString(w, removeNewlines(tag))
+	}
 }
