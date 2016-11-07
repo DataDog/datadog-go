@@ -33,6 +33,7 @@ var dogstatsdTests = []struct {
 	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA"},
 	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
 	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
+	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
 }
 
 func assertNotPanics(t *testing.T, f func()) {
@@ -379,6 +380,9 @@ func TestEvents(t *testing.T) {
 		}, {
 			&Event{Title: "hi", Text: "uh", Tags: []string{"host:foo", "app:bar"}},
 			`_e{2,2}:hi|uh|#host:foo,app:bar`,
+		}, {
+			&Event{Title: "hi", Text: "line1\nline2", Tags: []string{"hello\nworld"}},
+			`_e{2,12}:hi|line1\nline2|#helloworld`,
 		},
 	}
 
@@ -447,7 +451,7 @@ func TestServiceChecks(t *testing.T) {
 			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes valuable message", Tags: []string{"host:foo", "app:bar"}},
 			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes valuable message`,
 		}, {
-			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes \n that should be escaped", Tags: []string{"host:foo", "app:bar"}},
+			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes \n that should be escaped", Tags: []string{"host:foo", "app:b\nar"}},
 			`_sc|DataCatService|0|h:DataStation.Cat|#host:foo,app:bar|m:Here goes \n that should be escaped`,
 		}, {
 			&ServiceCheck{Name: "DataCatService", Status: Ok, Hostname: "DataStation.Cat", Message: "Here goes m: that should be escaped", Tags: []string{"host:foo", "app:bar"}},
