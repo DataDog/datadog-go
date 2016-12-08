@@ -135,6 +135,8 @@ func (c *Client) watch() {
 }
 
 func (c *Client) append(cmd string) error {
+	c.Lock()
+	defer c.Unlock()
 	c.commands = append(c.commands, cmd)
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
@@ -218,16 +220,16 @@ func (c *Client) flush() error {
 }
 
 func (c *Client) sendMsg(msg string) error {
+	// return an error if message is bigger than MaxUDPPayloadSize
+	if len(msg) > MaxUDPPayloadSize {
+		return errors.New("message size exceeds MaxUDPPayloadSize")
+	}
+
 	// if this client is buffered, then we'll just append this
-	c.Lock()
-	defer c.Unlock()
 	if c.bufferLength > 0 {
-		// return an error if message is bigger than OptimalPayloadSize
-		if len(msg) > MaxUDPPayloadSize {
-			return errors.New("message size exceeds MaxUDPPayloadSize")
-		}
 		return c.append(msg)
 	}
+
 	_, err := c.conn.Write([]byte(msg))
 	return err
 }
