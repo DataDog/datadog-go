@@ -338,15 +338,94 @@ func TestJoinMaxSize(t *testing.T) {
 	}
 }
 
-func testSendMsg(t *testing.T) {
-	c := Client{bufferLength: 1}
-	err := c.sendMsg(strings.Repeat("x", OptimalPayloadSize))
+func TestSendMsg(t *testing.T) {
+	addr := "localhost:1201"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxPayloadSize, got: %s", err.Error())
+		t.Fatal(err)
 	}
-	err = c.sendMsg(strings.Repeat("x", OptimalPayloadSize+1))
+
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	conn, err := net.DialUDP("udp", nil, udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := &Client{
+		conn:         conn,
+		bufferLength: 0,
+	}
+
+	err = client.sendMsg(strings.Repeat("x", MaxUDPPayloadSize+1))
 	if err == nil {
-		t.Error("Expected error to be returned if message size is bigger that MaxPayloadSize")
+		t.Error("Expected error to be returned if message size is bigger than MaxUDPPayloadSize")
+	}
+
+	longMsg := strings.Repeat("x", MaxUDPPayloadSize)
+
+	err = client.sendMsg(longMsg)
+	if err != nil {
+		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxUDPPayloadSize, got: %s", err.Error())
+	}
+
+	buffer := make([]byte, MaxUDPPayloadSize+1)
+	n, err := io.ReadAtLeast(server, buffer, 1)
+
+	if err != nil {
+		t.Fatalf("Expected no error to be returned reading the buffer, got: %s", err.Error())
+	}
+
+	if n != MaxUDPPayloadSize {
+		t.Fatalf("Failed to read full message from buffer. Got size `%d` expected `%d`", n, MaxUDPPayloadSize)
+	}
+
+	if string(buffer[:n]) != longMsg {
+		t.Fatalf("The received message did not match what we expect.")
+	}
+
+	client = &Client{
+		conn:         conn,
+		commands:     make([]string, 0, 1),
+		bufferLength: 1,
+	}
+
+	err = client.sendMsg(strings.Repeat("x", MaxUDPPayloadSize+1))
+	if err == nil {
+		t.Error("Expected error to be returned if message size is bigger than MaxUDPPayloadSize")
+	}
+
+	err = client.sendMsg(longMsg)
+	if err != nil {
+		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxUDPPayloadSize, got: %s", err.Error())
+	}
+
+	client.Lock()
+	err = client.flush()
+	client.Unlock()
+
+	if err != nil {
+		t.Fatalf("Expected no error to be returned flushing the client, got: %s", err.Error())
+	}
+
+	buffer = make([]byte, MaxUDPPayloadSize+1)
+	n, err = io.ReadAtLeast(server, buffer, 1)
+
+	if err != nil {
+		t.Fatalf("Expected no error to be returned reading the buffer, got: %s", err.Error())
+	}
+
+	if n != MaxUDPPayloadSize {
+		t.Fatalf("Failed to read full message from buffer. Got size `%d` expected `%d`", n, MaxUDPPayloadSize)
+	}
+
+	if string(buffer[:n]) != longMsg {
+		t.Fatalf("The received message did not match what we expect.")
 	}
 }
 
