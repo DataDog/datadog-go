@@ -294,6 +294,9 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 
 // Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
+	if c == nil {
+		return nil
+	}
 	stat, err := e.Encode(c.Tags...)
 	if err != nil {
 		return err
