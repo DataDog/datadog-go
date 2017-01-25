@@ -437,6 +437,7 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() { c.Gauge("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Set("", "", nil, 1) })
 	assertNotPanics(t, func() { c.send("", "", nil, 1) })
+	assertNotPanics(t, func() { c.SimpleEvent("", "") })
 }
 
 func TestEvents(t *testing.T) {
