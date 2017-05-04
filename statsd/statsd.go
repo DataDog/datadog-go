@@ -55,6 +55,19 @@ any number greater than that will see frames being cut out.
 */
 const MaxUDPPayloadSize = 65467
 
+/*
+Stat suffixes
+*/
+var (
+	gaugeSuffix     = []byte("|g")
+	countSuffix     = []byte("|c")
+	histogramSuffix = []byte("|h")
+	decrSuffix      = []byte("-1|c")
+	incrSuffix      = []byte("1|c")
+	setSuffix       = []byte("|s")
+	timingSuffix    = []byte("|ms")
+)
+
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
@@ -102,14 +115,29 @@ func NewBuffered(addr string, buflen int) (*Client, error) {
 
 // format a message from its name, value, tags and rate.  Also adds global
 // namespace and tags.
-func (c *Client) format(name, value string, tags []string, rate float64) string {
+func (c *Client) format(name string, value interface{}, suffix []byte, tags []string, rate float64) string {
 	var buf bytes.Buffer
 	if c.Namespace != "" {
 		buf.WriteString(c.Namespace)
 	}
 	buf.WriteString(name)
 	buf.WriteString(":")
-	buf.WriteString(value)
+
+	switch val := value.(type) {
+	case float64:
+		buf.Write(strconv.AppendFloat([]byte{}, val, 'f', 6, 64))
+
+	case int64:
+		buf.Write(strconv.AppendInt([]byte{}, val, 10))
+
+	case string:
+		buf.WriteString(val)
+
+	default:
+		// do nothing
+	}
+	buf.Write(suffix)
+
 	if rate < 1 {
 		buf.WriteString(`|@`)
 		buf.WriteString(strconv.FormatFloat(rate, 'f', -1, 64))
@@ -235,49 +263,45 @@ func (c *Client) sendMsg(msg string) error {
 }
 
 // send handles sampling and sends the message over UDP. It also adds global namespace prefixes and tags.
-func (c *Client) send(name, value string, tags []string, rate float64) error {
+func (c *Client) send(name string, value interface{}, suffix []byte, tags []string, rate float64) error {
 	if c == nil {
 		return nil
 	}
 	if rate < 1 && rand.Float64() > rate {
 		return nil
 	}
-	data := c.format(name, value, tags, rate)
+	data := c.format(name, value, suffix, tags, rate)
 	return c.sendMsg(data)
 }
 
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
-	stat := fmt.Sprintf("%f|g", value)
-	return c.send(name, stat, tags, rate)
+	return c.send(name, value, gaugeSuffix, tags, rate)
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
-	stat := fmt.Sprintf("%d|c", value)
-	return c.send(name, stat, tags, rate)
+	return c.send(name, value, countSuffix, tags, rate)
 }
 
 // Histogram tracks the statistical distribution of a set of values.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
-	stat := fmt.Sprintf("%f|h", value)
-	return c.send(name, stat, tags, rate)
+	return c.send(name, value, histogramSuffix, tags, rate)
 }
 
 // Decr is just Count of -1
 func (c *Client) Decr(name string, tags []string, rate float64) error {
-	return c.send(name, "-1|c", tags, rate)
+	return c.send(name, nil, decrSuffix, tags, rate)
 }
 
 // Incr is just Count of 1
 func (c *Client) Incr(name string, tags []string, rate float64) error {
-	return c.send(name, "1|c", tags, rate)
+	return c.send(name, nil, incrSuffix, tags, rate)
 }
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
-	stat := fmt.Sprintf("%s|s", value)
-	return c.send(name, stat, tags, rate)
+	return c.send(name, value, setSuffix, tags, rate)
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -288,8 +312,7 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
-	stat := fmt.Sprintf("%f|ms", value)
-	return c.send(name, stat, tags, rate)
+	return c.send(name, value, timingSuffix, tags, rate)
 }
 
 // Event sends the provided Event.

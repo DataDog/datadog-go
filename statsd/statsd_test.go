@@ -3,10 +3,12 @@
 package statsd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -436,7 +438,9 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() { c.Histogram("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Gauge("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Set("", "", nil, 1) })
-	assertNotPanics(t, func() { c.send("", "", nil, 1) })
+	assertNotPanics(t, func() {
+		c.send("", "", []byte(""), nil, 1)
+	})
 	assertNotPanics(t, func() { c.SimpleEvent("", "") })
 }
 
@@ -574,25 +578,39 @@ func TestServiceChecks(t *testing.T) {
 	}
 }
 
-// These benchmarks show that using a buffer instead of sprintf-ing together
-// a bunch of intermediate strings is 4-5x faster
-
-func BenchmarkFormatNew(b *testing.B) {
+// These benchmarks show that using different format options:
+// v1: sprintf-ing together a bunch of intermediate strings is 4-5x faster
+// v2: some use of buffer
+// v3: removing sprintf from stat generation and pushing stat building into format
+func BenchmarkFormatV3(b *testing.B) {
 	b.StopTimer()
 	c := &Client{}
 	c.Namespace = "foo.bar."
 	c.Tags = []string{"app:foo", "host:bar"}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		c.format("system.cpu.idle", "10", []string{"foo"}, 1)
-		c.format("system.cpu.load", "0.1", nil, 0.9)
+		c.format("system.cpu.idle", 10, gaugeSuffix, []string{"foo"}, 1)
+		c.format("system.cpu.load", 0.1, gaugeSuffix, nil, 0.9)
 	}
 }
 
-// Old formatting function, added to client for tests
-func (c *Client) formatOld(name, value string, tags []string, rate float64) string {
+func BenchmarkFormatV1(b *testing.B) {
+	b.StopTimer()
+	c := &Client{}
+	c.Namespace = "foo.bar."
+	c.Tags = []string{"app:foo", "host:bar"}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		c.formatV1("system.cpu.idle", 10, []string{"foo"}, 1)
+		c.formatV1("system.cpu.load", 0.1, nil, 0.9)
+	}
+}
+
+// V1 formatting function, added to client for tests
+func (c *Client) formatV1(name string, value float64, tags []string, rate float64) string {
+	valueAsString := fmt.Sprintf("%f|g", value)
 	if rate < 1 {
-		value = fmt.Sprintf("%s|@%f", value, rate)
+		valueAsString = fmt.Sprintf("%s|@%f", valueAsString, rate)
 	}
 	if c.Namespace != "" {
 		name = fmt.Sprintf("%s%s", c.Namespace, name)
@@ -600,21 +618,40 @@ func (c *Client) formatOld(name, value string, tags []string, rate float64) stri
 
 	tags = append(c.Tags, tags...)
 	if len(tags) > 0 {
-		value = fmt.Sprintf("%s|#%s", value, strings.Join(tags, ","))
+		valueAsString = fmt.Sprintf("%s|#%s", valueAsString, strings.Join(tags, ","))
 	}
 
-	return fmt.Sprintf("%s:%s", name, value)
+	return fmt.Sprintf("%s:%s", name, valueAsString)
 
 }
 
-func BenchmarkFormatOld(b *testing.B) {
+func BenchmarkFormatV2(b *testing.B) {
 	b.StopTimer()
 	c := &Client{}
 	c.Namespace = "foo.bar."
 	c.Tags = []string{"app:foo", "host:bar"}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		c.formatOld("system.cpu.idle", "10", []string{"foo"}, 1)
-		c.formatOld("system.cpu.load", "0.1", nil, 0.9)
+		c.formatV2("system.cpu.idle", 10, []string{"foo"}, 1)
+		c.formatV2("system.cpu.load", 0.1, nil, 0.9)
 	}
+}
+
+// V2 formatting function, added to client for tests
+func (c *Client) formatV2(name string, value float64, tags []string, rate float64) string {
+	var buf bytes.Buffer
+	if c.Namespace != "" {
+		buf.WriteString(c.Namespace)
+	}
+	buf.WriteString(name)
+	buf.WriteString(":")
+	buf.WriteString(fmt.Sprintf("%f|g", value))
+	if rate < 1 {
+		buf.WriteString(`|@`)
+		buf.WriteString(strconv.FormatFloat(rate, 'f', -1, 64))
+	}
+
+	writeTagString(&buf, c.Tags, tags)
+
+	return buf.String()
 }
