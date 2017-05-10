@@ -36,6 +36,7 @@ var dogstatsdTests = []struct {
 	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
 	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
 	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
+	{"", nil, "Counter", "test.counter", int64(1), []string{"hello\nworld"}, 1.0, "test.counter:1|ct|#helloworld"},
 }
 
 func assertNotPanics(t *testing.T, f func()) {

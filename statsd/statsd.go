@@ -284,6 +284,12 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	return c.send(name, value, countSuffix, tags, rate)
 }
 
+// Counter tracks how many times something happened within
+func (c *Client) Counter(name string, value int64, tags []string, rate float64) error {
+	stat := fmt.Sprintf("%d|ct", value)
+	return c.send(name, stat, tags, rate)
+}
+
 // Histogram tracks the statistical distribution of a set of values.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
 	return c.send(name, value, histogramSuffix, tags, rate)
