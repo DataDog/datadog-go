@@ -32,8 +32,6 @@ var dogstatsdTests = []struct {
 	{"", nil, "Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA"},
 	{"", nil, "Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA"},
 	{"", nil, "Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.300000|h|#tagA"},
-	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.300000|d|#tagA"},
-	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA", "tagB"}, 1.0, "test.distribution:2.300000|d|#tagA,tagB"},
 	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA"},
 	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
 	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
@@ -111,7 +109,7 @@ func TestBufferedClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bufferLength := 9
+	bufferLength := 8
 	client := &Client{
 		conn:         conn,
 		commands:     make([]string, 0, bufferLength),
@@ -128,12 +126,11 @@ func TestBufferedClient(t *testing.T) {
 	client.Count("cc", 1, nil, 1)
 	client.Gauge("gg", 10, nil, 1)
 	client.Histogram("hh", 1, nil, 1)
-	client.Distribution("dd", 1, nil, 1)
 	client.Timing("tt", dur, nil, 1)
 	client.Set("ss", "ss", nil, 1)
 
-	if len(client.commands) != 8 {
-		t.Errorf("Expected client to have buffered 8 commands, but found %d\n", len(client.commands))
+	if len(client.commands) != 7 {
+		t.Errorf("Expected client to have buffered 7 commands, but found %d\n", len(client.commands))
 	}
 
 	client.Set("ss", "xx", nil, 1)
@@ -160,7 +157,6 @@ func TestBufferedClient(t *testing.T) {
 		`foo.cc:1|c|#dd:2`,
 		`foo.gg:10.000000|g|#dd:2`,
 		`foo.hh:1.000000|h|#dd:2`,
-		`foo.dd:1.000000|d|#dd:2`,
 		`foo.tt:0.123000|ms|#dd:2`,
 		`foo.ss:ss|s|#dd:2`,
 		`foo.ss:xx|s|#dd:2`,
@@ -442,7 +438,6 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() { c.Histogram("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Gauge("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Set("", "", nil, 1) })
-	assertNotPanics(t, func() { c.Distribution("", 0, nil, 1) })
 	assertNotPanics(t, func() {
 		c.send("", "", []byte(""), nil, 1)
 	})
