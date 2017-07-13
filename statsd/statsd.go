@@ -81,7 +81,7 @@ type Client struct {
 	flushTime    time.Duration
 	commands     []string
 	buffer       bytes.Buffer
-	stop         bool
+	stop         chan struct{}
 	sync.Mutex
 }
 
@@ -109,6 +109,7 @@ func NewBuffered(addr string, buflen int) (*Client, error) {
 	client.bufferLength = buflen
 	client.commands = make([]string, 0, buflen)
 	client.flushTime = time.Millisecond * 100
+	client.stop = make(chan struct{}, 1)
 	go client.watch()
 	return client, nil
 }
@@ -149,16 +150,21 @@ func (c *Client) format(name string, value interface{}, suffix []byte, tags []st
 }
 
 func (c *Client) watch() {
-	for _ = range time.Tick(c.flushTime) {
-		if c.stop {
+	ticker := time.NewTicker(c.flushTime)
+
+	for {
+		select {
+		case <-ticker.C:
+			c.Lock()
+			if len(c.commands) > 0 {
+				// FIXME: eating error here
+				c.flush()
+			}
+			c.Unlock()
+		case <-c.stop:
+			ticker.Stop()
 			return
 		}
-		c.Lock()
-		if len(c.commands) > 0 {
-			// FIXME: eating error here
-			c.flush()
-		}
-		c.Unlock()
 	}
 }
 
@@ -353,7 +359,10 @@ func (c *Client) Close() error {
 	if c == nil {
 		return nil
 	}
-	c.stop = true
+	select {
+	case c.stop <- struct{}{}:
+	default:
+	}
 	return c.conn.Close()
 }
 
