@@ -210,6 +210,43 @@ func TestBufferedClient(t *testing.T) {
 
 }
 
+func TestBufferedClientBackground(t *testing.T) {
+	addr := "localhost:1201"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	bufferLength := 5
+	client, err := NewBuffered(addr, bufferLength)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	client.Namespace = "foo."
+	client.Tags = []string{"dd:2"}
+
+	client.Count("cc", 1, nil, 1)
+	client.Gauge("gg", 10, nil, 1)
+	client.Histogram("hh", 1, nil, 1)
+	client.Set("ss", "ss", nil, 1)
+	client.Set("ss", "xx", nil, 1)
+
+	time.Sleep(client.flushTime * 2)
+	client.Lock()
+	if len(client.commands) != 0 {
+		t.Errorf("Watch goroutine should have flushed commands, but found %d\n", len(client.commands))
+	}
+	client.Unlock()
+}
+
 func TestJoinMaxSize(t *testing.T) {
 	c := Client{}
 	elements := []string{"abc", "abcd", "ab", "xyz", "foobaz", "x", "wwxxyyzz"}
