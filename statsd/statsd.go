@@ -56,6 +56,18 @@ any number greater than that will see frames being cut out.
 const MaxUDPPayloadSize = 65467
 
 /*
+UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
+traffic instead of UDP.
+*/
+const UnixAddressPrefix = "unix://"
+
+/*
+UDSTimeout holds the default timeout for UDS socket writes, as they can get
+blocking when the receiving buffer is full.
+*/
+const defaultUDSTimeout = 1 * time.Millisecond
+
+/*
 Stat suffixes
 */
 var (
@@ -71,7 +83,14 @@ var (
 // A Client is a handle for sending udp messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
+	// Address to send metrics to, needed to allow reconnection on error
+	addr net.Addr
+	// Established connection object, or nil if Connect needed
 	conn net.Conn
+	// function pointer to use to write data to the connection
+	write func([]byte) error
+	// write timeout for UDS connections
+	writeTimeout time.Duration
 	// Namespace to prepend to all statsd calls
 	Namespace string
 	// Tags are global tags to be added to every statsd call
@@ -87,16 +106,28 @@ type Client struct {
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port".
 func New(addr string) (*Client, error) {
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		return nil, err
+	if strings.HasPrefix(addr, UnixAddressPrefix) {
+		udsAddr, err := net.ResolveUnixAddr("unixgram", addr[len(UnixAddressPrefix)-1:])
+		if err != nil {
+			return nil, err
+		}
+		// Defer connection to writeUDS to handle retries
+		client := &Client{addr: udsAddr, conn: nil, writeTimeout: defaultUDSTimeout}
+		client.write = client.writeUDS
+		return client, nil
+	} else {
+		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		if err != nil {
+			return nil, err
+		}
+		conn, err := net.DialUDP("udp", nil, udpAddr)
+		if err != nil {
+			return nil, err
+		}
+		client := &Client{addr: udpAddr, conn: conn}
+		client.write = client.writeUDP
+		return client, nil
 	}
-	conn, err := net.DialUDP("udp", nil, udpAddr)
-	if err != nil {
-		return nil, err
-	}
-	client := &Client{conn: conn}
-	return client, nil
 }
 
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
@@ -147,6 +178,16 @@ func (c *Client) format(name string, value interface{}, suffix []byte, tags []st
 	writeTagString(&buf, c.Tags, tags)
 
 	return buf.String()
+}
+
+// SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP
+func SetWriteTimeout(c *Client, d time.Duration) error {
+	if c.addr.Network() == "unixgram" {
+		c.writeTimeout = d
+		return nil
+	} else {
+		return errors.New("SetWriteTimeout: only supported for UDS connections")
+	}
 }
 
 func (c *Client) watch() {
@@ -228,13 +269,41 @@ func copyAndResetBuffer(buf *bytes.Buffer) []byte {
 	return tmpBuf
 }
 
+// writeUDP writes data to the UDP connection with no error handling
+func (c *Client) writeUDP(data []byte) error {
+	_, e := c.conn.Write(data)
+	return e
+}
+
+// writeUDS writes data to the UDS connection with write timeout and minimal error handling:
+// It creates the connection if nil, and destroys it if the statsd server has disconnected
+func (c *Client) writeUDS(data []byte) error {
+	// Try connecting (first packet or connection lost)
+	if c.conn == nil {
+		conn, err := net.Dial(c.addr.Network(), c.addr.String())
+		if err != nil {
+			return err
+		} else {
+			c.conn = conn
+		}
+	}
+	c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
+	_, e := c.conn.Write(data)
+	if e != nil && strings.Contains(e.Error(), "transport endpoint is not connected") {
+		// Statsd server disconnected, retry connecting at next packet
+		c.conn = nil
+		return e
+	}
+	return e
+}
+
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
 	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
 	var err error
 	cmdsFlushed := 0
 	for i, data := range frames {
-		_, e := c.conn.Write(data)
+		e := c.write(data)
 		if e != nil {
 			err = e
 			break
@@ -264,7 +333,7 @@ func (c *Client) sendMsg(msg string) error {
 		return c.append(msg)
 	}
 
-	_, err := c.conn.Write([]byte(msg))
+	err := c.write([]byte(msg))
 	return err
 }
 
