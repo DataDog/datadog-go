@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -62,12 +61,6 @@ traffic instead of UDP.
 const UnixAddressPrefix = "unix://"
 
 /*
-UDSTimeout holds the default timeout for UDS socket writes, as they can get
-blocking when the receiving buffer is full.
-*/
-const defaultUDSTimeout = 1 * time.Millisecond
-
-/*
 Stat suffixes
 */
 var (
@@ -80,17 +73,19 @@ var (
 	timingSuffix    = []byte("|ms")
 )
 
-// A Client is a handle for sending udp messages to dogstatsd.  It is safe to
+// A statsdWriter offers a standard interface regardless of the underlying
+// protocol. For now UDS and UPD writers are available.
+type statsdWriter interface {
+	Write(data []byte) error
+	SetWriteTimeout(time.Duration) error
+	Close() error
+}
+
+// A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
-	// Address to send metrics to, needed to allow reconnection on error
-	addr net.Addr
-	// Established connection object, or nil if Connect needed
-	conn net.Conn
-	// function pointer to use to write data to the connection
-	write func([]byte) error
-	// write timeout for UDS connections
-	writeTimeout time.Duration
+	// Writer handles the underlying networking protocol
+	writer statsdWriter
 	// Namespace to prepend to all statsd calls
 	Namespace string
 	// Tags are global tags to be added to every statsd call
@@ -104,28 +99,22 @@ type Client struct {
 	sync.Mutex
 }
 
-// New returns a pointer to a new Client given an addr in the format "hostname:port".
+// New returns a pointer to a new Client given an addr in the format "hostname:port" or
+// "unix:///path/to/socket".
 func New(addr string) (*Client, error) {
 	if strings.HasPrefix(addr, UnixAddressPrefix) {
-		udsAddr, err := net.ResolveUnixAddr("unixgram", addr[len(UnixAddressPrefix)-1:])
+		w, err := newUdsWriter(addr[len(UnixAddressPrefix)-1:])
 		if err != nil {
 			return nil, err
 		}
-		// Defer connection to writeUDS to handle retries
-		client := &Client{addr: udsAddr, conn: nil, writeTimeout: defaultUDSTimeout}
-		client.write = client.writeUDS
+		client := &Client{writer: w}
 		return client, nil
 	} else {
-		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		w, err := newUdpWriter(addr)
 		if err != nil {
 			return nil, err
 		}
-		conn, err := net.DialUDP("udp", nil, udpAddr)
-		if err != nil {
-			return nil, err
-		}
-		client := &Client{addr: udpAddr, conn: conn}
-		client.write = client.writeUDP
+		client := &Client{writer: w}
 		return client, nil
 	}
 }
@@ -180,14 +169,9 @@ func (c *Client) format(name string, value interface{}, suffix []byte, tags []st
 	return buf.String()
 }
 
-// SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP
-func SetWriteTimeout(c *Client, d time.Duration) error {
-	if c.addr.Network() == "unixgram" {
-		c.writeTimeout = d
-		return nil
-	} else {
-		return errors.New("SetWriteTimeout: only supported for UDS connections")
-	}
+// SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP.
+func (c *Client) SetWriteTimeout(d time.Duration) error {
+	return c.writer.SetWriteTimeout(d)
 }
 
 func (c *Client) watch() {
@@ -269,41 +253,13 @@ func copyAndResetBuffer(buf *bytes.Buffer) []byte {
 	return tmpBuf
 }
 
-// writeUDP writes data to the UDP connection with no error handling
-func (c *Client) writeUDP(data []byte) error {
-	_, e := c.conn.Write(data)
-	return e
-}
-
-// writeUDS writes data to the UDS connection with write timeout and minimal error handling:
-// It creates the connection if nil, and destroys it if the statsd server has disconnected
-func (c *Client) writeUDS(data []byte) error {
-	// Try connecting (first packet or connection lost)
-	if c.conn == nil {
-		conn, err := net.Dial(c.addr.Network(), c.addr.String())
-		if err != nil {
-			return err
-		} else {
-			c.conn = conn
-		}
-	}
-	c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
-	_, e := c.conn.Write(data)
-	if e != nil && strings.Contains(e.Error(), "transport endpoint is not connected") {
-		// Statsd server disconnected, retry connecting at next packet
-		c.conn = nil
-		return e
-	}
-	return e
-}
-
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flush() error {
 	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
 	var err error
 	cmdsFlushed := 0
 	for i, data := range frames {
-		e := c.write(data)
+		e := c.writer.Write(data)
 		if e != nil {
 			err = e
 			break
@@ -333,7 +289,7 @@ func (c *Client) sendMsg(msg string) error {
 		return c.append(msg)
 	}
 
-	err := c.write([]byte(msg))
+	err := c.writer.Write([]byte(msg))
 	return err
 }
 
@@ -432,7 +388,7 @@ func (c *Client) Close() error {
 	case c.stop <- struct{}{}:
 	default:
 	}
-	return c.conn.Close()
+	return c.writer.Close()
 }
 
 // Events support
