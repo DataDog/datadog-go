@@ -532,8 +532,8 @@ func TestSendUDSErrors(t *testing.T) {
 
 	// Server not listening yet
 	err = client.sendMsg(message)
-	if err == nil || !strings.HasSuffix(err.Error(), "connect: no such file or directory") {
-		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
+	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
+		t.Errorf("Expected error \"no such file or directory\", got: %s", err.Error())
 	}
 	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
 	if err != nil {
@@ -563,12 +563,12 @@ func TestSendUDSErrors(t *testing.T) {
 	os.Remove(addr)
 
 	err = client.sendMsg(message)
-	if err == nil || !strings.HasSuffix(err.Error(), "write: connection refused") {
-		t.Errorf("Expected error \"write: connection refused\", got: %s", err.Error())
+	if err == nil || !strings.HasSuffix(err.Error(), "connection refused") {
+		t.Errorf("Expected error \"connection refused\", got: %s", err.Error())
 	}
 	err = client.sendMsg(message)
-	if err == nil || !strings.HasSuffix(err.Error(), "write: transport endpoint is not connected") {
-		t.Errorf("Expected error \"write: transport endpoint is not connected\", got: %s", err.Error())
+	if err == nil || !strings.HasSuffix(err.Error(), "transport endpoint is not connected") {
+		t.Errorf("Expected error \"transport endpoint is not connected\", got: %s", err.Error())
 	}
 
 	// Server comes back up
@@ -599,7 +599,7 @@ func TestSendUDSIgnoreErrors(t *testing.T) {
 
 	// Default mode throws error
 	err = client.sendMsg("message")
-	if err == nil || !strings.HasSuffix(err.Error(), "connect: no such file or directory") {
+	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
 		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
 	}
 
