@@ -90,6 +90,8 @@ type Client struct {
 	Namespace string
 	// Tags are global tags to be added to every statsd call
 	Tags []string
+	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
+	SkipErrors bool
 	// BufferLength is the length of the buffer in commands.
 	bufferLength int
 	flushTime    time.Duration
@@ -114,7 +116,7 @@ func New(addr string) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		client := &Client{writer: w}
+		client := &Client{writer: w, SkipErrors: false}
 		return client, nil
 	}
 }
@@ -290,7 +292,12 @@ func (c *Client) sendMsg(msg string) error {
 	}
 
 	err := c.writer.Write([]byte(msg))
-	return err
+
+	if c.SkipErrors {
+		return nil
+	} else {
+		return err
+	}
 }
 
 // send handles sampling and sends the message over UDP. It also adds global namespace prefixes and tags.
