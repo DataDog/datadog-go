@@ -6,7 +6,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -61,6 +64,58 @@ func TestClientUDP(t *testing.T) {
 	defer server.Close()
 
 	client, err := New(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range dogstatsdTests {
+		client.Namespace = tt.GlobalNamespace
+		client.Tags = tt.GlobalTags
+		method := reflect.ValueOf(client).MethodByName(tt.Method)
+		e := method.Call([]reflect.Value{
+			reflect.ValueOf(tt.Metric),
+			reflect.ValueOf(tt.Value),
+			reflect.ValueOf(tt.Tags),
+			reflect.ValueOf(tt.Rate)})[0]
+		errInter := e.Interface()
+		if errInter != nil {
+			t.Fatal(errInter.(error))
+		}
+
+		bytes := make([]byte, 1024)
+		n, err := server.Read(bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		message := bytes[:n]
+		if string(message) != tt.Expected {
+			t.Errorf("Expected: %s. Actual: %s", tt.Expected, string(message))
+		}
+	}
+}
+
+func TestClientUDS(t *testing.T) {
+	dir, err := ioutil.TempDir("", "socket")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir) // clean up
+
+	addr := filepath.Join(dir, "dsd.socket")
+
+	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := net.ListenUnixgram("unixgram", udsAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	addrParts := []string{UnixAddressPrefix, addr}
+	client, err := New(strings.Join(addrParts, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,6 +507,103 @@ func TestSendMsgUDP(t *testing.T) {
 
 	if string(buffer[:n]) != longMsg {
 		t.Fatalf("The received message did not match what we expect.")
+	}
+}
+
+func TestSendUDSErrors(t *testing.T) {
+	dir, err := ioutil.TempDir("", "socket")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir) // clean up
+
+	addr := filepath.Join(dir, "dsd.socket")
+	message := "test message"
+
+	addrParts := []string{UnixAddressPrefix, addr}
+	client, err := New(strings.Join(addrParts, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Server not listening yet
+	err = client.sendMsg(message)
+	if err == nil || !strings.HasSuffix(err.Error(), "connect: no such file or directory") {
+		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
+	}
+	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := net.ListenUnixgram("unixgram", udsAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Recover and send packet
+	err = client.sendMsg(message)
+	if err != nil {
+		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
+	}
+	bytes := make([]byte, 1024)
+	n, err := server.Read(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(bytes[:n]) != message {
+		t.Errorf("Expected: %s. Actual: %s", string(message), string(bytes))
+	}
+
+	// Server closes connection
+	server.Close()
+	os.Remove(addr)
+
+	err = client.sendMsg(message)
+	if err == nil || !strings.HasSuffix(err.Error(), "write: connection refused") {
+		t.Errorf("Expected error \"write: connection refused\", got: %s", err.Error())
+	}
+	err = client.sendMsg(message)
+	if err == nil || !strings.HasSuffix(err.Error(), "write: transport endpoint is not connected") {
+		t.Errorf("Expected error \"write: transport endpoint is not connected\", got: %s", err.Error())
+	}
+
+	// Server comes back up
+	server, err = net.ListenUnixgram("unixgram", udsAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	err = client.sendMsg(message)
+	if err != nil {
+		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
+	}
+	bytes = make([]byte, 1024)
+	n, err = server.Read(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(bytes[:n]) != message {
+		t.Errorf("Expected: %s. Actual: %s", string(message), string(bytes))
+	}
+}
+
+func TestSendUDSIgnoreErrors(t *testing.T) {
+	client, err := New("unix:///invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Default mode throws error
+	err = client.sendMsg("message")
+	if err == nil || !strings.HasSuffix(err.Error(), "connect: no such file or directory") {
+		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
+	}
+
+	// Skip errors
+	client.SkipErrors = true
+	err = client.sendMsg("message")
+	if err != nil {
+		t.Errorf("Expected no error to be returned when in skip errors mode, got: %s", err.Error())
 	}
 }
 
