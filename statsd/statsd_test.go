@@ -183,7 +183,9 @@ func TestBufferedClient(t *testing.T) {
 	}
 
 	client.Set("ss", "xx", nil, 1)
+	client.Lock()
 	err = client.flush()
+	client.Unlock()
 	if err != nil {
 		t.Errorf("Error sending: %s", err)
 	}
@@ -224,7 +226,9 @@ func TestBufferedClient(t *testing.T) {
 		t.Errorf("Expected to find %d commands, but found %d\n", 2, len(client.commands))
 	}
 
+	client.Lock()
 	err = client.flush()
+	client.Unlock()
 
 	if err != nil {
 		t.Errorf("Error sending: %s", err)
