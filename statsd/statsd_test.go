@@ -47,7 +47,7 @@ func assertNotPanics(t *testing.T, f func()) {
 	f()
 }
 
-func TestClient(t *testing.T) {
+func TestClientUDP(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -104,16 +104,10 @@ func TestBufferedClient(t *testing.T) {
 	}
 	defer server.Close()
 
-	conn, err := net.DialUDP("udp", nil, udpAddr)
+	bufferLength := 8
+	client, err := NewBuffered(addr, bufferLength)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	bufferLength := 8
-	client := &Client{
-		conn:         conn,
-		commands:     make([]string, 0, bufferLength),
-		bufferLength: bufferLength,
 	}
 
 	client.Namespace = "foo."
@@ -377,7 +371,7 @@ func TestJoinMaxSize(t *testing.T) {
 	}
 }
 
-func TestSendMsg(t *testing.T) {
+func TestSendMsgUDP(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -390,15 +384,9 @@ func TestSendMsg(t *testing.T) {
 	}
 	defer server.Close()
 
-	conn, err := net.DialUDP("udp", nil, udpAddr)
+	client, err := New(addr)
 	if err != nil {
 		t.Fatal(err)
-	}
-	defer conn.Close()
-
-	client := &Client{
-		conn:         conn,
-		bufferLength: 0,
 	}
 
 	err = client.sendMsg(strings.Repeat("x", MaxUDPPayloadSize+1))
@@ -428,10 +416,9 @@ func TestSendMsg(t *testing.T) {
 		t.Fatalf("The received message did not match what we expect.")
 	}
 
-	client = &Client{
-		conn:         conn,
-		commands:     make([]string, 0, 1),
-		bufferLength: 1,
+	client, err = NewBuffered(addr, 1)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	err = client.sendMsg(strings.Repeat("x", MaxUDPPayloadSize+1))
