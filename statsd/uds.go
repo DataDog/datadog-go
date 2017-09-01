@@ -47,9 +47,8 @@ func (w *udsWriter) Write(data []byte) error {
 		conn, err := net.Dial(w.addr.Network(), w.addr.String())
 		if err != nil {
 			return err
-		} else {
-			w.conn = conn
 		}
+		w.conn = conn
 	}
 	w.conn.SetWriteDeadline(time.Now().Add(w.writeTimeout))
 	_, e := w.conn.Write(data)
