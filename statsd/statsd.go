@@ -111,14 +111,13 @@ func New(addr string) (*Client, error) {
 		}
 		client := &Client{writer: w}
 		return client, nil
-	} else {
-		w, err := newUdpWriter(addr)
-		if err != nil {
-			return nil, err
-		}
-		client := &Client{writer: w, SkipErrors: false}
-		return client, nil
 	}
+	w, err := newUdpWriter(addr)
+	if err != nil {
+		return nil, err
+	}
+	client := &Client{writer: w, SkipErrors: false}
+	return client, nil
 }
 
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
@@ -295,9 +294,8 @@ func (c *Client) sendMsg(msg string) error {
 
 	if c.SkipErrors {
 		return nil
-	} else {
-		return err
 	}
+	return err
 }
 
 // send handles sampling and sends the message over UDP. It also adds global namespace prefixes and tags.
@@ -523,7 +521,6 @@ func (e Event) Encode(tags ...string) (string, error) {
 }
 
 // ServiceCheck support
-
 type ServiceCheckStatus byte
 
 const (
