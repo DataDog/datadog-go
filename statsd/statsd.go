@@ -184,7 +184,7 @@ func (c *Client) watch() {
 			c.Lock()
 			if len(c.commands) > 0 {
 				// FIXME: eating error here
-				c.flush()
+				c.flushLocked()
 			}
 			c.Unlock()
 		case <-c.stop:
@@ -200,7 +200,7 @@ func (c *Client) append(cmd string) error {
 	c.commands = append(c.commands, cmd)
 	// if we should flush, lets do it
 	if len(c.commands) == c.bufferLength {
-		if err := c.flush(); err != nil {
+		if err := c.flushLocked(); err != nil {
 			return err
 		}
 	}
@@ -254,8 +254,15 @@ func copyAndResetBuffer(buf *bytes.Buffer) []byte {
 	return tmpBuf
 }
 
+// Flush forces a flush of the pending commands in the buffer
+func (c *Client) Flush() error {
+	c.Lock()
+	defer c.Unlock()
+	return c.flushLocked()
+}
+
 // flush the commands in the buffer.  Lock must be held by caller.
-func (c *Client) flush() error {
+func (c *Client) flushLocked() error {
 	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
 	var err error
 	cmdsFlushed := 0

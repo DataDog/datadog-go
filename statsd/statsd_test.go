@@ -184,7 +184,7 @@ func TestBufferedClient(t *testing.T) {
 
 	client.Set("ss", "xx", nil, 1)
 	client.Lock()
-	err = client.flush()
+	err = client.flushLocked()
 	client.Unlock()
 	if err != nil {
 		t.Errorf("Error sending: %s", err)
@@ -227,7 +227,7 @@ func TestBufferedClient(t *testing.T) {
 	}
 
 	client.Lock()
-	err = client.flush()
+	err = client.flushLocked()
 	client.Unlock()
 
 	if err != nil {
@@ -296,6 +296,44 @@ func TestBufferedClientBackground(t *testing.T) {
 	client.Lock()
 	if len(client.commands) != 0 {
 		t.Errorf("Watch goroutine should have flushed commands, but found %d\n", len(client.commands))
+	}
+	client.Unlock()
+}
+
+func TestBufferedClientFlush(t *testing.T) {
+	addr := "localhost:1201"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	bufferLength := 5
+	client, err := NewBuffered(addr, bufferLength)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	client.Namespace = "foo."
+	client.Tags = []string{"dd:2"}
+
+	client.Count("cc", 1, nil, 1)
+	client.Gauge("gg", 10, nil, 1)
+	client.Histogram("hh", 1, nil, 1)
+	client.Set("ss", "ss", nil, 1)
+	client.Set("ss", "xx", nil, 1)
+
+	client.Flush()
+
+	client.Lock()
+	if len(client.commands) != 0 {
+		t.Errorf("Flush should have flushed commands, but found %d\n", len(client.commands))
 	}
 	client.Unlock()
 }
@@ -491,7 +529,7 @@ func TestSendMsgUDP(t *testing.T) {
 	}
 
 	client.Lock()
-	err = client.flush()
+	err = client.flushLocked()
 	client.Unlock()
 
 	if err != nil {
