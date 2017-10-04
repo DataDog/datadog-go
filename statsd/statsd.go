@@ -109,7 +109,7 @@ func New(addr string) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		return 	NewWithWriter(w)
+		return NewWithWriter(w)
 	}
 	w, err := newUdpWriter(addr)
 	if err != nil {
@@ -120,7 +120,7 @@ func New(addr string) (*Client, error) {
 
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
-func NewWithWriter(writer statsdWriter) (*Client, error) {
+func NewWithWriter(w statsdWriter) (*Client, error) {
 	client := &Client{writer: w, SkipErrors: false}
 	return client, nil
 }
