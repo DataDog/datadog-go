@@ -525,7 +525,7 @@ func (e Event) Encode(tags ...string) (string, error) {
 	return buffer.String(), nil
 }
 
-// ServiceCheck support
+// ServiceCheckStatus support
 type ServiceCheckStatus byte
 
 const (
