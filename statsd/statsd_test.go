@@ -39,6 +39,10 @@ var dogstatsdTests = []struct {
 	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
 	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
 	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
+	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.300000|d|#tagA"},
+	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA", "tagB"}, 1.0, "test.distribution:2.300000|d|#tagA,tagB"},
+	{"", nil, "DistributionK", "test.distributionK", 1.0, []string{"tagA", "tagB"}, 1.0, "test.distributionK:1.000000|dk|#tagA,tagB"},
+	{"", nil, "DistributionC", "test.distributionC", 1.0, []string{"tagA", "tagB"}, 1.0, "test.distributionC:1.000000|dc|#tagA,tagB"},
 }
 
 func assertNotPanics(t *testing.T, f func()) {
@@ -159,7 +163,7 @@ func TestBufferedClient(t *testing.T) {
 	}
 	defer server.Close()
 
-	bufferLength := 8
+	bufferLength := 9
 	client, err := NewBuffered(addr, bufferLength)
 	if err != nil {
 		t.Fatal(err)
@@ -177,9 +181,10 @@ func TestBufferedClient(t *testing.T) {
 	client.Histogram("hh", 1, nil, 1)
 	client.Timing("tt", dur, nil, 1)
 	client.Set("ss", "ss", nil, 1)
+	client.Distribution("dd", 1, nil, 1)
 
-	if len(client.commands) != 7 {
-		t.Errorf("Expected client to have buffered 7 commands, but found %d\n", len(client.commands))
+	if len(client.commands) != 8 {
+		t.Errorf("Expected client to have buffered 8 commands, but found %d\n", len(client.commands))
 	}
 
 	client.Set("ss", "xx", nil, 1)
@@ -210,6 +215,7 @@ func TestBufferedClient(t *testing.T) {
 		`foo.hh:1.000000|h|#dd:2`,
 		`foo.tt:0.123000|ms|#dd:2`,
 		`foo.ss:ss|s|#dd:2`,
+		`foo.dd:1.000000|d|#dd:2`,
 		`foo.ss:xx|s|#dd:2`,
 	}
 

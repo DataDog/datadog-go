@@ -64,13 +64,18 @@ const UnixAddressPrefix = "unix://"
 Stat suffixes
 */
 var (
-	gaugeSuffix     = []byte("|g")
-	countSuffix     = []byte("|c")
-	histogramSuffix = []byte("|h")
-	decrSuffix      = []byte("-1|c")
-	incrSuffix      = []byte("1|c")
-	setSuffix       = []byte("|s")
-	timingSuffix    = []byte("|ms")
+	gaugeSuffix        = []byte("|g")
+	countSuffix        = []byte("|c")
+	histogramSuffix    = []byte("|h")
+	decrSuffix         = []byte("-1|c")
+	incrSuffix         = []byte("1|c")
+	setSuffix          = []byte("|s")
+	distributionSuffix = []byte("|d")
+	// Temporary: distributionK and distributionC are
+	// temporary distribution types for algorithm testing
+	distributionKSuffix = []byte("|dk")
+	distributionCSuffix = []byte("|dc")
+	timingSuffix        = []byte("|ms")
 )
 
 // A statsdWriter offers a standard interface regardless of the underlying
@@ -338,6 +343,23 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
 	return c.send(name, value, setSuffix, tags, rate)
+}
+
+// Distribution tracks accurate global percentiles of a set of values.
+func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
+	return c.send(name, value, distributionSuffix, tags, rate)
+}
+
+// DistributionK tracks accurate global percentiles of a set of values.
+// Temporary for algorithm testing
+func (c *Client) DistributionK(name string, value float64, tags []string, rate float64) error {
+	return c.send(name, value, distributionKSuffix, tags, rate)
+}
+
+// DistributionC tracks accurate global percentiles of a set of values.
+// Temporary for algorithm testing
+func (c *Client) DistributionC(name string, value float64, tags []string, rate float64) error {
+	return c.send(name, value, distributionCSuffix, tags, rate)
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
