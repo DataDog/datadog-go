@@ -404,27 +404,31 @@ func (c *Client) Close() error {
 }
 
 // Events support
+// EventAlertType and EventAlertPriority became exported types after this issue was submitted: https://github.com/DataDog/datadog-go/issues/41
+// The reason why they got exported is so that client code can directly use the types.
 
-type eventAlertType string
+// EventAlertType is the alert type for events
+type EventAlertType string
 
 const (
 	// Info is the "info" AlertType for events
-	Info eventAlertType = "info"
+	Info EventAlertType = "info"
 	// Error is the "error" AlertType for events
-	Error eventAlertType = "error"
+	Error EventAlertType = "error"
 	// Warning is the "warning" AlertType for events
-	Warning eventAlertType = "warning"
+	Warning EventAlertType = "warning"
 	// Success is the "success" AlertType for events
-	Success eventAlertType = "success"
+	Success EventAlertType = "success"
 )
 
-type eventPriority string
+// EventPriority is the event priority for events
+type EventPriority string
 
 const (
 	// Normal is the "normal" Priority for events
-	Normal eventPriority = "normal"
+	Normal EventPriority = "normal"
 	// Low is the "low" Priority for events
-	Low eventPriority = "low"
+	Low EventPriority = "low"
 )
 
 // An Event is an object that can be posted to your DataDog event stream.
@@ -441,12 +445,12 @@ type Event struct {
 	// AggregationKey groups this event with others of the same key.
 	AggregationKey string
 	// Priority of the event.  Can be statsd.Low or statsd.Normal.
-	Priority eventPriority
+	Priority EventPriority
 	// SourceTypeName is a source type for the event.
 	SourceTypeName string
 	// AlertType can be statsd.Info, statsd.Error, statsd.Warning, or statsd.Success.
 	// If absent, the default value applied by the dogstatsd server is Info.
-	AlertType eventAlertType
+	AlertType EventAlertType
 	// Tags for the event.
 	Tags []string
 }
