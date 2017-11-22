@@ -146,6 +146,24 @@ func TestClientUDS(t *testing.T) {
 	}
 }
 
+func TestClientUDSClose(t *testing.T) {
+	dir, err := ioutil.TempDir("", "socket")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir) // clean up
+
+	addr := filepath.Join(dir, "dsd.socket")
+
+	addrParts := []string{UnixAddressPrefix, addr}
+	client, err := New(strings.Join(addrParts, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertNotPanics(t, func() { client.Close() })
+}
+
 func TestBufferedClient(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
