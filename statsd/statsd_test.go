@@ -178,7 +178,7 @@ func TestBufferedClient(t *testing.T) {
 	}
 	defer server.Close()
 
-	bufferLength := 8
+	bufferLength := 9
 	client, err := NewBuffered(addr, bufferLength)
 	if err != nil {
 		t.Fatal(err)
@@ -198,8 +198,8 @@ func TestBufferedClient(t *testing.T) {
 	client.Timing("tt", dur, nil, 1)
 	client.Set("ss", "ss", nil, 1)
 
-	if len(client.commands) != 7 {
-		t.Errorf("Expected client to have buffered 7 commands, but found %d\n", len(client.commands))
+	if len(client.commands) != (bufferLength - 1) {
+		t.Errorf("Expected client to have buffered %d commands, but found %d\n", (bufferLength - 1), len(client.commands))
 	}
 
 	client.Set("ss", "xx", nil, 1)
