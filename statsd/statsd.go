@@ -64,13 +64,14 @@ const UnixAddressPrefix = "unix://"
 Stat suffixes
 */
 var (
-	gaugeSuffix     = []byte("|g")
-	countSuffix     = []byte("|c")
-	histogramSuffix = []byte("|h")
-	decrSuffix      = []byte("-1|c")
-	incrSuffix      = []byte("1|c")
-	setSuffix       = []byte("|s")
-	timingSuffix    = []byte("|ms")
+	gaugeSuffix        = []byte("|g")
+	countSuffix        = []byte("|c")
+	histogramSuffix    = []byte("|h")
+	distributionSuffix = []byte("|d")
+	decrSuffix         = []byte("-1|c")
+	incrSuffix         = []byte("1|c")
+	setSuffix          = []byte("|s")
+	timingSuffix       = []byte("|ms")
 )
 
 // A statsdWriter offers a standard interface regardless of the underlying
@@ -327,9 +328,14 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	return c.send(name, value, countSuffix, tags, rate)
 }
 
-// Histogram tracks the statistical distribution of a set of values.
+// Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
 	return c.send(name, value, histogramSuffix, tags, rate)
+}
+
+// Distribution tracks the statistical distribution of a set of values across your infrastructure.
+func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
+	return c.send(name, value, distributionSuffix, tags, rate)
 }
 
 // Decr is just Count of -1
