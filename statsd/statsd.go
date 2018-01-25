@@ -411,6 +411,14 @@ func (c *Client) Close() error {
 	case c.stop <- struct{}{}:
 	default:
 	}
+
+	// if this client is buffered, flush before closing the writer
+	if c.bufferLength > 0 {
+		if err := c.Flush(); err != nil {
+			return err
+		}
+	}
+
 	return c.writer.Close()
 }
 

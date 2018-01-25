@@ -846,6 +846,35 @@ func TestServiceChecks(t *testing.T) {
 	}
 }
 
+func TestFlushOnClose(t *testing.T) {
+	client, err := NewBuffered("localhost:1201", 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// stop the flushing mechanism so we can test the buffer without interferences
+	client.stop <- struct{}{}
+
+	message := "test message"
+
+	err = client.sendMsg(message)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(client.commands) != 1 {
+		t.Errorf("Commands buffer should contain 1 item, got %d", len(client.commands))
+	}
+
+	err = client.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(client.commands) != 0 {
+		t.Errorf("Commands buffer should be empty, got %d", len(client.commands))
+	}
+}
+
 // These benchmarks show that using different format options:
 // v1: sprintf-ing together a bunch of intermediate strings is 4-5x faster
 // v2: some use of buffer
