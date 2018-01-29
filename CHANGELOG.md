@@ -1,7 +1,25 @@
-Changes
-=======
+## Changes
 
-# 1.1.0 / Unreleased
+# 2.0.0 / 2018-01-29
+
+### Details
+
+Version `2.0.0` contains breaking changes and beta features, please refer to the
+_Notes_ section below for details.
+
+### Notes
+
+ * [BREAKING] `statsdWriter` now implements io.Writer interface. See [#46][].
+ * [BUGFIX] Flush buffer on close. See [#47][].
+ * [BETA] Add support for global distributions. See [#45][].
+ * [FEATURE] Add support for Unix Domain Sockets. See [#37][].
+ * [FEATURE] Export `eventAlertType` and `eventPriority`. See [#42][], thanks [@thomas91310][].
+ * [FEATURE] Export `Flush` method. See [#40][], thanks [@colega][].
+ * [BUGFIX] Prevent panics when closing the `udsWriter`. See [#43][], thanks [@jacek-adamek][].
+ * [IMPROVEMENT] Fix issues reported by Golint. See [#39][], thanks [@tariq1890][].
+ * [IMPROVEMENT] Improve message building speed by using less `fmt.Sprintf`s. See [#32][], thanks [@corsc][].
+
+# 1.1.0 / 2017-04-27
 
 ### Notes
 
@@ -11,10 +29,10 @@ Changes
 * [BUGFIX] Do not panic on Client.Event when `nil`. See [#28][]
 * [DOCUMENTATION] Update `decr` documentation to match implementation. See [#30][] (Thanks [@kcollasarundell][])
 
-
 # 1.0.0 / 2016-08-22
 
 ### Details
+
 We hadn't been properly versioning this project. We will begin to do so with this
 `1.0.0` release. We had some contributions in the past and would like to thank the
 contributors [@aviau][], [@sschepens][], [@jovanbrakus][],  [@abtris][], [@tummychow][], [@gphat][], [@diasjorge][],
@@ -38,17 +56,31 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#25]: https://github.com/DataDog/datadog-go/issues/25
 [#28]: https://github.com/DataDog/datadog-go/issues/28
 [#30]: https://github.com/DataDog/datadog-go/issues/30
+[#32]: https://github.com/DataDog/datadog-go/issues/32
+[#37]: https://github.com/DataDog/datadog-go/issues/37
+[#39]: https://github.com/DataDog/datadog-go/issues/39
+[#40]: https://github.com/DataDog/datadog-go/issues/40
+[#42]: https://github.com/DataDog/datadog-go/issues/42
+[#43]: https://github.com/DataDog/datadog-go/issues/43
+[#45]: https://github.com/DataDog/datadog-go/issues/45
+[#46]: https://github.com/DataDog/datadog-go/issues/46
+[#47]: https://github.com/DataDog/datadog-go/issues/47
 [@Jasrags]: https://github.com/Jasrags
 [@abtris]: https://github.com/abtris
 [@aviau]: https://github.com/aviau
+[@colega]: https://github.com/colega
+[@corsc]: https://github.com/corsc
 [@diasjorge]: https://github.com/diasjorge
 [@gphat]: https://github.com/gphat
+[@jacek-adamek]: https://github.com/jacek-adamek
 [@jovanbrakus]: https://github.com/jovanbrakus
 [@kcollasarundell]: https://github.com/kcollasarundell
 [@seiffert]: https://github.com/seiffert
 [@sjung-stripe]: https://github.com/sjung-stripe
 [@sschepens]: https://github.com/sschepens
+[@tariq1890]: https://github.com/tariq1890
 [@theckman]: https://github.com/theckman
+[@thomas91310]: https://github.com/thomas91310
 [@tummychow]: https://github.com/tummychow
 [@victortrac]: https://github.com/victortrac
 [@w-vi]: https://github.com/w-vi
