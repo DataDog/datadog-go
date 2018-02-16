@@ -698,6 +698,8 @@ func TestSendUDSIgnoreErrors(t *testing.T) {
 
 func TestNilSafe(t *testing.T) {
 	var c *Client
+	assertNotPanics(t, func() { c.SetWriteTimeout(0) })
+	assertNotPanics(t, func() { c.Flush() })
 	assertNotPanics(t, func() { c.Close() })
 	assertNotPanics(t, func() { c.Count("", 0, nil, 1) })
 	assertNotPanics(t, func() { c.Histogram("", 0, nil, 1) })
@@ -707,7 +709,10 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() {
 		c.send("", "", []byte(""), nil, 1)
 	})
+	assertNotPanics(t, func() { c.Event(NewEvent("", "")) })
 	assertNotPanics(t, func() { c.SimpleEvent("", "") })
+	assertNotPanics(t, func() { c.ServiceCheck(NewServiceCheck("", Ok)) })
+	assertNotPanics(t, func() { c.SimpleServiceCheck("", Ok) })
 }
 
 func TestEvents(t *testing.T) {
