@@ -387,9 +387,17 @@ func TestBufferedClientFlush(t *testing.T) {
 	client.Unlock()
 }
 
+func stringsToBytes(ss []string) [][]byte {
+	bs := make([][]byte, len(ss))
+	for i, s := range ss {
+		bs[i] = []byte(s)
+	}
+	return bs
+}
+
 func TestJoinMaxSize(t *testing.T) {
 	c := Client{}
-	elements := []string{"abc", "abcd", "ab", "xyz", "foobaz", "x", "wwxxyyzz"}
+	elements := stringsToBytes([]string{"abc", "abcd", "ab", "xyz", "foobaz", "x", "wwxxyyzz"})
 	res, n := c.joinMaxSize(elements, " ", 8)
 
 	if len(res) != len(n) && len(res) != 4 {
@@ -535,14 +543,14 @@ func TestSendMsgUDP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = client.sendMsg(strings.Repeat("x", MaxUDPPayloadSize+1))
+	err = client.sendMsg(bytes.Repeat([]byte("x"), MaxUDPPayloadSize+1))
 	if err == nil {
 		t.Error("Expected error to be returned if message size is bigger than MaxUDPPayloadSize")
 	}
 
 	message := "test message"
 
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err != nil {
 		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxUDPPayloadSize, got: %s", err.Error())
 	}
@@ -567,12 +575,12 @@ func TestSendMsgUDP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = client.sendMsg(strings.Repeat("x", MaxUDPPayloadSize+1))
+	err = client.sendMsg(bytes.Repeat([]byte("x"), MaxUDPPayloadSize+1))
 	if err == nil {
 		t.Error("Expected error to be returned if message size is bigger than MaxUDPPayloadSize")
 	}
 
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err != nil {
 		t.Errorf("Expected no error to be returned if message size is smaller or equal to MaxUDPPayloadSize, got: %s", err.Error())
 	}
@@ -623,7 +631,7 @@ func TestSendUDSErrors(t *testing.T) {
 	}
 
 	// Server not listening yet
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
 		t.Errorf("Expected error \"no such file or directory\", got: %s", err.Error())
 	}
@@ -633,7 +641,7 @@ func TestSendUDSErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err != nil {
 		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
 	}
@@ -649,7 +657,7 @@ func TestSendUDSErrors(t *testing.T) {
 	// close server and send packet
 	server.Close()
 	os.Remove(addr)
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err == nil {
 		t.Error("Expected an error, got nil")
 	}
@@ -661,7 +669,7 @@ func TestSendUDSErrors(t *testing.T) {
 	}
 	time.Sleep(100 * time.Millisecond)
 	defer server.Close()
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err != nil {
 		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
 	}
@@ -683,14 +691,14 @@ func TestSendUDSIgnoreErrors(t *testing.T) {
 	}
 
 	// Default mode throws error
-	err = client.sendMsg("message")
+	err = client.sendMsg([]byte("message"))
 	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
 		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
 	}
 
 	// Skip errors
 	client.SkipErrors = true
-	err = client.sendMsg("message")
+	err = client.sendMsg([]byte("message"))
 	if err != nil {
 		t.Errorf("Expected no error to be returned when in skip errors mode, got: %s", err.Error())
 	}
@@ -859,7 +867,7 @@ func TestFlushOnClose(t *testing.T) {
 
 	message := "test message"
 
-	err = client.sendMsg(message)
+	err = client.sendMsg([]byte(message))
 	if err != nil {
 		t.Fatal(err)
 	}

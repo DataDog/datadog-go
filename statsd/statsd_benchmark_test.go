@@ -67,7 +67,7 @@ func BenchmarkStatBuildCount_BytesAppend(b *testing.B) {
 	}
 }
 
-var FormatSink string
+var FormatSink []byte
 
 func BenchmarkClientFormat(b *testing.B) {
 	var tests = []struct {
