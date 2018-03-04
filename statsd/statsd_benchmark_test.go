@@ -66,3 +66,48 @@ func BenchmarkStatBuildCount_BytesAppend(b *testing.B) {
 		}
 	}
 }
+
+var FormatSink string
+
+func BenchmarkClientFormat(b *testing.B) {
+	var tests = []struct {
+		globalNamespace string
+		globalTags      []string
+		name            string
+		value           interface{}
+		suffix          []byte
+		tags            []string
+	}{
+		{"", nil, "test.gauge", 1.0, gaugeSuffix, nil},
+		{"", nil, "test.gauge", 1.0, gaugeSuffix, nil},
+		{"", nil, "test.gauge", 1.0, gaugeSuffix, []string{"tagA"}},
+		{"", nil, "test.gauge", 1.0, gaugeSuffix, []string{"tagA", "tagB"}},
+		{"", nil, "test.gauge", 1.0, gaugeSuffix, []string{"tagA"}},
+		{"", nil, "test.count", int64(1), countSuffix, []string{"tagA"}},
+		{"", nil, "test.count", int64(-1), countSuffix, []string{"tagA"}},
+		{"", nil, "test.histogram", 2.3, histogramSuffix, []string{"tagA"}},
+		{"", nil, "test.distribution", 2.3, distributionSuffix, []string{"tagA"}},
+		{"", nil, "test.set", "uuid", setSuffix, []string{"tagA"}},
+		{"flubber.", nil, "test.set", "uuid", setSuffix, []string{"tagA"}},
+		{"", []string{"tagC"}, "test.set", "uuid", setSuffix, []string{"tagA"}},
+		{"", nil, "test.count", int64(1), countSuffix, []string{"hello\nworld"}},
+	}
+
+	b.ReportAllocs()
+
+	for i, tt := range tests {
+		b.Run(strconv.Itoa(i), func(b *testing.B) {
+			c := &Client{
+				Namespace: tt.globalNamespace,
+				Tags:      tt.globalTags,
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+
+			for n := 0; n < b.N; n++ {
+				FormatSink = c.format(tt.name, tt.value, tt.suffix, tt.tags, 1.0)
+			}
+		})
+	}
+}
