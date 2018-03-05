@@ -22,7 +22,7 @@ func main() {
     // prefix every metric with the app name
     c.Namespace = "flubber."
     // send the EC2 availability zone as a tag with every metric
-    c.Tags = append(c.Tags, "us-east-1a")
+    c.Tags = append(c.Tags, "region:us-east-1a")
     err = c.Gauge("request.duration", 1.2, nil, 1)
     // ...
 }
