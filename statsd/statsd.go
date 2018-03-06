@@ -33,7 +33,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 )
 
 /*
@@ -711,14 +710,10 @@ func appendWithoutNewlines(buf []byte, s string) []byte {
 		return append(buf, s...)
 	}
 
-	// filter newlines in a utf8-safe way
-	runeBuffer := make([]byte, 4)
-	for _, b := range s {
-		if b == '\n' {
-			continue
+	for _, b := range []byte(s) {
+		if b != '\n' {
+			buf = append(buf, b)
 		}
-		n := utf8.EncodeRune(runeBuffer, b)
-		buf = append(buf, runeBuffer[:n]...)
 	}
 	return buf
 }
