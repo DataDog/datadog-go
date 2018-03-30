@@ -1,5 +1,11 @@
 ## Changes
 
+# 2.1.0 / 2018-03-30
+
+### Notes
+
+ * [IMPROVEMENT] Protect client methods from nil client. See [#52][], thanks [@ods94065][].
+
 # 2.0.0 / 2018-01-29
 
 ### Details
@@ -65,6 +71,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#45]: https://github.com/DataDog/datadog-go/issues/45
 [#46]: https://github.com/DataDog/datadog-go/issues/46
 [#47]: https://github.com/DataDog/datadog-go/issues/47
+[#52]: https://github.com/DataDog/datadog-go/issues/52
 [@Jasrags]: https://github.com/Jasrags
 [@abtris]: https://github.com/abtris
 [@aviau]: https://github.com/aviau
@@ -75,6 +82,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@jacek-adamek]: https://github.com/jacek-adamek
 [@jovanbrakus]: https://github.com/jovanbrakus
 [@kcollasarundell]: https://github.com/kcollasarundell
+[@ods94065]: https://github.com/ods94065
 [@seiffert]: https://github.com/seiffert
 [@sjung-stripe]: https://github.com/sjung-stripe
 [@sschepens]: https://github.com/sschepens
