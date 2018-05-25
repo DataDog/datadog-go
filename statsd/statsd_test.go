@@ -517,6 +517,45 @@ func TestJoinMaxSize(t *testing.T) {
 	}
 }
 
+func TestSendStdoutMsg(t *testing.T) {
+	client, err := New(StdoutAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	message := "test message"
+
+	err = client.sendMsg(message)
+	if err != nil {
+		t.Errorf("Expected no error to be returned if on message, instead got: %s", err.Error())
+	}
+
+	err = client.sendMsg(strings.Repeat("test message\n", 5))
+	if err != nil {
+		t.Errorf("Expected no error to be returned if buffered message, instead got: %s", err.Error())
+	}
+
+	// test contents
+	var buf bytes.Buffer
+	sow := &stdOutWriter{output: &buf}
+	client, err = NewWithWriter(sow)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client.Count("test", 1, []string{"foo:bar", "baz"}, 1)
+	err = client.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := string(stdoutPrefix) + "test:1|c|#foo:bar,baz" + string(stdoutSuffix)
+	actual := buf.String()
+	if actual != expected {
+		t.Errorf("Expected '%s' but got '%s'", expected, actual)
+	}
+}
+
 func TestSendMsgUDP(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)

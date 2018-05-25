@@ -61,6 +61,11 @@ traffic instead of UDP.
 const UnixAddressPrefix = "unix://"
 
 /*
+StdoutAddress holds the name to use when writing to stdout instead of UDP.
+ */
+ const StdoutAddress = "stdout://"
+
+/*
 Stat suffixes
 */
 var (
@@ -107,6 +112,12 @@ type Client struct {
 func New(addr string) (*Client, error) {
 	if strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err := newUdsWriter(addr[len(UnixAddressPrefix)-1:])
+		if err != nil {
+			return nil, err
+		}
+		return NewWithWriter(w)
+	} else if strings.HasPrefix(addr, StdoutAddress) {
+		w, err := newStdOutWriter()
 		if err != nil {
 			return nil, err
 		}

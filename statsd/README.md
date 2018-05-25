@@ -31,12 +31,12 @@ err = c.Count("request.count_total", 2, nil, 1)
 
 ## Buffering Client
 
-DogStatsD accepts packets with multiple statsd payloads in them.  Using the BufferingClient via `NewBufferingClient` will buffer up commands and send them when the buffer is reached or after 100msec.
+DogStatsD accepts packets with multiple statsd payloads in them.  Using the BufferingClient via `NewBuffered` will buffer up commands and send them when the buffer is reached or after 100msec.
 
 ## Unix Domain Sockets Client
 
 DogStatsD version 6 accepts packets through a Unix Socket datagram connection. You can use this protocol by giving a
-`unix:///path/to/dsd.socket` addr argument to the `New` or `NewBufferingClient`.
+`unix:///path/to/dsd.socket` addr argument to the `New` or `NewBuffered`.
 
 With this protocol, writes can become blocking if the server's receiving buffer is full. Our default behaviour is to
 timeout and drop the packet after 1 ms. You can set a custom timeout duration via the `SetWriteTimeout` method.
@@ -44,6 +44,17 @@ timeout and drop the packet after 1 ms. You can set a custom timeout duration vi
 The default mode is to pass write errors from the socket to the caller. This includes write errors the library will
 automatically recover from (DogStatsD server not ready yet or is restarting). You can drop these errors and emulate
 the UDP behaviour by setting the `SkipErrors` property to `true`. Please note that packets will be dropped in both modes.
+
+## STDOUT Client (Compatible with Lambda use-cases)
+
+In certain integrations, like AWS Lambda, Datadog allows collecting metrics through lines printed out in the format:
+
+    MONITORING|<remaining dogstatsd formatted message>
+
+These will be interpreted and converted to metrics on the Datadog platform. To enable this
+you can use this protocol: `stdout://` as the addr argument to the `New` or `NewBuffered`.
+
+With this protocol writes become blocking on flusing to STDOUT.
 
 ## Development
 
