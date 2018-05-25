@@ -523,14 +523,14 @@ func TestSendStdoutMsg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	message := "test message"
+	message := "test message 1"
 
 	err = client.sendMsg(message)
 	if err != nil {
 		t.Errorf("Expected no error to be returned if on message, instead got: %s", err.Error())
 	}
 
-	err = client.sendMsg(strings.Repeat("test message\n", 5))
+	err = client.sendMsg(strings.Repeat("test message buffered\n", 5))
 	if err != nil {
 		t.Errorf("Expected no error to be returned if buffered message, instead got: %s", err.Error())
 	}
