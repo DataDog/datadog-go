@@ -52,14 +52,15 @@ func newStdOutWriter(addr string) (*stdOutWriter, error) {
 // Write data to stdout with no error handling
 func (w *stdOutWriter) Write(data []byte) (n int, err error) {
 	buf := bufio.NewWriter(w.output)
+	totalSize := 0
 	for _, s := range bytes.Split(data, []byte("\n")) {
 		if len(s) > 0 {
 			buf.Write(w.prefix)
 			buf.Write(s)
 			buf.Write(w.suffix)
+			totalSize += len(w.prefix) + len(s) + len(w.suffix) + 1
 		}
 	}
-	totalSize := buf.Size()
 	return totalSize, buf.Flush()
 }
 
