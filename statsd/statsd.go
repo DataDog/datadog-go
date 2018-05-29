@@ -61,9 +61,11 @@ traffic instead of UDP.
 const UnixAddressPrefix = "unix://"
 
 /*
-StdoutAddress holds the name to use when writing to stdout instead of UDP.
+StdoutAddressPrefix holds the prefix to use when writing to stdout instead of UDP.
+
+To override the default prefix and suffix:  stdout://PREFIX/SUFFIX
  */
- const StdoutAddress = "stdout://"
+ const StdoutAddressPrefix = "stdout://"
 
 /*
 Stat suffixes
@@ -116,8 +118,8 @@ func New(addr string) (*Client, error) {
 			return nil, err
 		}
 		return NewWithWriter(w)
-	} else if strings.HasPrefix(addr, StdoutAddress) {
-		w, err := newStdOutWriter()
+	} else if strings.HasPrefix(addr, StdoutAddressPrefix) {
+		w, err := newStdOutWriter(addr[len(StdoutAddressPrefix):])
 		if err != nil {
 			return nil, err
 		}

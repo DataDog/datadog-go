@@ -518,7 +518,8 @@ func TestJoinMaxSize(t *testing.T) {
 }
 
 func TestSendStdoutMsg(t *testing.T) {
-	client, err := New(StdoutAddress)
+	addr := StdoutAddressPrefix + "foo|/|bar"
+	client, err := New(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +538,7 @@ func TestSendStdoutMsg(t *testing.T) {
 
 	// test contents
 	var buf bytes.Buffer
-	sow := &stdOutWriter{output: &buf}
+	sow := &stdOutWriter{prefix: defaultStdoutPrefix, suffix: defaultStdoutSuffix, output: &buf}
 	client, err = NewWithWriter(sow)
 	if err != nil {
 		t.Fatal(err)
@@ -549,7 +550,7 @@ func TestSendStdoutMsg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := string(stdoutPrefix) + "test:1|c|#foo:bar,baz" + string(stdoutSuffix)
+	expected := string(sow.prefix) + "test:1|c|#foo:bar,baz" + string(sow.suffix)
 	actual := buf.String()
 	if actual != expected {
 		t.Errorf("Expected '%s' but got '%s'", expected, actual)
