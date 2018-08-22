@@ -121,12 +121,18 @@ func clientTest(t *testing.T, server io.Reader, client *Client) {
 	}
 }
 
-func TestClientUDS(t *testing.T) {
+type testUnixgramServer struct {
+	tmpDir string
+	*net.UnixConn
+}
+
+// newUnixgramServer returns a unix:// addr as well as a *net.UnixConn
+// server. Any error will fail the test given in param.
+func newTestUnixgramServer(t *testing.T) *testUnixgramServer {
 	dir, err := ioutil.TempDir("", "socket")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir) // clean up
 
 	addr := filepath.Join(dir, "dsd.socket")
 
@@ -139,10 +145,24 @@ func TestClientUDS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer server.Close()
 
-	addrParts := []string{UnixAddressPrefix, addr}
-	client, err := New(strings.Join(addrParts, ""))
+	return &testUnixgramServer{dir, server}
+}
+
+func (ts *testUnixgramServer) Cleanup() {
+	os.RemoveAll(ts.tmpDir) // clean up
+	ts.Close()
+}
+
+func (ts *testUnixgramServer) AddrString() string {
+	return UnixAddressPrefix + ts.LocalAddr().String()
+}
+
+func TestClientUDS(t *testing.T) {
+	server := newTestUnixgramServer(t)
+	defer server.Cleanup()
+
+	client, err := New(server.AddrString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,17 +193,56 @@ func TestClientUDS(t *testing.T) {
 	}
 }
 
-func TestClientUDSClose(t *testing.T) {
-	dir, err := ioutil.TempDir("", "socket")
+func TestClientUDSConcurrent(t *testing.T) {
+	server := newTestUnixgramServer(t)
+	defer server.Cleanup()
+
+	client, err := New(server.AddrString())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir) // clean up
 
-	addr := filepath.Join(dir, "dsd.socket")
+	numWrites := 10
+	for i := 0; i < numWrites; i++ {
+		go func() {
+			err := client.Gauge("test.gauge", 1.0, []string{}, 1)
+			if err != nil {
+				t.Errorf("error outputting gauge %s", err)
+			}
+		}()
+	}
 
-	addrParts := []string{UnixAddressPrefix, addr}
-	client, err := New(strings.Join(addrParts, ""))
+	expected := "test.gauge:1.000000|g"
+	var msgs []string
+	for {
+		bytes := make([]byte, 1024)
+		server.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		n, err := server.Read(bytes)
+		if err, ok := err.(net.Error); ok && err.Timeout() {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		message := string(bytes[:n])
+		msgs = append(msgs, message)
+		if message != expected {
+			t.Errorf("Got %s, expected %s", message, expected)
+		}
+	}
+
+	if len(msgs) != numWrites {
+		t.Errorf("Got %d writes, expected %d. Data: %v", len(msgs), numWrites, msgs)
+	}
+}
+
+func TestClientUDSClose(t *testing.T) {
+	ts := newTestUnixgramServer(t)
+	defer ts.Cleanup()
+
+	// close the server ourselves and test code when nobody's listening
+	ts.Close()
+	client, err := New(ts.AddrString())
 	if err != nil {
 		t.Fatal(err)
 	}
