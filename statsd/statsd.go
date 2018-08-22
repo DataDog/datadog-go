@@ -303,9 +303,9 @@ func (c *Client) flushLocked() error {
 
 func (c *Client) sendMsg(msg []byte) error {
 	// return an error if message is bigger than MaxUDPPayloadSize
-	if len(msg) > MaxUDPPayloadSize {
-		return errors.New("message size exceeds MaxUDPPayloadSize")
-	}
+	// if len(msg) > MaxUDPPayloadSize {
+	//	return errors.New("message size exceeds MaxUDPPayloadSize")
+	// }
 
 	// if this client is buffered, then we'll just append this
 	if c.bufferLength > 0 {
