@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"math/rand"
 	"strconv"
@@ -74,6 +75,8 @@ var (
 	timingSuffix       = []byte("|ms")
 )
 
+const numBuffers = 32
+
 // A statsdWriter offers a standard interface regardless of the underlying
 // protocol. For now UDS and UPD writers are available.
 type statsdWriter interface {
@@ -82,11 +85,18 @@ type statsdWriter interface {
 	Close() error
 }
 
+type StatsBuffer struct {
+	sync.Mutex
+	bufferLength int
+	commands     [][]byte
+	writer       statsdWriter
+}
+
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
 	// Writer handles the underlying networking protocol
-	writer statsdWriter
+	sharedWriter statsdWriter
 	// Namespace to prepend to all statsd calls
 	Namespace string
 	// Tags are global tags to be added to every statsd call
@@ -94,12 +104,11 @@ type Client struct {
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
 	SkipErrors bool
 	// BufferLength is the length of the buffer in commands.
-	bufferLength int
-	flushTime    time.Duration
-	commands     [][]byte
-	buffer       bytes.Buffer
-	stop         chan struct{}
-	sync.Mutex
+	flushTime time.Duration
+	stop      chan struct{}
+	buffers   []*StatsBuffer
+
+	sharded bool
 }
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
@@ -122,7 +131,7 @@ func New(addr string) (*Client, error) {
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
 func NewWithWriter(w statsdWriter) (*Client, error) {
-	client := &Client{writer: w, SkipErrors: false}
+	client := &Client{sharedWriter: w, SkipErrors: false}
 	return client, nil
 }
 
@@ -133,11 +142,19 @@ func NewBuffered(addr string, buflen int) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client.bufferLength = buflen
-	client.commands = make([][]byte, 0, buflen)
+	client.sharded = true
 	client.flushTime = time.Millisecond * 100
 	client.stop = make(chan struct{}, 1)
-	go client.watch()
+	client.buffers = make([]*StatsBuffer, numBuffers)
+	for i := 0; i < numBuffers; i++ {
+		buf := StatsBuffer{
+			bufferLength: buflen,
+			commands:     make([][]byte, 0, buflen),
+			writer:       client.sharedWriter,
+		}
+		client.buffers[i] = &buf
+		go client.watch(&buf)
+	}
 	return client, nil
 }
 
@@ -184,21 +201,24 @@ func (c *Client) SetWriteTimeout(d time.Duration) error {
 	if c == nil {
 		return nil
 	}
-	return c.writer.SetWriteTimeout(d)
+	for _, buf := range c.buffers {
+		buf.writer.SetWriteTimeout(d)
+	}
+	return nil
 }
 
-func (c *Client) watch() {
+func (c *Client) watch(buf *StatsBuffer) {
 	ticker := time.NewTicker(c.flushTime)
 
 	for {
 		select {
 		case <-ticker.C:
-			c.Lock()
-			if len(c.commands) > 0 {
+			buf.Lock()
+			if len(buf.commands) > 0 {
 				// FIXME: eating error here
-				c.flushLocked()
+				buf.flushLocked()
 			}
-			c.Unlock()
+			buf.Unlock()
 		case <-c.stop:
 			ticker.Stop()
 			return
@@ -206,26 +226,26 @@ func (c *Client) watch() {
 	}
 }
 
-func (c *Client) append(cmd []byte) error {
-	c.Lock()
-	defer c.Unlock()
-	c.commands = append(c.commands, cmd)
+func (b *StatsBuffer) append(cmd []byte) error {
+	b.Lock()
+	defer b.Unlock()
+	b.commands = append(b.commands, cmd)
 	// if we should flush, lets do it
-	if len(c.commands) == c.bufferLength {
-		if err := c.flushLocked(); err != nil {
+	if len(b.commands) == b.bufferLength {
+		if err := b.flushLocked(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Client) joinMaxSize(cmds [][]byte, sep string, maxSize int) ([][]byte, []int) {
-	c.buffer.Reset() //clear buffer
+func (b *StatsBuffer) joinMaxSize(cmds [][]byte, sep string, maxSize int) ([][]byte, []int) {
 
 	var frames [][]byte
 	var ncmds []int
 	sepBytes := []byte(sep)
 	sepLen := len(sep)
+	buffer := make([]byte, 0, maxSize)
 
 	elem := 0
 	for _, cmd := range cmds {
@@ -235,24 +255,25 @@ func (c *Client) joinMaxSize(cmds [][]byte, sep string, maxSize int) ([][]byte, 
 			needed = needed + sepLen
 		}
 
-		if c.buffer.Len()+needed <= maxSize {
+		if len(buffer)+needed <= maxSize {
 			if elem != 0 {
-				c.buffer.Write(sepBytes)
+				buffer = append(buffer, sepBytes...)
 			}
-			c.buffer.Write(cmd)
+			buffer = append(buffer, cmd...)
 			elem++
 		} else {
-			frames = append(frames, copyAndResetBuffer(&c.buffer))
+			frames = append(frames, buffer)
 			ncmds = append(ncmds, elem)
 			// if cmd is bigger than maxSize it will get flushed on next loop
-			c.buffer.Write(cmd)
+			buffer = make([]byte, 0, maxSize)
+			buffer = append(buffer, cmd...)
 			elem = 1
 		}
 	}
 
-	//add whatever is left! if there's actually something
-	if c.buffer.Len() > 0 {
-		frames = append(frames, copyAndResetBuffer(&c.buffer))
+	//add whatever is left, if there's actually something
+	if len(buffer) > 0 {
+		frames = append(frames, buffer)
 		ncmds = append(ncmds, elem)
 	}
 
@@ -271,18 +292,21 @@ func (c *Client) Flush() error {
 	if c == nil {
 		return nil
 	}
-	c.Lock()
-	defer c.Unlock()
-	return c.flushLocked()
+	for _, b := range c.buffers {
+		b.Lock()
+		b.flushLocked()
+		b.Unlock()
+	}
+	return nil
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
-func (c *Client) flushLocked() error {
-	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
+func (b *StatsBuffer) flushLocked() error {
+	frames, flushable := b.joinMaxSize(b.commands, "\n", OptimalPayloadSize)
 	var err error
 	cmdsFlushed := 0
 	for i, data := range frames {
-		_, e := c.writer.Write(data)
+		_, e := b.writer.Write(data)
 		if e != nil {
 			err = e
 			break
@@ -291,28 +315,38 @@ func (c *Client) flushLocked() error {
 	}
 
 	// clear the slice with a slice op, doesn't realloc
-	if cmdsFlushed == len(c.commands) {
-		c.commands = c.commands[:0]
+	if cmdsFlushed == len(b.commands) {
+		b.commands = b.commands[:0]
 	} else {
 		//this case will cause a future realloc...
 		// drop problematic command though (sorry).
-		c.commands = c.commands[cmdsFlushed+1:]
+		b.commands = b.commands[cmdsFlushed+1:]
 	}
 	return err
 }
-
-func (c *Client) sendMsg(msg []byte) error {
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+func (c *Client) sendMsg(name string, msg []byte) error {
 	// return an error if message is bigger than MaxUDPPayloadSize
-	if len(msg) > MaxUDPPayloadSize {
-		return errors.New("message size exceeds MaxUDPPayloadSize")
+	if c.sharded {
+		bucket := hash(name) % numBuffers
+		buf := c.buffers[bucket]
+
+		if len(msg) > MaxUDPPayloadSize {
+			return errors.New("message size exceeds MaxUDPPayloadSize")
+		}
+
+		// if this client is buffered, then we'll just append this
+		if buf.bufferLength > 0 {
+			return buf.append(msg)
+		}
+		return nil
 	}
 
-	// if this client is buffered, then we'll just append this
-	if c.bufferLength > 0 {
-		return c.append(msg)
-	}
-
-	_, err := c.writer.Write(msg)
+	_, err := c.sharedWriter.Write(msg)
 
 	if c.SkipErrors {
 		return nil
@@ -329,7 +363,7 @@ func (c *Client) send(name string, value interface{}, suffix []byte, tags []stri
 		return nil
 	}
 	data := c.format(name, value, suffix, tags, rate)
-	return c.sendMsg(data)
+	return c.sendMsg(name, data)
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -379,22 +413,8 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 }
 
 // Event sends the provided Event.
-func (c *Client) Event(e *Event) error {
-	if c == nil {
-		return nil
-	}
-	stat, err := e.Encode(c.Tags...)
-	if err != nil {
-		return err
-	}
-	return c.sendMsg([]byte(stat))
-}
 
 // SimpleEvent sends an event with the provided title and text.
-func (c *Client) SimpleEvent(title, text string) error {
-	e := NewEvent(title, text)
-	return c.Event(e)
-}
 
 // ServiceCheck sends the provided ServiceCheck.
 func (c *Client) ServiceCheck(sc *ServiceCheck) error {
@@ -405,7 +425,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 	if err != nil {
 		return err
 	}
-	return c.sendMsg([]byte(stat))
+	return c.sendMsg("serviceCheck", []byte(stat))
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -423,15 +443,18 @@ func (c *Client) Close() error {
 	case c.stop <- struct{}{}:
 	default:
 	}
-
+	bufLen := 0
+	for _, buf := range c.buffers {
+		bufLen += buf.bufferLength
+	}
 	// if this client is buffered, flush before closing the writer
-	if c.bufferLength > 0 {
+	if bufLen > 0 {
 		if err := c.Flush(); err != nil {
 			return err
 		}
 	}
 
-	return c.writer.Close()
+	return c.sharedWriter.Close()
 }
 
 // Events support
