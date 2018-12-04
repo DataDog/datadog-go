@@ -324,15 +324,15 @@ func (b *StatsBuffer) flushLocked() error {
 	}
 	return err
 }
-func hash(s string) uint32 {
+func hash(s []byte) uint32 {
 	h := fnv.New32a()
-	h.Write([]byte(s))
+	h.Write(s)
 	return h.Sum32()
 }
-func (c *Client) sendMsg(name string, msg []byte) error {
+func (c *Client) sendMsg(msg []byte) error {
 	// return an error if message is bigger than MaxUDPPayloadSize
 	if c.sharded {
-		bucket := hash(name) % numBuffers
+		bucket := hash(msg) % numBuffers
 		buf := c.buffers[bucket]
 
 		if len(msg) > MaxUDPPayloadSize {
@@ -363,7 +363,7 @@ func (c *Client) send(name string, value interface{}, suffix []byte, tags []stri
 		return nil
 	}
 	data := c.format(name, value, suffix, tags, rate)
-	return c.sendMsg(name, data)
+	return c.sendMsg(data)
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -425,7 +425,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 	if err != nil {
 		return err
 	}
-	return c.sendMsg("serviceCheck", []byte(stat))
+	return c.sendMsg([]byte(stat))
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
