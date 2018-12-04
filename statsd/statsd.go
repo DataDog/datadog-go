@@ -208,7 +208,8 @@ func (c *Client) SetWriteTimeout(d time.Duration) error {
 }
 
 func (c *Client) watch(buf *StatsBuffer) {
-	ticker := time.NewTicker(c.flushTime)
+	randDuration := time.Duration((rand.Int() % 20)) * time.Millisecond
+	ticker := time.NewTicker(c.flushTime + randDuration)
 
 	for {
 		select {
