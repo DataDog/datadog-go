@@ -689,12 +689,6 @@ func TestSendUDSErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Server not listening yet
-	err = client.sendMsg([]byte(message))
-	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
-		t.Errorf("Expected error \"no such file or directory\", got: %s", err.Error())
-	}
-
 	// Start server and send packet
 	server, err := net.ListenUnixgram("unixgram", udsAddr)
 	if err != nil {
@@ -702,7 +696,7 @@ func TestSendUDSErrors(t *testing.T) {
 	}
 	err = client.sendMsg([]byte(message))
 	if err != nil {
-		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
+		t.Fatalf("Expected no error to be returned when server is listening, got: %s", err.Error())
 	}
 	bytes := make([]byte, 1024)
 	n, err := server.Read(bytes)
@@ -713,20 +707,6 @@ func TestSendUDSErrors(t *testing.T) {
 		t.Errorf("Expected: %s. Actual: %s", string(message), string(bytes))
 	}
 
-	// close server and send packet
-	server.Close()
-	os.Remove(addr)
-	err = client.sendMsg([]byte(message))
-	if err == nil {
-		t.Error("Expected an error, got nil")
-	}
-
-	// Restart server and send packet
-	server, err = net.ListenUnixgram("unixgram", udsAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(100 * time.Millisecond)
 	defer server.Close()
 	err = client.sendMsg([]byte(message))
 	if err != nil {
@@ -740,26 +720,6 @@ func TestSendUDSErrors(t *testing.T) {
 	}
 	if string(bytes[:n]) != message {
 		t.Errorf("Expected: %s. Actual: %s", string(message), string(bytes))
-	}
-}
-
-func TestSendUDSIgnoreErrors(t *testing.T) {
-	client, err := New("unix:///invalid")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Default mode throws error
-	err = client.sendMsg([]byte("message"))
-	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
-		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
-	}
-
-	// Skip errors
-	client.SkipErrors = true
-	err = client.sendMsg([]byte("message"))
-	if err != nil {
-		t.Errorf("Expected no error to be returned when in skip errors mode, got: %s", err.Error())
 	}
 }
 
