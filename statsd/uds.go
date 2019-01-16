@@ -82,7 +82,7 @@ func (w *udsWriter) write(data []byte) (int, error) {
 		return 0, err
 	}
 
-	w.conn.SetWriteDeadline(time.Now().Add(w.writeTimeout))
+	conn.SetWriteDeadline(time.Now().Add(w.writeTimeout))
 	n, err := conn.Write(data)
 
 	if e, isNetworkErr := err.(net.Error); !isNetworkErr || !e.Temporary() {
