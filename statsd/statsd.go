@@ -110,7 +110,11 @@ func New(addr string) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewWithWriter(w)
+		c, err := NewWithWriter(w)
+		if c != nil {
+			w.telemetryClient = c
+		}
+		return c, err
 	}
 	w, err := newUDPWriter(addr)
 	if err != nil {

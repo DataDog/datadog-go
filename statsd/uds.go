@@ -21,9 +21,21 @@ type udsWriter struct {
 	// write timeout
 	writeTimeout time.Duration
 
-	droppedDatagrams int
-	datagramQueue    chan []byte
-	stopChan         chan struct{}
+	datagramsDroppedOutputChan chan struct{}
+	datagramsDroppedQueueChan  chan struct{}
+	datagramsDroppedTotalChan  chan struct{}
+	datagramsTotalChan         chan struct{}
+
+	// telemetry
+	datagramsDroppedOutput int64
+	datagramsDroppedQueue  int64
+	datagramsDroppedTotal  int64
+	datagramsTotal         int64
+
+	telemetryClient *Client
+
+	datagramQueue chan []byte
+	stopChan      chan struct{}
 }
 
 // New returns a pointer to a new udsWriter given a socket file path as addr.
@@ -34,14 +46,57 @@ func newUdsWriter(addr string) (*udsWriter, error) {
 	}
 
 	writer := &udsWriter{
-		addr:          udsAddr,
-		conn:          nil,
-		writeTimeout:  defaultUDSTimeout,
-		datagramQueue: make(chan []byte, 8192),
-		stopChan:      make(chan struct{}),
+		addr:                       udsAddr,
+		conn:                       nil,
+		writeTimeout:               defaultUDSTimeout,
+		datagramQueue:              make(chan []byte, 8192),
+		stopChan:                   make(chan struct{}, 128),
+		datagramsDroppedOutputChan: make(chan struct{}, 128),
+		datagramsDroppedQueueChan:  make(chan struct{}, 128),
+		datagramsDroppedTotalChan:  make(chan struct{}, 128),
+		datagramsTotalChan:         make(chan struct{}, 128),
 	}
+
 	go writer.sendLoop()
+	go writer.telemetryLoop()
 	return writer, nil
+}
+
+func (w *udsWriter) telemetryLoop() {
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-w.datagramsDroppedOutputChan:
+			w.datagramsDroppedOutput++
+		case <-w.datagramsDroppedQueueChan:
+			w.datagramsDroppedQueue++
+		case <-w.datagramsDroppedTotalChan:
+			w.datagramsDroppedTotal++
+		case <-w.datagramsTotalChan:
+			w.datagramsTotal++
+		case <-ticker.C:
+			if w.telemetryClient != nil {
+				datagramsDroppedOutput := w.datagramsDroppedOutput
+				w.datagramsDroppedOutput = 0
+				datagramsDroppedQueue := w.datagramsDroppedQueue
+				w.datagramsDroppedQueue = 0
+				datagramsDroppedTotal := w.datagramsDroppedTotal
+				w.datagramsDroppedTotal = 0
+				datagramsTotal := w.datagramsTotal
+				w.datagramsTotal = 0
+				go func() {
+					w.telemetryClient.Count("datadog.agent.client.datagrams_dropped_output", datagramsDroppedOutput, []string{}, 10)
+					w.telemetryClient.Count("datadog.agent.client.datagrams_dropped_queue", datagramsDroppedQueue, []string{}, 10)
+					w.telemetryClient.Count("datadog.agent.client.datagrams_dropped_total", datagramsDroppedTotal, []string{}, 10)
+					w.telemetryClient.Count("datadog.agent.client.datagrams_total_chan", datagramsTotal, []string{}, 10)
+					w.telemetryClient.Gauge("datadog.agent.client.queue_size", float64(len(w.datagramQueue)), []string{}, 10)
+				}()
+			}
+		case <-w.stopChan:
+			ticker.Stop()
+			return
+		}
+	}
 }
 
 func (w *udsWriter) sendLoop() {
@@ -50,7 +105,8 @@ func (w *udsWriter) sendLoop() {
 		case datagram := <-w.datagramQueue:
 			_, err := w.write(datagram)
 			if err != nil {
-				w.droppedDatagrams++
+				w.datagramsDroppedOutputChan <- struct{}{}
+				w.datagramsDroppedTotalChan <- struct{}{}
 			}
 		case <-w.stopChan:
 			return
@@ -67,11 +123,13 @@ func (w *udsWriter) SetWriteTimeout(d time.Duration) error {
 // Write data to the UDS connection with write timeout and minimal error handling:
 // create the connection if nil, and destroy it if the statsd server has disconnected
 func (w *udsWriter) Write(data []byte) (int, error) {
+	w.datagramsTotalChan <- struct{}{}
 	select {
 	case w.datagramQueue <- data:
 		return len(data), nil
 	default:
-		w.droppedDatagrams++
+		w.datagramsDroppedQueueChan <- struct{}{}
+		w.datagramsDroppedTotalChan <- struct{}{}
 		return 0, fmt.Errorf("uds datagram queue is full (the agent might not be able to keep up)")
 	}
 }
