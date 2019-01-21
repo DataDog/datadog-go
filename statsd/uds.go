@@ -23,7 +23,6 @@ type udsWriter struct {
 
 	datagramsDroppedOutputChan chan struct{}
 	datagramsDroppedQueueChan  chan struct{}
-	datagramsDroppedTotalChan  chan struct{}
 	datagramsTotalChan         chan struct{}
 
 	// telemetry
@@ -53,7 +52,6 @@ func newUdsWriter(addr string) (*udsWriter, error) {
 		stopChan:                   make(chan struct{}, 128),
 		datagramsDroppedOutputChan: make(chan struct{}, 128),
 		datagramsDroppedQueueChan:  make(chan struct{}, 128),
-		datagramsDroppedTotalChan:  make(chan struct{}, 128),
 		datagramsTotalChan:         make(chan struct{}, 128),
 	}
 
@@ -68,9 +66,9 @@ func (w *udsWriter) telemetryLoop() {
 		select {
 		case <-w.datagramsDroppedOutputChan:
 			w.datagramsDroppedOutput++
+			w.datagramsDroppedTotal++
 		case <-w.datagramsDroppedQueueChan:
 			w.datagramsDroppedQueue++
-		case <-w.datagramsDroppedTotalChan:
 			w.datagramsDroppedTotal++
 		case <-w.datagramsTotalChan:
 			w.datagramsTotal++
@@ -106,7 +104,6 @@ func (w *udsWriter) sendLoop() {
 			_, err := w.write(datagram)
 			if err != nil {
 				w.datagramsDroppedOutputChan <- struct{}{}
-				w.datagramsDroppedTotalChan <- struct{}{}
 			}
 		case <-w.stopChan:
 			return
@@ -129,7 +126,6 @@ func (w *udsWriter) Write(data []byte) (int, error) {
 		return len(data), nil
 	default:
 		w.datagramsDroppedQueueChan <- struct{}{}
-		w.datagramsDroppedTotalChan <- struct{}{}
 		return 0, fmt.Errorf("uds datagram queue is full (the agent might not be able to keep up)")
 	}
 }
