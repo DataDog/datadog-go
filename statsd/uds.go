@@ -83,11 +83,11 @@ func (w *udsWriter) telemetryLoop() {
 				datagramsTotal := w.datagramsTotal
 				w.datagramsTotal = 0
 				go func() {
-					w.telemetryClient.Count("datadog.agent.client.datagrams_dropped_output", datagramsDroppedOutput, []string{}, 10)
-					w.telemetryClient.Count("datadog.agent.client.datagrams_dropped_queue", datagramsDroppedQueue, []string{}, 10)
-					w.telemetryClient.Count("datadog.agent.client.datagrams_dropped_total", datagramsDroppedTotal, []string{}, 10)
-					w.telemetryClient.Count("datadog.agent.client.datagrams_total_chan", datagramsTotal, []string{}, 10)
-					w.telemetryClient.Gauge("datadog.agent.client.queue_size", float64(len(w.datagramQueue)), []string{}, 10)
+					w.telemetryClient.Count("dogstatsd.client.datagrams_dropped_output", datagramsDroppedOutput, []string{}, 10)
+					w.telemetryClient.Count("dogstatsd.client.datagrams_dropped_queue", datagramsDroppedQueue, []string{}, 10)
+					w.telemetryClient.Count("dogstatsd.client.datagrams_dropped_total", datagramsDroppedTotal, []string{}, 10)
+					w.telemetryClient.Count("dogstatsd.client.datagrams_total_chan", datagramsTotal, []string{}, 10)
+					w.telemetryClient.Gauge("dogstatsd.client.queue_size", float64(len(w.datagramQueue)), []string{}, 10)
 				}()
 			}
 		case <-w.stopChan:
