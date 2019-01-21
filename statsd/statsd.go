@@ -44,7 +44,7 @@ a single fragment will cause the entire datagram to be lost.
 This can be increased if your network has a greater MTU or you don't mind UDP
 datagrams getting fragmented. The practical limit is MaxUDPPayloadSize
 */
-var OptimalPayloadSize = 1432
+const OptimalPayloadSize = 1432
 
 /*
 MaxUDPPayloadSize defines the maximum payload size for a UDP datagram.
@@ -93,6 +93,8 @@ type Client struct {
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
 	SkipErrors bool
+	// DatagramSize is the maximum size of a datagram
+	DatagramMaxSize int
 	// BufferLength is the length of the buffer in commands.
 	bufferLength int
 	flushTime    time.Duration
@@ -106,7 +108,6 @@ type Client struct {
 // "unix:///path/to/socket".
 func New(addr string) (*Client, error) {
 	if strings.HasPrefix(addr, UnixAddressPrefix) {
-		OptimalPayloadSize = 65467
 		w, err := newUdsWriter(addr[len(UnixAddressPrefix)-1:])
 		if err != nil {
 			return nil, err
@@ -127,7 +128,7 @@ func New(addr string) (*Client, error) {
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
 func NewWithWriter(w statsdWriter) (*Client, error) {
-	client := &Client{writer: w, SkipErrors: false}
+	client := &Client{writer: w, SkipErrors: false, DatagramMaxSize: OptimalPayloadSize}
 	return client, nil
 }
 
@@ -283,7 +284,7 @@ func (c *Client) Flush() error {
 
 // flush the commands in the buffer.  Lock must be held by caller.
 func (c *Client) flushLocked() error {
-	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
+	frames, flushable := c.joinMaxSize(c.commands, "\n", c.DatagramMaxSize)
 	var err error
 	cmdsFlushed := 0
 	for i, data := range frames {
