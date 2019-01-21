@@ -44,7 +44,7 @@ a single fragment will cause the entire datagram to be lost.
 This can be increased if your network has a greater MTU or you don't mind UDP
 datagrams getting fragmented. The practical limit is MaxUDPPayloadSize
 */
-const OptimalPayloadSize = 1432
+var OptimalPayloadSize = 1432
 
 /*
 MaxUDPPayloadSize defines the maximum payload size for a UDP datagram.
@@ -106,6 +106,7 @@ type Client struct {
 // "unix:///path/to/socket".
 func New(addr string) (*Client, error) {
 	if strings.HasPrefix(addr, UnixAddressPrefix) {
+		OptimalPayloadSize = 65467
 		w, err := newUdsWriter(addr[len(UnixAddressPrefix)-1:])
 		if err != nil {
 			return nil, err
