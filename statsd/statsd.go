@@ -134,9 +134,9 @@ func NewWithWriter(w statsdWriter) (*Client, error) {
 	client := &Client{writer: w, SkipErrors: false}
 
 	// Inject DD_ENTITY_ID as a constant tag if found
-	entity_id := os.Getenv(entityIDEnvName)
-	if entity_id != "" {
-		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entity_id)
+	entityID := os.Getenv(entityIDEnvName)
+	if entityID != "" {
+		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
 		client.Tags = append(client.Tags, entityTag)
 	}
 
