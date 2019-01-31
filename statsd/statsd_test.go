@@ -1022,3 +1022,46 @@ func (c *Client) formatV2(name string, value float64, tags []string, rate float6
 
 	return buf.String()
 }
+
+func TestEntityID(t *testing.T) {
+	envName := "DD_ENTITY_ID"
+	initialValue, initiallySet := os.LookupEnv(envName)
+	if initiallySet {
+		defer os.Setenv(envName, initialValue)
+	} else {
+		defer os.Unsetenv(envName)
+	}
+
+	// Set to a valid value
+	os.Setenv(envName, "testing")
+	client, err := New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(client.Tags) != 1 {
+		t.Errorf("Expecting one tag, got %d", len(client.Tags))
+	}
+	if client.Tags[0] != "_dd.entity_id:testing" {
+		t.Errorf("Bad tag value, got %s", client.Tags[0])
+	}
+
+	// Set to empty string
+	os.Setenv(envName, "")
+	client, err = New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.Tags != nil {
+		t.Errorf("Expecting empty default tags, got %v", client.Tags)
+	}
+
+	// Unset
+	os.Unsetenv(envName)
+	client, err = New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.Tags != nil {
+		t.Errorf("Expecting empty default tags, got %v", client.Tags)
+	}
+}

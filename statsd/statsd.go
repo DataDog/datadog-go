@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +60,12 @@ UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
 traffic instead of UDP.
 */
 const UnixAddressPrefix = "unix://"
+
+// Client-side entity ID injection for container tagging
+const (
+	entityIDEnvName = "DD_ENTITY_ID"
+	entityIDTagName = "_dd.entity_id"
+)
 
 /*
 Stat suffixes
@@ -123,6 +130,13 @@ func New(addr string) (*Client, error) {
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
 func NewWithWriter(w statsdWriter) (*Client, error) {
 	client := &Client{writer: w, SkipErrors: false}
+
+	// Inject DD_ENTITY_ID as a constant tag if found
+	if os.Getenv(entityIDEnvName) != "" {
+		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, os.Getenv(entityIDEnvName))
+		client.Tags = append(client.Tags, entityTag)
+	}
+
 	return client, nil
 }
 
