@@ -1024,16 +1024,15 @@ func (c *Client) formatV2(name string, value float64, tags []string, rate float6
 }
 
 func TestEntityID(t *testing.T) {
-	envName := "DD_ENTITY_ID"
-	initialValue, initiallySet := os.LookupEnv(envName)
+	initialValue, initiallySet := os.LookupEnv(entityIDEnvName)
 	if initiallySet {
-		defer os.Setenv(envName, initialValue)
+		defer os.Setenv(entityIDEnvName, initialValue)
 	} else {
-		defer os.Unsetenv(envName)
+		defer os.Unsetenv(entityIDEnvName)
 	}
 
 	// Set to a valid value
-	os.Setenv(envName, "testing")
+	os.Setenv(entityIDEnvName, "testing")
 	client, err := New("localhost:8125")
 	if err != nil {
 		t.Fatal(err)
@@ -1046,7 +1045,7 @@ func TestEntityID(t *testing.T) {
 	}
 
 	// Set to empty string
-	os.Setenv(envName, "")
+	os.Setenv(entityIDEnvName, "")
 	client, err = New("localhost:8125")
 	if err != nil {
 		t.Fatal(err)
@@ -1056,7 +1055,7 @@ func TestEntityID(t *testing.T) {
 	}
 
 	// Unset
-	os.Unsetenv(envName)
+	os.Unsetenv(entityIDEnvName)
 	client, err = New("localhost:8125")
 	if err != nil {
 		t.Fatal(err)
