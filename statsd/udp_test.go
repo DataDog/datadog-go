@@ -38,35 +38,33 @@ func TestAddressFromEnvironment(t *testing.T) {
 		// No autodetection failed
 		{"", "", "", "", errors.New("No address passed and autodetection from environment failed")},
 	} {
-		t.Run("", func(t *testing.T) {
-			os.Setenv(autoHostEnvName, tc.hostEnv)
-			os.Setenv(autoPortEnvName, tc.portEnv)
+		os.Setenv(autoHostEnvName, tc.hostEnv)
+		os.Setenv(autoPortEnvName, tc.portEnv)
 
-			// Test the error
-			writer, err := newUDPWriter(tc.addrParam)
-			if tc.expectedErr == nil {
-				if err != nil {
-					t.Errorf("Unexepected error while getting writer: %s", err)
-				}
-			} else {
-				if err == nil || tc.expectedErr.Error() != err.Error() {
-					t.Errorf("Unexepected error %q, got %q", tc.expectedErr, err)
-				}
+		// Test the error
+		writer, err := newUDPWriter(tc.addrParam)
+		if tc.expectedErr == nil {
+			if err != nil {
+				t.Errorf("Unexepected error while getting writer: %s", err)
+			}
+		} else {
+			if err == nil || tc.expectedErr.Error() != err.Error() {
+				t.Errorf("Unexepected error %q, got %q", tc.expectedErr, err)
+			}
+		}
+
+		if writer == nil {
+			if tc.expectedAddr != "" {
+				t.Error("Nil writer while we were expecting a valid one")
 			}
 
-			if writer == nil {
-				if tc.expectedAddr != "" {
-					t.Error("Nil writer while we were expecting a valid one")
-				}
+			// Do not test for the addr if writer is nil
+			continue
+		}
 
-				// Do not test for the addr if writer is nil
-				return
-			}
-
-			defer writer.Close()
-			if writer.remoteAddr().String() != tc.expectedAddr {
-				t.Errorf("Expected %q, got %q", tc.expectedAddr, writer.remoteAddr().String())
-			}
-		})
+		if writer.remoteAddr().String() != tc.expectedAddr {
+			t.Errorf("Expected %q, got %q", tc.expectedAddr, writer.remoteAddr().String())
+		}
+		writer.Close()
 	}
 }
