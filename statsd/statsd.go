@@ -111,6 +111,8 @@ type Client struct {
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
 // "unix:///path/to/socket".
+// When addr is empty, the client will use the DD_AGENT_HOST and (optionally)
+// the DD_DOGSTATSD_PORT environment variables to build the target address.
 func New(addr string) (*Client, error) {
 	if strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err := newUdsWriter(addr[len(UnixAddressPrefix)-1:])
@@ -143,6 +145,8 @@ func NewWithWriter(w statsdWriter) (*Client, error) {
 
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
 // Buflen is the length of the buffer in number of commands.
+// When addr is empty, the client will use the DD_AGENT_HOST and (optionally)
+// the DD_DOGSTATSD_PORT environment variables to build the target address.
 func NewBuffered(addr string, buflen int) (*Client, error) {
 	client, err := New(addr)
 	if err != nil {

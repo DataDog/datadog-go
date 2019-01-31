@@ -28,6 +28,11 @@ func main() {
 }
 ```
 
+### Supported environment variables
+
+- The client can use the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build the target address if the `addr` parameter is empty.
+- If the `DD_ENTITY_ID` enviroment variable is found, its value will be injected as a global `_dd.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
+
 ## License
 
 All code distributed under the [MIT License](http://opensource.org/licenses/MIT) unless otherwise specified.
