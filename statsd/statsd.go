@@ -64,7 +64,7 @@ const UnixAddressPrefix = "unix://"
 // Client-side entity ID injection for container tagging
 const (
 	entityIDEnvName = "DD_ENTITY_ID"
-	entityIDTagName = "_dd.entity_id"
+	entityIDTagName = "dd.internal.entity_id"
 )
 
 /*

@@ -1040,7 +1040,7 @@ func TestEntityID(t *testing.T) {
 	if len(client.Tags) != 1 {
 		t.Errorf("Expecting one tag, got %d", len(client.Tags))
 	}
-	if client.Tags[0] != "_dd.entity_id:testing" {
+	if client.Tags[0] != "dd.internal.entity_id:testing" {
 		t.Errorf("Bad tag value, got %s", client.Tags[0])
 	}
 
