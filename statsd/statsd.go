@@ -93,7 +93,10 @@ type Client struct {
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
 	SkipErrors bool
-	// DatagramSize is the maximum size of a datagram
+	// DatagramSize is the maximum size of a datagram.
+	// When using UDS, this can be used to reduce or eliminate datagram drops.
+	// /!\ Attention: This needs to be in sync with the agent configuration or you will get truncated metrics /tags.
+	// See README.md#buffering-client for more details.
 	DatagramMaxSize int
 	// BufferLength is the length of the buffer in commands.
 	bufferLength int
