@@ -73,7 +73,7 @@ In very high throughput environments it's possible to improve things even furthe
 
 #### Unix Domain Sockets
 
-If you're still seing datagram drops after enabling and configuring the buffering options, the following kernel options can help:
+If you're still seeing datagram drops after enabling and configuring the buffering options, the following kernel options can help:
 - `sysctl -w net.unix.max_dgram_qlen=X` - Set datagram queue size to X (default value is usually 10).
 - `sysctl -w net.core.wmem_max=X` - Set the max size of all the host sockets send buffer to X.
 
