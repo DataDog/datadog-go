@@ -12,8 +12,8 @@ blocking when the receiving buffer is full.
 */
 const defaultUDSTimeout = 1 * time.Millisecond
 
-// udsWriter is an internal class wrapping around management of UDS connection
-type udsWriter struct {
+// blockingUdsWriter is an internal class wrapping around management of UDS connection
+type blockingUdsWriter struct {
 	// Address to send metrics to, needed to allow reconnection on error
 	addr net.Addr
 	// Established connection object, or nil if not connected yet
@@ -23,26 +23,26 @@ type udsWriter struct {
 	sync.Mutex   // used to lock conn / writer can replace it
 }
 
-// New returns a pointer to a new udsWriter given a socket file path as addr.
-func newUdsWriter(addr string) (*udsWriter, error) {
+// New returns a pointer to a new blockingUdsWriter given a socket file path as addr.
+func newBlockingUdsWriter(addr string) (*blockingUdsWriter, error) {
 	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
 	if err != nil {
 		return nil, err
 	}
 	// Defer connection to first Write
-	writer := &udsWriter{addr: udsAddr, conn: nil, writeTimeout: defaultUDSTimeout}
+	writer := &blockingUdsWriter{addr: udsAddr, conn: nil, writeTimeout: defaultUDSTimeout}
 	return writer, nil
 }
 
 // SetWriteTimeout allows the user to set a custom write timeout
-func (w *udsWriter) SetWriteTimeout(d time.Duration) error {
+func (w *blockingUdsWriter) SetWriteTimeout(d time.Duration) error {
 	w.writeTimeout = d
 	return nil
 }
 
 // Write data to the UDS connection with write timeout and minimal error handling:
 // create the connection if nil, and destroy it if the statsd server has disconnected
-func (w *udsWriter) Write(data []byte) (int, error) {
+func (w *blockingUdsWriter) Write(data []byte) (int, error) {
 	w.Lock()
 	defer w.Unlock()
 	// Try connecting (first packet or connection lost)
@@ -63,7 +63,7 @@ func (w *udsWriter) Write(data []byte) (int, error) {
 	return n, e
 }
 
-func (w *udsWriter) Close() error {
+func (w *blockingUdsWriter) Close() error {
 	if w.conn != nil {
 		return w.conn.Close()
 	}
