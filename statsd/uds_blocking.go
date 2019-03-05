@@ -6,12 +6,6 @@ import (
 	"time"
 )
 
-/*
-UDSTimeout holds the default timeout for UDS socket writes, as they can get
-blocking when the receiving buffer is full.
-*/
-const defaultUDSTimeout = 1 * time.Millisecond
-
 // blockingUdsWriter is an internal class wrapping around management of UDS connection
 type blockingUdsWriter struct {
 	// Address to send metrics to, needed to allow reconnection on error
