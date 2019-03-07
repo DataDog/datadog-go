@@ -20,7 +20,7 @@ type asyncUdsWriter struct {
 }
 
 // New returns a pointer to a new asyncUdsWriter given a socket file path as addr.
-func newUdsWriter(addr string) (*asyncUdsWriter, error) {
+func newAsyncUdsWriter(addr string) (*asyncUdsWriter, error) {
 	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
 	if err != nil {
 		return nil, err
@@ -31,6 +31,7 @@ func newUdsWriter(addr string) (*asyncUdsWriter, error) {
 		conn:          nil,
 		writeTimeout:  defaultUDSTimeout,
 		datagramQueue: make(chan []byte, 8192),
+		stopChan:      make(chan struct{}, 1),
 	}
 
 	go writer.sendLoop()

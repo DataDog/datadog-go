@@ -106,7 +106,7 @@ type Client struct {
 // "unix:///path/to/socket".
 func New(addr string) (*Client, error) {
 	if strings.HasPrefix(addr, UnixAddressPrefix) {
-		w, err := newBlockingUdsWriter(addr[len(UnixAddressPrefix)-1:])
+		w, err := newAsyncUdsWriter(addr[len(UnixAddressPrefix)-1:])
 		if err != nil {
 			return nil, err
 		}

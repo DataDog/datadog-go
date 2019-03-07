@@ -668,7 +668,7 @@ func TestSendMsgUDP(t *testing.T) {
 	}
 }
 
-func TestSendUDSErrors(t *testing.T) {
+func TestSendBlockingUDSErrors(t *testing.T) {
 	dir, err := ioutil.TempDir("", "socket")
 	if err != nil {
 		t.Fatal(err)
@@ -683,8 +683,12 @@ func TestSendUDSErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addrParts := []string{UnixAddressPrefix, addr}
-	client, err := New(strings.Join(addrParts, ""))
+	w, err := newBlockingUdsWriter(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client, err := NewWithWriter(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -743,8 +747,13 @@ func TestSendUDSErrors(t *testing.T) {
 	}
 }
 
-func TestSendUDSIgnoreErrors(t *testing.T) {
-	client, err := New("unix:///invalid")
+func TestSendBlockingUDSIgnoreErrors(t *testing.T) {
+	w, err := newBlockingUdsWriter("invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client, err := NewWithWriter(w)
 	if err != nil {
 		t.Fatal(err)
 	}
