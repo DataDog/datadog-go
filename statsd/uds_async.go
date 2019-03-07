@@ -14,7 +14,7 @@ type asyncUdsWriter struct {
 	conn net.Conn
 	// write timeout
 	writeTimeout time.Duration
-
+	// datagramQueue is the queue of datagrams ready to be sent
 	datagramQueue chan []byte
 	stopChan      chan struct{}
 }
@@ -27,9 +27,10 @@ func newAsyncUdsWriter(addr string) (*asyncUdsWriter, error) {
 	}
 
 	writer := &asyncUdsWriter{
-		addr:          udsAddr,
-		conn:          nil,
-		writeTimeout:  defaultUDSTimeout,
+		addr:         udsAddr,
+		conn:         nil,
+		writeTimeout: defaultUDSTimeout,
+		// 8192 * 8KB = 65.5MB
 		datagramQueue: make(chan []byte, 8192),
 		stopChan:      make(chan struct{}, 1),
 	}
