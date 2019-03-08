@@ -52,17 +52,24 @@ func (ts *testUnixgramServer) AddrString() string {
 // UdsTestSuite contains generic tests valid for both UDS implementations
 type UdsTestSuite struct {
 	suite.Suite
+	options []Option
 }
 
 func TestUdsAsync(t *testing.T) {
 	suite.Run(t, &UdsTestSuite{})
 }
 
+func TestUdsBlocking(t *testing.T) {
+	suite.Run(t, &UdsTestSuite{
+		options: []Option{BlockingUDS()},
+	})
+}
+
 func (suite *UdsTestSuite) TestClientUDS() {
 	server := newTestUnixgramServer(suite.T())
 	defer server.Cleanup()
 
-	client, err := New(server.AddrString())
+	client, err := New(server.AddrString(), suite.options...)
 	if err != nil {
 		suite.T().Fatal(err)
 	}

@@ -37,7 +37,7 @@ type Options struct {
 	WriteTimeoutUDS time.Duration
 }
 
-func resolveOptions(options []Option) *Options {
+func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
 		Namespace:             DefaultNamespace,
 		Tags:                  DefaultTags,
@@ -48,53 +48,62 @@ func resolveOptions(options []Option) *Options {
 	}
 
 	for _, option := range options {
-		option(o)
+		err := option(o)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return o
+	return o, nil
 }
 
-// Option is a client option.
-type Option func(*Options)
+// Option is a client option. Can return an error if validation fails.
+type Option func(*Options) error
 
-// Namespace sets the Namespace option.
-func Namespace(namespace string) Option {
-	return func(o *Options) {
+// WithNamespace sets the Namespace option.
+func WithNamespace(namespace string) Option {
+	return func(o *Options) error {
 		o.Namespace = namespace
+		return nil
 	}
 }
 
-// Tags sets the Tags option.
-func Tags(tags []string) Option {
-	return func(o *Options) {
+// WithTags sets the Tags option.
+func WithTags(tags []string) Option {
+	return func(o *Options) error {
 		o.Tags = tags
+		return nil
 	}
 }
 
 // Buffered sets the Buffered option.
-func Buffered(buffered bool) Option {
-	return func(o *Options) {
-		o.Buffered = buffered
+func Buffered() Option {
+	return func(o *Options) error {
+		o.Buffered = true
+		return nil
 	}
 }
 
-// MaxMessagesPerPayload sets the MaxMessagesPerPayload option.
-func MaxMessagesPerPayload(maxMessagesPerPayload int) Option {
-	return func(o *Options) {
+// WithMaxMessagesPerPayload sets the MaxMessagesPerPayload option.
+func WithMaxMessagesPerPayload(maxMessagesPerPayload int) Option {
+	return func(o *Options) error {
 		o.MaxMessagesPerPayload = maxMessagesPerPayload
+		return nil
 	}
 }
 
 // BlockingUDS sets the BlockingUDS option.
-func BlockingUDS(blockingUDS bool) Option {
-	return func(o *Options) {
-		o.BlockingUDS = blockingUDS
+func BlockingUDS() Option {
+	return func(o *Options) error {
+		o.BlockingUDS = true
+		return nil
 	}
 }
 
-// WriteTimeoutUDS sets the WriteTimeoutUDS option.
-func WriteTimeoutUDS(writeTimeoutUDS time.Duration) Option {
-	return func(o *Options) {
+// WithWriteTimeoutUDS sets the WriteTimeoutUDS option.
+func WithWriteTimeoutUDS(writeTimeoutUDS time.Duration) Option {
+	return func(o *Options) error {
 		o.WriteTimeoutUDS = writeTimeoutUDS
+		return nil
 	}
 }

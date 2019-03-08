@@ -8,8 +8,9 @@ import (
 )
 
 func TestDefaultOptions(t *testing.T) {
-	options := resolveOptions([]Option{})
+	options, err := resolveOptions([]Option{})
 
+	assert.NoError(t, err)
 	assert.Equal(t, options.Namespace, DefaultNamespace)
 	assert.Equal(t, options.Tags, DefaultTags)
 	assert.Equal(t, options.Buffered, DefaultBuffered)
@@ -26,15 +27,16 @@ func TestOptions(t *testing.T) {
 	testBlockingUDS := true
 	testWriteTimeoutUDS := 1 * time.Minute
 
-	options := resolveOptions([]Option{
-		Namespace(testNamespace),
-		Tags(testTags),
-		Buffered(testBuffered),
-		MaxMessagesPerPayload(testMaxMessagePerPayload),
-		BlockingUDS(testBlockingUDS),
-		WriteTimeoutUDS(testWriteTimeoutUDS),
+	options, err := resolveOptions([]Option{
+		WithNamespace(testNamespace),
+		WithTags(testTags),
+		Buffered(),
+		WithMaxMessagesPerPayload(testMaxMessagePerPayload),
+		BlockingUDS(),
+		WithWriteTimeoutUDS(testWriteTimeoutUDS),
 	})
 
+	assert.NoError(t, err)
 	assert.Equal(t, options.Namespace, testNamespace)
 	assert.Equal(t, options.Tags, testTags)
 	assert.Equal(t, options.Buffered, testBuffered)
