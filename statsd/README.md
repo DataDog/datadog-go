@@ -11,14 +11,13 @@ and histograms.
 
 ```go
 // Create the client
-c, err := statsd.New("127.0.0.1:8125")
+c, err := statsd.New("127.0.0.1:8125",
+	WithNamespace("flubber."),               // prefix every metric with the app name
+	WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
+)
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
-// Prefix every metric with the app name
-c.Namespace = "flubber."
-// Send the EC2 availability zone as a tag with every metric
-c.Tags = append(c.Tags, "us-east-1a")
 
 // Do some metrics!
 err = c.Gauge("request.queue_depth", 12, nil, 1)
