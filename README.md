@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/DataDog/datadog-go.svg?branch=master)](https://travis-ci.org/DataDog/datadog-go)
+[![Build Status](https://travis-ci.com/DataDog/datadog-go.svg?branch=master)](https://travis-ci.com/DataDog/datadog-go)
 # Overview
 
 Packages in `datadog-go` provide Go clients for various APIs at [DataDog](http://datadoghq.com).
