@@ -94,14 +94,6 @@ func (w *asyncUdsWriter) Close() error {
 }
 
 func (w *asyncUdsWriter) ensureConnection() (net.Conn, error) {
-	// Check if we've already got a socket we can use
-	currentConn := w.conn
-
-	if currentConn != nil {
-		return currentConn, nil
-	}
-
-	// Looks like we might need to connect - try again with write locking.
 	if w.conn != nil {
 		return w.conn, nil
 	}
