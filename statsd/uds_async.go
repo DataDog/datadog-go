@@ -67,6 +67,8 @@ func (w *asyncUdsWriter) Write(data []byte) (int, error) {
 	}
 }
 
+// write writes the given data to the UDS.
+// This function is **not** thread safe.
 func (w *asyncUdsWriter) write(data []byte) (int, error) {
 	conn, err := w.ensureConnection()
 	if err != nil {
