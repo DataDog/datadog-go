@@ -11,8 +11,8 @@ var (
 	DefaultBuffered = false
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
 	DefaultMaxMessagesPerPayload = 16
-	// DefaultBlockingUDS is the default value for the BlockingUDS option
-	DefaultBlockingUDS = false
+	// DefaultAsyncUDS is the default value for the AsyncUDS option
+	DefaultAsyncUDS = false
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
 )
@@ -30,9 +30,9 @@ type Options struct {
 	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
 	// Note that this option only takes effect when the client is buffered.
 	MaxMessagesPerPayload int
-	// BlockingUDS allows to switch between async and blocking mode for UDS.
+	// AsyncUDS allows to switch between async and blocking mode for UDS.
 	// Blocking mode allows for error checking but does not guarentee that calls won't block the execution.
-	BlockingUDS bool
+	AsyncUDS bool
 	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
 	WriteTimeoutUDS time.Duration
 }
@@ -43,7 +43,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		Tags:                  DefaultTags,
 		Buffered:              DefaultBuffered,
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
-		BlockingUDS:           DefaultBlockingUDS,
+		AsyncUDS:              DefaultAsyncUDS,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
 	}
 
@@ -92,10 +92,10 @@ func WithMaxMessagesPerPayload(maxMessagesPerPayload int) Option {
 	}
 }
 
-// BlockingUDS sets the BlockingUDS option.
-func BlockingUDS() Option {
+// WithAsyncUDS sets the AsyncUDS option.
+func WithAsyncUDS() Option {
 	return func(o *Options) error {
-		o.BlockingUDS = true
+		o.AsyncUDS = true
 		return nil
 	}
 }

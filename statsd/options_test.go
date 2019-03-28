@@ -15,7 +15,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.Tags, DefaultTags)
 	assert.Equal(t, options.Buffered, DefaultBuffered)
 	assert.Equal(t, options.MaxMessagesPerPayload, DefaultMaxMessagesPerPayload)
-	assert.Equal(t, options.BlockingUDS, DefaultBlockingUDS)
+	assert.Equal(t, options.AsyncUDS, DefaultAsyncUDS)
 	assert.Equal(t, options.WriteTimeoutUDS, DefaultWriteTimeoutUDS)
 }
 
@@ -24,7 +24,7 @@ func TestOptions(t *testing.T) {
 	testTags := []string{"rocks"}
 	testBuffered := true
 	testMaxMessagePerPayload := 1024
-	testBlockingUDS := true
+	testAsyncUDS := true
 	testWriteTimeoutUDS := 1 * time.Minute
 
 	options, err := resolveOptions([]Option{
@@ -32,7 +32,7 @@ func TestOptions(t *testing.T) {
 		WithTags(testTags),
 		Buffered(),
 		WithMaxMessagesPerPayload(testMaxMessagePerPayload),
-		BlockingUDS(),
+		WithAsyncUDS(),
 		WithWriteTimeoutUDS(testWriteTimeoutUDS),
 	})
 
@@ -41,6 +41,6 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.Tags, testTags)
 	assert.Equal(t, options.Buffered, testBuffered)
 	assert.Equal(t, options.MaxMessagesPerPayload, testMaxMessagePerPayload)
-	assert.Equal(t, options.BlockingUDS, testBlockingUDS)
+	assert.Equal(t, options.AsyncUDS, testAsyncUDS)
 	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
 }

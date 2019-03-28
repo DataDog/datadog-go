@@ -25,7 +25,7 @@ func TestSendBlockingUDSErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := New(UnixAddressPrefix+addr, BlockingUDS())
+	client, err := New(UnixAddressPrefix + addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestSendBlockingUDSErrors(t *testing.T) {
 }
 
 func TestSendBlockingUDSIgnoreErrors(t *testing.T) {
-	client, err := New("unix://invalid", BlockingUDS())
+	client, err := New("unix://invalid")
 	if err != nil {
 		t.Fatal(err)
 	}
