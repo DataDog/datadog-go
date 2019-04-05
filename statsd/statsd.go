@@ -137,6 +137,13 @@ func New(addr string, options ...Option) (*Client, error) {
 		writer:    w,
 	}
 
+	// Inject DD_ENTITY_ID as a constant tag if found
+	entityID := os.Getenv(entityIDEnvName)
+	if entityID != "" {
+		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
+		c.Tags = append(c.Tags, entityTag)
+	}
+
 	if o.Buffered {
 		c.bufferLength = o.MaxMessagesPerPayload
 		c.commands = make([][]byte, 0, o.MaxMessagesPerPayload)

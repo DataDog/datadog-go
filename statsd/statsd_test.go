@@ -824,7 +824,7 @@ func TestEntityID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if client.Tags != nil {
+	if len(client.Tags) != 0 {
 		t.Errorf("Expecting empty default tags, got %v", client.Tags)
 	}
 
@@ -834,7 +834,7 @@ func TestEntityID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if client.Tags != nil {
+	if len(client.Tags) != 0 {
 		t.Errorf("Expecting empty default tags, got %v", client.Tags)
 	}
 }
