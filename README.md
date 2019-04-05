@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/DataDog/datadog-go.svg?branch=master)](https://travis-ci.org/DataDog/datadog-go)
+[![Build Status](https://travis-ci.com/DataDog/datadog-go.svg?branch=master)](https://travis-ci.com/DataDog/datadog-go)
 # Overview
 
 Packages in `datadog-go` provide Go clients for various APIs at [DataDog](http://datadoghq.com).
@@ -26,6 +26,11 @@ func main() {
 	// ...
 }
 ```
+
+### Supported environment variables
+
+- The client can use the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build the target address if the `addr` parameter is empty.
+- If the `DD_ENTITY_ID` enviroment variable is found, its value will be injected as a global `dd.internal.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
 
 ## License
 

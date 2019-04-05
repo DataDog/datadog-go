@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +60,12 @@ UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
 traffic instead of UDP.
 */
 const UnixAddressPrefix = "unix://"
+
+// Client-side entity ID injection for container tagging
+const (
+	entityIDEnvName = "DD_ENTITY_ID"
+	entityIDTagName = "dd.internal.entity_id"
+)
 
 /*
 Stat suffixes
@@ -145,11 +152,22 @@ func New(addr string, options ...Option) (*Client, error) {
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
 func NewWithWriter(w statsdWriter) (*Client, error) {
 	client := &Client{writer: w, SkipErrors: false}
+
+	// Inject DD_ENTITY_ID as a constant tag if found
+	entityID := os.Getenv(entityIDEnvName)
+	if entityID != "" {
+		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
+		client.Tags = append(client.Tags, entityTag)
+	}
+
 	return client, nil
 }
 
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
 // Buflen is the length of the buffer in number of commands.
+//
+// When addr is empty, the client will default to a UDP client and use the DD_AGENT_HOST
+// and (optionally) the DD_DOGSTATSD_PORT environment variables to build the target address.
 func NewBuffered(addr string, buflen int) (*Client, error) {
 	return New(addr, Buffered(), WithMaxMessagesPerPayload(buflen))
 }
