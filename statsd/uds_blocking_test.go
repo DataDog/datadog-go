@@ -25,12 +25,7 @@ func TestSendBlockingUDSErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	w, err := newBlockingUdsWriter(addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client, err := NewWithWriter(w)
+	client, err := New(UnixAddressPrefix + addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,12 +85,7 @@ func TestSendBlockingUDSErrors(t *testing.T) {
 }
 
 func TestSendBlockingUDSIgnoreErrors(t *testing.T) {
-	w, err := newBlockingUdsWriter("invalid")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client, err := NewWithWriter(w)
+	client, err := New("unix://invalid")
 	if err != nil {
 		t.Fatal(err)
 	}

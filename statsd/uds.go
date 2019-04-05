@@ -1,6 +1,8 @@
 package statsd
 
-import "time"
+import (
+	"time"
+)
 
 /*
 UDSTimeout holds the default timeout for UDS socket writes, as they can get

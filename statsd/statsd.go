@@ -104,19 +104,41 @@ type Client struct {
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
 // "unix:///path/to/socket".
-func New(addr string) (*Client, error) {
-	if strings.HasPrefix(addr, UnixAddressPrefix) {
-		w, err := newAsyncUdsWriter(addr[len(UnixAddressPrefix)-1:])
-		if err != nil {
-			return nil, err
-		}
-		return NewWithWriter(w)
-	}
-	w, err := newUDPWriter(addr)
+func New(addr string, options ...Option) (*Client, error) {
+	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
 	}
-	return NewWithWriter(w)
+
+	var w statsdWriter
+
+	if !strings.HasPrefix(addr, UnixAddressPrefix) {
+		w, err = newUDPWriter(addr)
+	} else if o.AsyncUDS {
+		w, err = newAsyncUdsWriter(addr[len(UnixAddressPrefix)-1:])
+	} else {
+		w, err = newBlockingUdsWriter(addr[len(UnixAddressPrefix)-1:])
+	}
+	if err != nil {
+		return nil, err
+	}
+	w.SetWriteTimeout(o.WriteTimeoutUDS)
+
+	c := Client{
+		Namespace: o.Namespace,
+		Tags:      o.Tags,
+		writer:    w,
+	}
+
+	if o.Buffered {
+		c.bufferLength = o.MaxMessagesPerPayload
+		c.commands = make([][]byte, 0, o.MaxMessagesPerPayload)
+		c.flushTime = time.Millisecond * 100
+		c.stop = make(chan struct{}, 1)
+		go c.watch()
+	}
+
+	return &c, nil
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
@@ -129,16 +151,7 @@ func NewWithWriter(w statsdWriter) (*Client, error) {
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
 // Buflen is the length of the buffer in number of commands.
 func NewBuffered(addr string, buflen int) (*Client, error) {
-	client, err := New(addr)
-	if err != nil {
-		return nil, err
-	}
-	client.bufferLength = buflen
-	client.commands = make([][]byte, 0, buflen)
-	client.flushTime = time.Millisecond * 100
-	client.stop = make(chan struct{}, 1)
-	go client.watch()
-	return client, nil
+	return New(addr, Buffered(), WithMaxMessagesPerPayload(buflen))
 }
 
 // format a message from its name, value, tags and rate.  Also adds global
