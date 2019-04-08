@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/DataDog/datadog-go.svg?branch=master)](https://travis-ci.org/DataDog/datadog-go)
+[![Build Status](https://travis-ci.com/DataDog/datadog-go.svg?branch=master)](https://travis-ci.com/DataDog/datadog-go)
 # Overview
 
 Packages in `datadog-go` provide Go clients for various APIs at [DataDog](http://datadoghq.com).
@@ -15,18 +15,22 @@ The [statsd](https://github.com/DataDog/datadog-go/tree/master/statsd) package p
 import "github.com/DataDog/datadog-go/statsd"
 
 func main() {
-    c, err := statsd.New("127.0.0.1:8125")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // prefix every metric with the app name
-    c.Namespace = "flubber."
-    // send the EC2 availability zone as a tag with every metric
-    c.Tags = append(c.Tags, "region:us-east-1a")
-    err = c.Gauge("request.duration", 1.2, nil, 1)
-    // ...
+	c, err := statsd.New("127.0.0.1:8125",
+		WithNamespace("flubber."),               // prefix every metric with the app name
+		WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = c.Gauge("request.duration", 1.2, nil, 1)
+	// ...
 }
 ```
+
+### Supported environment variables
+
+- The client can use the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build the target address if the `addr` parameter is empty.
+- If the `DD_ENTITY_ID` enviroment variable is found, its value will be injected as a global `dd.internal.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
 
 ## License
 

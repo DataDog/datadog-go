@@ -6,10 +6,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -119,135 +117,6 @@ func clientTest(t *testing.T, server io.Reader, client *Client) {
 			t.Errorf("Expected: %s. Actual: %s", tt.Expected, string(message))
 		}
 	}
-}
-
-type testUnixgramServer struct {
-	tmpDir string
-	*net.UnixConn
-}
-
-// newUnixgramServer returns a unix:// addr as well as a *net.UnixConn
-// server. Any error will fail the test given in param.
-func newTestUnixgramServer(t *testing.T) *testUnixgramServer {
-	dir, err := ioutil.TempDir("", "socket")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	addr := filepath.Join(dir, "dsd.socket")
-
-	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	server, err := net.ListenUnixgram("unixgram", udsAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &testUnixgramServer{dir, server}
-}
-
-func (ts *testUnixgramServer) Cleanup() {
-	os.RemoveAll(ts.tmpDir) // clean up
-	ts.Close()
-}
-
-func (ts *testUnixgramServer) AddrString() string {
-	return UnixAddressPrefix + ts.LocalAddr().String()
-}
-
-func TestClientUDS(t *testing.T) {
-	server := newTestUnixgramServer(t)
-	defer server.Cleanup()
-
-	client, err := New(server.AddrString())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, tt := range dogstatsdTests {
-		client.Namespace = tt.GlobalNamespace
-		client.Tags = tt.GlobalTags
-		method := reflect.ValueOf(client).MethodByName(tt.Method)
-		e := method.Call([]reflect.Value{
-			reflect.ValueOf(tt.Metric),
-			reflect.ValueOf(tt.Value),
-			reflect.ValueOf(tt.Tags),
-			reflect.ValueOf(tt.Rate)})[0]
-		errInter := e.Interface()
-		if errInter != nil {
-			t.Fatal(errInter.(error))
-		}
-
-		bytes := make([]byte, 1024)
-		n, err := server.Read(bytes)
-		if err != nil {
-			t.Fatal(err)
-		}
-		message := bytes[:n]
-		if string(message) != tt.Expected {
-			t.Errorf("Expected: %s. Actual: %s", tt.Expected, string(message))
-		}
-	}
-}
-
-func TestClientUDSConcurrent(t *testing.T) {
-	server := newTestUnixgramServer(t)
-	defer server.Cleanup()
-
-	client, err := New(server.AddrString())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	numWrites := 10
-	for i := 0; i < numWrites; i++ {
-		go func() {
-			err := client.Gauge("test.gauge", 1.0, []string{}, 1)
-			if err != nil {
-				t.Errorf("error outputting gauge %s", err)
-			}
-		}()
-	}
-
-	expected := "test.gauge:1.000000|g"
-	var msgs []string
-	for {
-		bytes := make([]byte, 1024)
-		server.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		n, err := server.Read(bytes)
-		if err, ok := err.(net.Error); ok && err.Timeout() {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		message := string(bytes[:n])
-		msgs = append(msgs, message)
-		if message != expected {
-			t.Errorf("Got %s, expected %s", message, expected)
-		}
-	}
-
-	if len(msgs) != numWrites {
-		t.Errorf("Got %d writes, expected %d. Data: %v", len(msgs), numWrites, msgs)
-	}
-}
-
-func TestClientUDSClose(t *testing.T) {
-	ts := newTestUnixgramServer(t)
-	defer ts.Cleanup()
-
-	// close the server ourselves and test code when nobody's listening
-	ts.Close()
-	client, err := New(ts.AddrString())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assertNotPanics(t, func() { client.Close() })
 }
 
 func TestBufferedClient(t *testing.T) {
@@ -668,101 +537,6 @@ func TestSendMsgUDP(t *testing.T) {
 	}
 }
 
-func TestSendUDSErrors(t *testing.T) {
-	dir, err := ioutil.TempDir("", "socket")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir) // clean up
-
-	message := "test message"
-
-	addr := filepath.Join(dir, "dsd.socket")
-	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	addrParts := []string{UnixAddressPrefix, addr}
-	client, err := New(strings.Join(addrParts, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Server not listening yet
-	err = client.sendMsg([]byte(message))
-	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
-		t.Errorf("Expected error \"no such file or directory\", got: %s", err.Error())
-	}
-
-	// Start server and send packet
-	server, err := net.ListenUnixgram("unixgram", udsAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = client.sendMsg([]byte(message))
-	if err != nil {
-		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
-	}
-	bytes := make([]byte, 1024)
-	n, err := server.Read(bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(bytes[:n]) != message {
-		t.Errorf("Expected: %s. Actual: %s", string(message), string(bytes))
-	}
-
-	// close server and send packet
-	server.Close()
-	os.Remove(addr)
-	err = client.sendMsg([]byte(message))
-	if err == nil {
-		t.Error("Expected an error, got nil")
-	}
-
-	// Restart server and send packet
-	server, err = net.ListenUnixgram("unixgram", udsAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(100 * time.Millisecond)
-	defer server.Close()
-	err = client.sendMsg([]byte(message))
-	if err != nil {
-		t.Errorf("Expected no error to be returned when server is listening, got: %s", err.Error())
-	}
-
-	bytes = make([]byte, 1024)
-	n, err = server.Read(bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(bytes[:n]) != message {
-		t.Errorf("Expected: %s. Actual: %s", string(message), string(bytes))
-	}
-}
-
-func TestSendUDSIgnoreErrors(t *testing.T) {
-	client, err := New("unix:///invalid")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Default mode throws error
-	err = client.sendMsg([]byte("message"))
-	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
-		t.Errorf("Expected error \"connect: no such file or directory\", got: %s", err.Error())
-	}
-
-	// Skip errors
-	client.SkipErrors = true
-	err = client.sendMsg([]byte("message"))
-	if err != nil {
-		t.Errorf("Expected no error to be returned when in skip errors mode, got: %s", err.Error())
-	}
-}
-
 func TestNilSafe(t *testing.T) {
 	var c *Client
 	assertNotPanics(t, func() { c.SetWriteTimeout(0) })
@@ -1021,4 +795,46 @@ func (c *Client) formatV2(name string, value float64, tags []string, rate float6
 	writeTagString(&buf, c.Tags, tags)
 
 	return buf.String()
+}
+
+func TestEntityID(t *testing.T) {
+	initialValue, initiallySet := os.LookupEnv(entityIDEnvName)
+	if initiallySet {
+		defer os.Setenv(entityIDEnvName, initialValue)
+	} else {
+		defer os.Unsetenv(entityIDEnvName)
+	}
+
+	// Set to a valid value
+	os.Setenv(entityIDEnvName, "testing")
+	client, err := New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(client.Tags) != 1 {
+		t.Errorf("Expecting one tag, got %d", len(client.Tags))
+	}
+	if client.Tags[0] != "dd.internal.entity_id:testing" {
+		t.Errorf("Bad tag value, got %s", client.Tags[0])
+	}
+
+	// Set to empty string
+	os.Setenv(entityIDEnvName, "")
+	client, err = New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(client.Tags) != 0 {
+		t.Errorf("Expecting empty default tags, got %v", client.Tags)
+	}
+
+	// Unset
+	os.Unsetenv(entityIDEnvName)
+	client, err = New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(client.Tags) != 0 {
+		t.Errorf("Expecting empty default tags, got %v", client.Tags)
+	}
 }

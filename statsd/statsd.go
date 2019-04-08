@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +60,12 @@ UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
 traffic instead of UDP.
 */
 const UnixAddressPrefix = "unix://"
+
+// Client-side entity ID injection for container tagging
+const (
+	entityIDEnvName = "DD_ENTITY_ID"
+	entityIDTagName = "dd.internal.entity_id"
+)
 
 /*
 Stat suffixes
@@ -104,41 +111,72 @@ type Client struct {
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
 // "unix:///path/to/socket".
-func New(addr string) (*Client, error) {
-	if strings.HasPrefix(addr, UnixAddressPrefix) {
-		w, err := newUdsWriter(addr[len(UnixAddressPrefix)-1:])
-		if err != nil {
-			return nil, err
-		}
-		return NewWithWriter(w)
-	}
-	w, err := newUDPWriter(addr)
+func New(addr string, options ...Option) (*Client, error) {
+	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
 	}
-	return NewWithWriter(w)
+
+	var w statsdWriter
+
+	if !strings.HasPrefix(addr, UnixAddressPrefix) {
+		w, err = newUDPWriter(addr)
+	} else if o.AsyncUDS {
+		w, err = newAsyncUdsWriter(addr[len(UnixAddressPrefix)-1:])
+	} else {
+		w, err = newBlockingUdsWriter(addr[len(UnixAddressPrefix)-1:])
+	}
+	if err != nil {
+		return nil, err
+	}
+	w.SetWriteTimeout(o.WriteTimeoutUDS)
+
+	c := Client{
+		Namespace: o.Namespace,
+		Tags:      o.Tags,
+		writer:    w,
+	}
+
+	// Inject DD_ENTITY_ID as a constant tag if found
+	entityID := os.Getenv(entityIDEnvName)
+	if entityID != "" {
+		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
+		c.Tags = append(c.Tags, entityTag)
+	}
+
+	if o.Buffered {
+		c.bufferLength = o.MaxMessagesPerPayload
+		c.commands = make([][]byte, 0, o.MaxMessagesPerPayload)
+		c.flushTime = time.Millisecond * 100
+		c.stop = make(chan struct{}, 1)
+		go c.watch()
+	}
+
+	return &c, nil
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
 func NewWithWriter(w statsdWriter) (*Client, error) {
 	client := &Client{writer: w, SkipErrors: false}
+
+	// Inject DD_ENTITY_ID as a constant tag if found
+	entityID := os.Getenv(entityIDEnvName)
+	if entityID != "" {
+		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
+		client.Tags = append(client.Tags, entityTag)
+	}
+
 	return client, nil
 }
 
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
 // Buflen is the length of the buffer in number of commands.
+//
+// When addr is empty, the client will default to a UDP client and use the DD_AGENT_HOST
+// and (optionally) the DD_DOGSTATSD_PORT environment variables to build the target address.
 func NewBuffered(addr string, buflen int) (*Client, error) {
-	client, err := New(addr)
-	if err != nil {
-		return nil, err
-	}
-	client.bufferLength = buflen
-	client.commands = make([][]byte, 0, buflen)
-	client.flushTime = time.Millisecond * 100
-	client.stop = make(chan struct{}, 1)
-	go client.watch()
-	return client, nil
+	return New(addr, Buffered(), WithMaxMessagesPerPayload(buflen))
 }
 
 // format a message from its name, value, tags and rate.  Also adds global
