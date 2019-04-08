@@ -60,7 +60,7 @@ func (w *blockingUdsWriter) Close() error {
 	return nil
 }
 
-func (w *udsWriter) ensureConnection() (net.Conn, error) {
+func (w *blockingUdsWriter) ensureConnection() (net.Conn, error) {
 	// Check if we've already got a socket we can use
 	w.RLock()
 	currentConn := w.conn
@@ -85,7 +85,7 @@ func (w *udsWriter) ensureConnection() (net.Conn, error) {
 	return newConn, nil
 }
 
-func (w *udsWriter) unsetConnection() {
+func (w *blockingUdsWriter) unsetConnection() {
 	w.Lock()
 	defer w.Unlock()
 	w.conn = nil
