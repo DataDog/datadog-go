@@ -6,7 +6,7 @@
 
 datadog-go is a library that provides a [dogstatsd](http://docs.datadoghq.com/guides/dogstatsd/) client in Golang.
 
-Go 1.7+ is officialy supported. Older versions might work but are not tested.
+Go 1.7+ is officially supported. Older versions might work but are not tested.
 
 ## Get the code
 
@@ -39,7 +39,7 @@ You can find a list of all the available options [here](https://godoc.org/github
 ## Supported environment variables
 
 - The client can use the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build the target address if the `addr` parameter is empty.
-- If the `DD_ENTITY_ID` enviroment variable is found, its value will be injected as a global `dd.internal.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
+- If the `DD_ENTITY_ID` environment variable is found, its value will be injected as a global `dd.internal.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
 
 ## Unix Domain Sockets Client
 
@@ -49,15 +49,15 @@ Details about the advantages of using UDS over UDP are available in our [docs](h
 You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
 
 
-### Blocking vs Asynchronous behaviour
+### Blocking vs Asynchronous behavior
 
 When transporting DogStatsD datagram over UDS, two modes are available, "blocking" and "asynchronous".
 
-"blocking" allows to know if the metric you sent made it to the agent but does not guarentee that calls to the library will return instantly. For example `client.Gauge(...)` might take 50ms or more to complete. If used in a hot path of your application, this behaviour might significantly impact your performance.
+"blocking" allows for error checking but does not guarantee that calls to the library will return instantly. For example `client.Gauge(...)` might take 50ms or more to complete. If used in a hot path of your application, this behavior might significantly impact your performance.
 
-"asynchronous" does not allow for error checking but guarentees that . This is similar to UDP behaviour.
+"asynchronous" does not allow for error checking but guarantees that calls are instantaneous (<1ms). This is similar to UDP behavior.
 
-Currently, in 2.x, "blocking" is the default behaviour to ensure backward compatibility. To use the "asynchronous" behaviour, use the `statsd.WithAsyncUDS()` option.
+Currently, in 2.x, "blocking" is the default behavior to ensure backward compatibility. To use the "asynchronous" behavior, use the `statsd.WithAsyncUDS()` option.
 **Version 3.0 will drop support for the blocking mode.** As such, we suggest enabling the "asynchronous" mode.
 
 ## Performance / Metric drops
@@ -84,7 +84,7 @@ In very high throughput environments it's possible to improve things even furthe
 
 If you're still seeing datagram drops after enabling and configuring the buffering options, the following kernel options can help:
 - `sysctl -w net.unix.max_dgram_qlen=X` - Set datagram queue size to X (default value is usually 10).
-- `sysctl -w net.core.wmem_max=X` - Set the max size of all the host sockets send buffer to X.
+- `sysctl -w net.core.wmem_max=X` - Set the max size of the send buffer for all the host sockets.
 
 ## Development
 
