@@ -53,7 +53,7 @@ You can use this protocol by giving a `unix:///path/to/dsd.socket` address argum
 
 When transporting DogStatsD datagram over UDS, two modes are available, "blocking" and "asynchronous".
 
-"blocking" allows for error checking but does not guarantee that calls to the library will return immediately. For example `client.Gauge(...)` might take and arbitrary amount of time to complete depending on server performance and load. If used in a hot path of your application, this behavior might significantly impact its performance.
+"blocking" allows for error checking but does not guarantee that calls to the library will return immediately. For example `client.Gauge(...)` might take an arbitrary amount of time to complete depending on server performance and load. If used in a hot path of your application, this behavior might significantly impact its performance.
 
 "asynchronous" does not allow for error checking but guarantees that calls are instantaneous (<1ms). This is similar to UDP behavior.
 
@@ -78,7 +78,7 @@ client, err := statsd.New("127.0.0.1:8125",
 
 ### Tweaking kernel options
 
-In very high throughput environments it is possible to improve performance further by changing by changing the values of some kernel options.
+In very high throughput environments it is possible to improve performance further by changing the values of some kernel options.
 
 #### Unix Domain Sockets
 
