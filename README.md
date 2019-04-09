@@ -58,7 +58,7 @@ When transporting DogStatsD datagram over UDS, two modes are available, "blockin
 "asynchronous" does not allow for error checking but guarantees that calls are instantaneous (<1ms). This is similar to UDP behavior.
 
 Currently, in 2.x, "blocking" is the default behavior to ensure backward compatibility. To use the "asynchronous" behavior, use the `statsd.WithAsyncUDS()` option.
-**Version 3.0 will drop support for the blocking mode.** As such, we suggest enabling the "asynchronous" mode.
+We recommend enabling the "asynchronous" mode.
 
 ## Performance / Metric drops
 
