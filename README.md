@@ -78,7 +78,7 @@ client, err := statsd.New("127.0.0.1:8125",
 
 ### Tweaking kernel options
 
-In very high throughput environments it's possible to improve things even further by changing the values of some kernel options.
+In very high throughput environments it is possible to improve things even further by changing the values of some kernel options.
 
 #### Unix Domain Sockets
 
