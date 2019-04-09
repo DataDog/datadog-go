@@ -6,6 +6,7 @@
 
 datadog-go is a library that provides a [dogstatsd](http://docs.datadoghq.com/guides/dogstatsd/) client in Golang.
 
+Go 1.7+ is officialy supported. Older versions might work but are not tested.
 
 ## Get the code
 
