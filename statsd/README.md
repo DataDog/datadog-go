@@ -13,13 +13,14 @@ and histograms.
 // Create the client
 c, err := statsd.New("127.0.0.1:8125",
 	statsd.WithNamespace("flubber."),               // prefix every metric with the app name
-	statsd.WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
+    statsd.WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
+    // add more options here...
 )
 if err != nil {
 	log.Fatal(err)
 }
 
-// Do some metrics!
+// Send some metrics!
 err = c.Gauge("request.queue_depth", 12, nil, 1)
 err = c.Timing("request.duration", duration, nil, 1) // Uses a time.Duration!
 err = c.TimeInMilliseconds("request", 12, nil, 1)
@@ -28,21 +29,51 @@ err = c.Decr("request.count_total", nil, 1)
 err = c.Count("request.count_total", 2, nil, 1)
 ```
 
-## Buffering Client
-
-DogStatsD accepts packets with multiple statsd payloads in them.  Using the BufferingClient via `NewBufferingClient` will buffer up commands and send them when the buffer is reached or after 100msec.
+You can find a list of all the available options [here](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option).
 
 ## Unix Domain Sockets Client
 
-DogStatsD version 6 accepts packets through a Unix Socket datagram connection. You can use this protocol by giving a
-`unix:///path/to/dsd.socket` addr argument to the `New` or `NewBufferingClient`.
+The version 6 (and above) of the Agent accepts packets through a Unix Socket datagram connection.
+Details about the advantages of using UDS over UDP are available in our [docs](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/).
 
-With this protocol, writes can become blocking if the server's receiving buffer is full. Our default behaviour is to
-timeout and drop the packet after 1 ms. You can set a custom timeout duration via the `SetWriteTimeout` method.
+You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
 
-The default mode is to pass write errors from the socket to the caller. This includes write errors the library will
-automatically recover from (DogStatsD server not ready yet or is restarting). You can drop these errors and emulate
-the UDP behaviour by setting the `SkipErrors` property to `true`. Please note that packets will be dropped in both modes.
+### Blocking vs Asynchronous behaviour
+
+When transporting DogStatsD datagram over UDS, two modes are available, "blocking" and "asynchronous".
+
+"blocking" allows to know if the metric you sent made it to the agent but does not guarentee that calls to the library will return instantly. For example `client.Gauge(...)` might take 50ms or more to complete. If used in a hot path of your application, this behaviour might significantly impact your performance.
+
+"asynchronous" does not allow for error checking but guarentees that . This is similar to UDP behaviour.
+
+Currently, in 2.x, "blocking" is the default behaviour to ensure backward compatibility. To use the "asynchronous" behaviour, use the `statsd.WithAsyncUDS()` option.
+**Version 3.0 will drop support for the blocking mode.** As such, we suggest enabling the "asynchronous" mode.
+
+## Performance / Metric drops
+
+If you plan on sending metrics at a significant rate using this client, depending on your use case, you might need to configure the client and the agent to improve the performance and/or avoid dropping metrics.
+
+### Buffering Client
+
+DogStatsD accepts packets with multiple statsd messages in them. Using the `statsd.Buffered()` option will buffer up commands and send them when the buffer is reached or after 100msec.
+
+Ex:
+```go
+client, err := statsd.New("127.0.0.1:8125",
+    statsd.Buffered(), // enable buffering
+    statsd.WithMaxMessagesPerPayload(16), // sets the maximum number of messages in a single datagram
+)
+```
+
+### Tweaking kernel options
+
+In very high throughput environments it's possible to improve things even further by changing the values of some kernel options.
+
+#### Unix Domain Sockets
+
+If you're still seeing datagram drops after enabling and configuring the buffering options, the following kernel options can help:
+- `sysctl -w net.unix.max_dgram_qlen=X` - Set datagram queue size to X (default value is usually 10).
+- `sysctl -w net.core.wmem_max=X` - Set the max size of all the host sockets send buffer to X.
 
 ## Development
 

@@ -1,37 +1,105 @@
 [![Build Status](https://travis-ci.com/DataDog/datadog-go.svg?branch=master)](https://travis-ci.com/DataDog/datadog-go)
-# Overview
-
-Packages in `datadog-go` provide Go clients for various APIs at [DataDog](http://datadoghq.com).
-
-## Statsd
+# Datadog Go
 
 [![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/DataDog/datadog-go/statsd)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](http://opensource.org/licenses/MIT)
 
-The [statsd](https://github.com/DataDog/datadog-go/tree/master/statsd) package provides a client for
+datadog-go is a library that provides in the [statsd](https://github.com/DataDog/datadog-go/tree/master/statsd) package a client for
 [dogstatsd](http://docs.datadoghq.com/guides/dogstatsd/):
 
-```go
-import "github.com/DataDog/datadog-go/statsd"
 
-func main() {
-	c, err := statsd.New("127.0.0.1:8125",
-		statsd.WithNamespace("flubber."),               // prefix every metric with the app name
-		statsd.WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = c.Gauge("request.duration", 1.2, nil, 1)
-	// ...
+## Get the code
+
+    $ go get github.com/DataDog/datadog-go/statsd
+
+## Usage
+
+```go
+// Create the client
+c, err := statsd.New("127.0.0.1:8125",
+    statsd.WithNamespace("flubber."),               // prefix every metric with the app name
+    statsd.WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
+    // add more options here...
+)
+if err != nil {
+    log.Fatal(err)
 }
+
+// Send some metrics!
+err = c.Gauge("request.queue_depth", 12, nil, 1)
+err = c.Timing("request.duration", duration, nil, 1) // Uses a time.Duration!
+err = c.TimeInMilliseconds("request", 12, nil, 1)
+err = c.Incr("request.count_total", nil, 1)
+err = c.Decr("request.count_total", nil, 1)
+err = c.Count("request.count_total", 2, nil, 1)
 ```
 
-### Supported environment variables
+You can find a list of all the available options [here](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option).
+
+## Supported environment variables
 
 - The client can use the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build the target address if the `addr` parameter is empty.
 - If the `DD_ENTITY_ID` enviroment variable is found, its value will be injected as a global `dd.internal.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
 
+## Unix Domain Sockets Client
+
+The version 6 (and above) of the Agent accepts packets through a Unix Socket datagram connection.
+Details about the advantages of using UDS over UDP are available in our [docs](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/).
+
+You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
+
+
+### Blocking vs Asynchronous behaviour
+
+When transporting DogStatsD datagram over UDS, two modes are available, "blocking" and "asynchronous".
+
+"blocking" allows to know if the metric you sent made it to the agent but does not guarentee that calls to the library will return instantly. For example `client.Gauge(...)` might take 50ms or more to complete. If used in a hot path of your application, this behaviour might significantly impact your performance.
+
+"asynchronous" does not allow for error checking but guarentees that . This is similar to UDP behaviour.
+
+Currently, in 2.x, "blocking" is the default behaviour to ensure backward compatibility. To use the "asynchronous" behaviour, use the `statsd.WithAsyncUDS()` option.
+**Version 3.0 will drop support for the blocking mode.** As such, we suggest enabling the "asynchronous" mode.
+
+## Performance / Metric drops
+
+If you plan on sending metrics at a significant rate using this client, depending on your use case, you might need to configure the client and the agent to improve the performance and/or avoid dropping metrics.
+
+### Buffering Client
+
+DogStatsD accepts packets with multiple statsd messages in them. Using the `statsd.Buffered()` option will buffer up commands and send them when the buffer is reached or after 100msec.
+
+Ex:
+```go
+client, err := statsd.New("127.0.0.1:8125",
+    statsd.Buffered(), // enable buffering
+    statsd.WithMaxMessagesPerPayload(16), // sets the maximum number of messages in a single datagram
+)
+```
+
+### Tweaking kernel options
+
+In very high throughput environments it's possible to improve things even further by changing the values of some kernel options.
+
+#### Unix Domain Sockets
+
+If you're still seeing datagram drops after enabling and configuring the buffering options, the following kernel options can help:
+- `sysctl -w net.unix.max_dgram_qlen=X` - Set datagram queue size to X (default value is usually 10).
+- `sysctl -w net.core.wmem_max=X` - Set the max size of all the host sockets send buffer to X.
+
+## Development
+
+Run the tests with:
+
+    $ go test
+
+## Documentation
+
+Please see: http://godoc.org/github.com/DataDog/datadog-go/statsd
+
 ## License
 
-All code distributed under the [MIT License](http://opensource.org/licenses/MIT) unless otherwise specified.
+datadog-go is released under the [MIT license](http://www.opensource.org/licenses/mit-license.php).
+
+## Credits
+
+Original code by [ooyala](https://github.com/ooyala/go-dogstatsd).
