@@ -4,8 +4,7 @@
 [![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/DataDog/datadog-go/statsd)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](http://opensource.org/licenses/MIT)
 
-datadog-go is a library that provides in the [statsd](https://github.com/DataDog/datadog-go/tree/master/statsd) package a client for
-[dogstatsd](http://docs.datadoghq.com/guides/dogstatsd/):
+datadog-go is a library that provides a [dogstatsd](http://docs.datadoghq.com/guides/dogstatsd/) client in Golang.
 
 
 ## Get the code
