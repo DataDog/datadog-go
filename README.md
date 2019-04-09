@@ -16,8 +16,8 @@ import "github.com/DataDog/datadog-go/statsd"
 
 func main() {
 	c, err := statsd.New("127.0.0.1:8125",
-		WithNamespace("flubber."),               // prefix every metric with the app name
-		WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
+		statsd.WithNamespace("flubber."),               // prefix every metric with the app name
+		statsd.WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
 	)
 	if err != nil {
 		log.Fatal(err)
