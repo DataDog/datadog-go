@@ -32,15 +32,15 @@ You can find a list of all the available options [here](https://godoc.org/github
 After the client is created, you can start sending metrics: 
 
 ```go
-client.Gauge("my.metric", 12, nil, 1)
+client.Gauge("kafka.health", 1, []string{"env:production", "partition:1", "partition:2"}, 1)
 ```
 
 Each metric call requires the same parameters:
 
-- `name`: The metric name that will show up in Datadog
-- `value`: The value of the metric
-- `tags`: The list of tags to apply to the metric
-- `rate`: The sampling rate in `[0,1]`. For example `0.5` means that half the calls will result in a metric being sent to Datadog. Set to 1 to disable sampling
+- `name (string)`: The metric name that will show up in Datadog
+- `value`: The value of the metric. Type depends on the metric type
+- `tags ([]string)`: The list of tags to apply to the metric. Multiple tags can have the same key
+- `rate (float)`: The sampling rate in `[0,1]`. For example `0.5` means that half the calls will result in a metric being sent to Datadog. Set to `1` to disable sampling
 
 You can find all the available functions to report metrics [here](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
 
