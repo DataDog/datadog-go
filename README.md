@@ -14,9 +14,10 @@ Go 1.7+ is officially supported. Older versions might work but are not tested.
 
 ## Usage
 
+Start by creating a new client instance with the appropriate configuration options:
+
 ```go
-// Create the client
-c, err := statsd.New("127.0.0.1:8125",
+client, err := statsd.New("127.0.0.1:8125",
     statsd.WithNamespace("flubber."),               // prefix every metric with the app name
     statsd.WithTags([]string{"region:us-east-1a"}), // send the EC2 availability zone as a tag with every metric
     // add more options here...
@@ -24,17 +25,24 @@ c, err := statsd.New("127.0.0.1:8125",
 if err != nil {
     log.Fatal(err)
 }
-
-// Send some metrics!
-err = c.Gauge("request.queue_depth", 12, nil, 1)
-err = c.Timing("request.duration", duration, nil, 1) // Uses a time.Duration!
-err = c.TimeInMilliseconds("request", 12, nil, 1)
-err = c.Incr("request.count_total", nil, 1)
-err = c.Decr("request.count_total", nil, 1)
-err = c.Count("request.count_total", 2, nil, 1)
 ```
 
 You can find a list of all the available options [here](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option).
+
+After the client is created, you can start sending metrics: 
+
+```go
+client.Gauge("my.metric", 12, nil, 1)
+```
+
+Each metric call requires the same parameters:
+
+- `name`: The metric name that will show up in Datadog
+- `value`: The value of the metric
+- `tags`: The list of tags to apply to the metric
+- `rate`: The sampling rate in `[0,1]`. For example `0.5` means that half the calls will result in a metric being sent to Datadog. Set to 1 to disable sampling
+
+You can find all the available functions to report metrics [here](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
 
 ## Supported environment variables
 
