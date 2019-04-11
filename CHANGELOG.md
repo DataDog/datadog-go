@@ -1,5 +1,19 @@
 ## Changes
 
+# 2.2.0 / 2019-04-11
+
+### Notes
+
+ * [FEATURE] UDS: non-blocking implementation. See [#81][].
+ * [FEATURE] Support configuration from standard environment variables. See [#78][].
+ * [FEATURE] Configuration at client creation. See [#82][].
+ * [IMPROVEMENT] UDS: change Mutex to RWMutex for fast already-connected path. See [#84][]. Thanks [@KJTsanaktsidis][].
+ * [IMPROVEMENT] Return error when using on nil client. See [#65][]. Thanks [@Aceeri][].
+ * [IMPROVEMENT] Reduce `Client.format` allocations. See [#53][]. Thanks [@vcabbage][].
+ * [BUGFIX] UDS: add lock to writer for concurrency safety. See [#62][].
+ * [DOCUMENTATION] Document new options, non-blocking client, etc. See [#85][].
+ * [TESTING] Adding go 1.10 and go 1.11 to CI. See [#75][]. Thanks [@thedevsaddam][].
+
 # 2.1.0 / 2018-03-30
 
 ### Notes
@@ -72,7 +86,18 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#46]: https://github.com/DataDog/datadog-go/issues/46
 [#47]: https://github.com/DataDog/datadog-go/issues/47
 [#52]: https://github.com/DataDog/datadog-go/issues/52
+[#53]: https://github.com/DataDog/datadog-go/issues/53
+[#62]: https://github.com/DataDog/datadog-go/issues/62
+[#65]: https://github.com/DataDog/datadog-go/issues/65
+[#75]: https://github.com/DataDog/datadog-go/issues/75
+[#78]: https://github.com/DataDog/datadog-go/issues/78
+[#81]: https://github.com/DataDog/datadog-go/issues/81
+[#82]: https://github.com/DataDog/datadog-go/issues/82
+[#84]: https://github.com/DataDog/datadog-go/issues/84
+[#85]: https://github.com/DataDog/datadog-go/issues/85
+[@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
+[@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
 [@abtris]: https://github.com/abtris
 [@aviau]: https://github.com/aviau
 [@colega]: https://github.com/colega
@@ -88,7 +113,9 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@sschepens]: https://github.com/sschepens
 [@tariq1890]: https://github.com/tariq1890
 [@theckman]: https://github.com/theckman
+[@thedevsaddam]: https://github.com/thedevsaddam
 [@thomas91310]: https://github.com/thomas91310
 [@tummychow]: https://github.com/tummychow
+[@vcabbage]: https://github.com/vcabbage
 [@victortrac]: https://github.com/victortrac
 [@w-vi]: https://github.com/w-vi
