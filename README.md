@@ -14,7 +14,7 @@ Go 1.7+ is officially supported. Older versions might work but are not tested.
 
 ## Usage
 
-Start by creating a new client instance with the appropriate configuration options:
+Start by creating a new client:
 
 ```go
 client, err := statsd.New("127.0.0.1:8125",
