@@ -94,73 +94,33 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 }
 
 func appendGauge(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := gaugeSuffix
-	return c.format(name, value, suffix, tags, rate)
+	return appendFloatMetric(buffer, gaugeSymbol, namespace, globalTags, name, value, tags, rate)
 }
 
 func appendCount(buffer []byte, namespace string, globalTags []string, name string, value int64, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := countSuffix
-	return c.format(name, value, suffix, tags, rate)
+	return appendIntegerMetric(buffer, countSymbol, namespace, globalTags, name, value, tags, rate)
 }
 
 func appendHistogram(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := histogramSuffix
-	return c.format(name, value, suffix, tags, rate)
+	return appendFloatMetric(buffer, histogramSymbol, namespace, globalTags, name, value, tags, rate)
 }
 
 func appendDistribution(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := distributionSuffix
-	return c.format(name, value, suffix, tags, rate)
+	return appendFloatMetric(buffer, distributionSymbol, namespace, globalTags, name, value, tags, rate)
 }
 
 func appendDecrement(buffer []byte, namespace string, globalTags []string, name string, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := decrSuffix
-	return c.format(name, nil, suffix, tags, rate)
+	return appendIntegerMetric(buffer, countSymbol, namespace, globalTags, name, -1, tags, rate)
 }
 
 func appendIncrement(buffer []byte, namespace string, globalTags []string, name string, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := incrSuffix
-	return c.format(name, nil, suffix, tags, rate)
+	return appendIntegerMetric(buffer, countSymbol, namespace, globalTags, name, 1, tags, rate)
 }
 
 func appendSet(buffer []byte, namespace string, globalTags []string, name string, value string, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := setSuffix
-	return c.format(name, value, suffix, tags, rate)
+	return appendStringMetric(buffer, setSymbol, namespace, globalTags, name, value, tags, rate)
 }
 
 func appendTiming(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	c := Client{
-		Tags:      globalTags,
-		Namespace: namespace,
-	}
-	suffix := timingSuffix
-	return c.format(name, value, suffix, tags, rate)
+	return appendFloatMetric(buffer, timingSymbol, namespace, globalTags, name, value, tags, rate)
 }
