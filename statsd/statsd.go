@@ -751,17 +751,3 @@ func appendTagString(buf []byte, tagList1, tagList2 []string) []byte {
 	}
 	return buf
 }
-
-func appendWithoutNewlines(buf []byte, s string) []byte {
-	// fastpath for strings without newlines
-	if strings.IndexByte(s, '\n') == -1 {
-		return append(buf, s...)
-	}
-
-	for _, b := range []byte(s) {
-		if b != '\n' {
-			buf = append(buf, b)
-		}
-	}
-	return buf
-}
