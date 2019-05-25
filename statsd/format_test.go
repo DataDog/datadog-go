@@ -53,3 +53,39 @@ func TestAppendTiming(t *testing.T) {
 	buffer = appendTiming(buffer, "namespace.", []string{"global:tag"}, "timing", 6., []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.timing:6.000000|ms|#global:tag,tag:tag`, string(buffer))
 }
+
+func TestNoTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", []string{}, "gauge", 1., []string{}, 1)
+	assert.Equal(t, `gauge:1.000000|g`, string(buffer))
+}
+
+func TestOneTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", []string{}, "gauge", 1., []string{"tag1:tag1"}, 1)
+	assert.Equal(t, `gauge:1.000000|g|#tag1:tag1`, string(buffer))
+}
+
+func TestTwoTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{"tag1:tag1", "tag2:tag2"}, 1)
+	assert.Equal(t, `metric:1.000000|g|#tag1:tag1,tag2:tag2`, string(buffer))
+}
+
+func TestRate(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{}, 0.1)
+	assert.Equal(t, `metric:1.000000|g|@0.1`, string(buffer))
+}
+
+func TestRateAndTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{"tag1:tag1"}, 0.1)
+	assert.Equal(t, `metric:1.000000|g|@0.1|#tag1:tag1`, string(buffer))
+}
+
+func TestNil(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", nil, "metric", 1., nil, 1)
+	assert.Equal(t, `metric:1.000000|g`, string(buffer))
+}
