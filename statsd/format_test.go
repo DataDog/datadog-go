@@ -89,3 +89,9 @@ func TestNil(t *testing.T) {
 	buffer = appendGauge(buffer, "", nil, "metric", 1., nil, 1)
 	assert.Equal(t, `metric:1.000000|g`, string(buffer))
 }
+
+func TestTagRemoveNewLines(t *testing.T) {
+	var buffer []byte
+	buffer = appendGauge(buffer, "", []string{"tag\n:d\nog\n"}, "metric", 1., []string{"\ntag\n:d\nog2\n"}, 0.1)
+	assert.Equal(t, `metric:1.000000|g|@0.1|#tag:dog,tag:dog2`, string(buffer))
+}
