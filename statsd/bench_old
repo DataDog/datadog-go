@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/DataDog/datadog-go/statsd
+BenchmarkFormat0-4     	 1000000	      1744 ns/op	     272 B/op	       8 allocs/op
+BenchmarkFormat1-4     	 1000000	      2179 ns/op	     464 B/op	       8 allocs/op
+BenchmarkFormat5-4     	  500000	      3271 ns/op	    1104 B/op	       8 allocs/op
+BenchmarkFormat10-4    	  300000	      5626 ns/op	    5232 B/op	      16 allocs/op
+BenchmarkFormat50-4    	  100000	     21347 ns/op	   35072 B/op	      32 allocs/op
+BenchmarkFormat100-4   	   30000	     42846 ns/op	   89344 B/op	      48 allocs/op
+PASS
+ok  	github.com/DataDog/datadog-go/statsd	11.463s
+Success: Benchmarks passed.

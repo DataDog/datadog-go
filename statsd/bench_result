@@ -1,0 +1,23 @@
+benchmark                old ns/op     new ns/op     delta
+BenchmarkFormat0-4       1744          1459          -16.34%
+BenchmarkFormat1-4       2179          1636          -24.92%
+BenchmarkFormat5-4       3271          2058          -37.08%
+BenchmarkFormat10-4      5626          2691          -52.17%
+BenchmarkFormat50-4      21347         7469          -65.01%
+BenchmarkFormat100-4     42846         13222         -69.14%
+
+benchmark                old allocs     new allocs     delta
+BenchmarkFormat0-4       8              0              -100.00%
+BenchmarkFormat1-4       8              0              -100.00%
+BenchmarkFormat5-4       8              0              -100.00%
+BenchmarkFormat10-4      16             0              -100.00%
+BenchmarkFormat50-4      32             0              -100.00%
+BenchmarkFormat100-4     48             0              -100.00%
+
+benchmark                old bytes     new bytes     delta
+BenchmarkFormat0-4       272           0             -100.00%
+BenchmarkFormat1-4       464           0             -100.00%
+BenchmarkFormat5-4       1104          0             -100.00%
+BenchmarkFormat10-4      5232          0             -100.00%
+BenchmarkFormat50-4      35072         0             -100.00%
+BenchmarkFormat100-4     89344         0             -100.00%
