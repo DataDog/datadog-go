@@ -74,6 +74,7 @@ func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globa
 	buffer = strconv.AppendFloat(buffer, value, 'f', 6, 64)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
+	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
 	return buffer
 }
@@ -83,6 +84,7 @@ func appendIntegerMetric(buffer []byte, typeSymbol []byte, namespace string, glo
 	buffer = strconv.AppendInt(buffer, value, 10)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
+	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
 	return buffer
 }
@@ -92,6 +94,7 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 	buffer = append(buffer, value...)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
+	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
 	return buffer
 }
