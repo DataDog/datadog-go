@@ -46,6 +46,9 @@ func appendWithoutNewlines(buffer []byte, s string) []byte {
 }
 
 func appendTags(buffer []byte, globalTags []string, tags []string) []byte {
+	if len(globalTags) == 0 && len(tags) == 0 {
+		return buffer
+	}
 	buffer = append(buffer, "|#"...)
 	firstTag := true
 
