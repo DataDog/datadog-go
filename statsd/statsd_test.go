@@ -556,6 +556,31 @@ func TestNilSafe(t *testing.T) {
 	assertNotPanics(t, func() { c.SimpleServiceCheck("", Ok) })
 }
 
+func TestNilError(t *testing.T) {
+	var c *Client
+	tests := []func() error{
+		func() error { return c.SetWriteTimeout(0) },
+		func() error { return c.Flush() },
+		func() error { return c.Close() },
+		func() error { return c.Count("", 0, nil, 1) },
+		func() error { return c.Histogram("", 0, nil, 1) },
+		func() error { return c.Distribution("", 0, nil, 1) },
+		func() error { return c.Gauge("", 0, nil, 1) },
+		func() error { return c.Set("", "", nil, 1) },
+		func() error { return c.send("", "", []byte(""), nil, 1) },
+		func() error { return c.Event(NewEvent("", "")) },
+		func() error { return c.SimpleEvent("", "") },
+		func() error { return c.ServiceCheck(NewServiceCheck("", Ok)) },
+		func() error { return c.SimpleServiceCheck("", Ok) },
+	}
+	for i, f := range tests {
+		err := f()
+		if err != ErrNoClient {
+			t.Errorf("Test case %d: expected ErrNoClient, got %#v", i, err)
+		}
+	}
+}
+
 func TestEvents(t *testing.T) {
 	matrix := []struct {
 		event   *Event
