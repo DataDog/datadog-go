@@ -196,3 +196,42 @@ func appendEvent(buffer []byte, event Event, globalTags []string) []byte {
 	buffer = appendTags(buffer, globalTags, event.Tags)
 	return buffer
 }
+
+func appendEscapedServiceCheckText(buffer []byte, text string) []byte {
+	for i := 0; i < len(text); i++ {
+		if text[i] == '\n' {
+			buffer = append(buffer, "\\n"...)
+		} else if text[i] == 'm' && i+1 < len(text) && text[i+1] == ':' {
+			buffer = append(buffer, "m\\:"...)
+			i++
+		} else {
+			buffer = append(buffer, text[i])
+		}
+	}
+	return buffer
+}
+
+func appendServiceCheck(buffer []byte, serviceCheck ServiceCheck, globalTags []string) []byte {
+	buffer = append(buffer, "_sc|"...)
+	buffer = append(buffer, serviceCheck.Name...)
+	buffer = append(buffer, '|')
+	buffer = strconv.AppendInt(buffer, int64(serviceCheck.Status), 10)
+
+	if !serviceCheck.Timestamp.IsZero() {
+		buffer = append(buffer, "|d:"...)
+		buffer = strconv.AppendInt(buffer, int64(serviceCheck.Timestamp.Unix()), 10)
+	}
+
+	if len(serviceCheck.Hostname) != 0 {
+		buffer = append(buffer, "|h:"...)
+		buffer = append(buffer, serviceCheck.Hostname...)
+	}
+
+	buffer = appendTags(buffer, globalTags, serviceCheck.Tags)
+
+	if len(serviceCheck.Message) != 0 {
+		buffer = append(buffer, "|m:"...)
+		buffer = appendEscapedServiceCheckText(buffer, serviceCheck.Message)
+	}
+	return buffer
+}

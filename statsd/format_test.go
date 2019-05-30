@@ -215,3 +215,91 @@ func TestEventNil(t *testing.T) {
 	buffer = appendEvent(buffer, Event{}, []string{})
 	assert.Equal(t, `_e{0,0}:|`, string(buffer))
 }
+
+func TestServiceCheck(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:   "service.check",
+		Status: Ok,
+	}, []string{})
+	assert.Equal(t, `_sc|service.check|0`, string(buffer))
+}
+
+func TestServiceCheckEscape(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:    "service.check",
+		Status:  Ok,
+		Message: "\n\nmessagem:hello...\n\nm:aa\nm:m",
+	}, []string{})
+	assert.Equal(t, `_sc|service.check|0|m:\n\nmessagem\:hello...\n\nm\:aa\nm\:m`, string(buffer))
+}
+
+func TestServiceCheckTimestamp(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:      "service.check",
+		Status:    Ok,
+		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+	}, []string{})
+	assert.Equal(t, `_sc|service.check|0|d:1471219200`, string(buffer))
+}
+
+func TestServiceCheckHostname(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:     "service.check",
+		Status:   Ok,
+		Hostname: "hostname",
+	}, []string{})
+	assert.Equal(t, `_sc|service.check|0|h:hostname`, string(buffer))
+}
+
+func TestServiceCheckMessage(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:    "service.check",
+		Status:  Ok,
+		Message: "message",
+	}, []string{})
+	assert.Equal(t, `_sc|service.check|0|m:message`, string(buffer))
+}
+
+func TestServiceCheckOneTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:   "service.check",
+		Status: Ok,
+		Tags:   []string{"tag:tag"},
+	}, []string{})
+	assert.Equal(t, `_sc|service.check|0|#tag:tag`, string(buffer))
+}
+
+func TestServiceCheckTwoTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:   "service.check",
+		Status: Ok,
+		Tags:   []string{"tag1:tag1"},
+	}, []string{"tag2:tag2"})
+	assert.Equal(t, `_sc|service.check|0|#tag2:tag2,tag1:tag1`, string(buffer))
+}
+
+func TestServiceCheckAllOptions(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{
+		Name:      "service.check",
+		Status:    Ok,
+		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+		Hostname:  "hostname",
+		Message:   "message",
+		Tags:      []string{"tag1:tag1"},
+	}, []string{"tag2:tag2"})
+	assert.Equal(t, `_sc|service.check|0|d:1471219200|h:hostname|#tag2:tag2,tag1:tag1|m:message`, string(buffer))
+}
+
+func TestServiceCheckNil(t *testing.T) {
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, ServiceCheck{}, nil)
+	assert.Equal(t, `_sc||0`, string(buffer))
+}

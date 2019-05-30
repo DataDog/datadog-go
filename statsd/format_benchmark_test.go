@@ -25,6 +25,14 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 		AlertType:      "alertType",
 		Tags:           tags,
 	}
+	serviceCheck := ServiceCheck{
+		Name:      "service.check",
+		Status:    Ok,
+		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+		Hostname:  "hostname",
+		Message:   "message",
+		Tags:      []string{"tag1:tag1"},
+	}
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		payloadSink = appendGauge(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
@@ -36,6 +44,7 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 		payloadSink = appendSet(payloadSink[:0], "namespace", []string{}, "metric", "setelement", tags, 0.1)
 		payloadSink = appendTiming(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
 		payloadSink = appendEvent(payloadSink[:0], event, []string{})
+		payloadSink = appendServiceCheck(payloadSink[:0], serviceCheck, []string{})
 	}
 }
 
