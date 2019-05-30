@@ -7,97 +7,97 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAppendGauge(t *testing.T) {
+func TestFormatAppendGauge(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "namespace.", []string{"global:tag"}, "gauge", 1., []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.gauge:1.000000|g|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendCount(t *testing.T) {
+func TestFormatAppendCount(t *testing.T) {
 	var buffer []byte
 	buffer = appendCount(buffer, "namespace.", []string{"global:tag"}, "count", 2, []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.count:2|c|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendHistogram(t *testing.T) {
+func TestFormatAppendHistogram(t *testing.T) {
 	var buffer []byte
 	buffer = appendHistogram(buffer, "namespace.", []string{"global:tag"}, "histogram", 3., []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.histogram:3.000000|h|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendDistribution(t *testing.T) {
+func TestFormatAppendDistribution(t *testing.T) {
 	var buffer []byte
 	buffer = appendDistribution(buffer, "namespace.", []string{"global:tag"}, "distribution", 4., []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.distribution:4.000000|d|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendDecrement(t *testing.T) {
+func TestFormatAppendDecrement(t *testing.T) {
 	var buffer []byte
 	buffer = appendDecrement(buffer, "namespace.", []string{"global:tag"}, "decrement", []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.decrement:-1|c|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendIncrement(t *testing.T) {
+func TestFormatAppendIncrement(t *testing.T) {
 	var buffer []byte
 	buffer = appendIncrement(buffer, "namespace.", []string{"global:tag"}, "increment", []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.increment:1|c|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendSet(t *testing.T) {
+func TestFormatAppendSet(t *testing.T) {
 	var buffer []byte
 	buffer = appendSet(buffer, "namespace.", []string{"global:tag"}, "set", "five", []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.set:five|s|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestAppendTiming(t *testing.T) {
+func TestFormatAppendTiming(t *testing.T) {
 	var buffer []byte
 	buffer = appendTiming(buffer, "namespace.", []string{"global:tag"}, "timing", 6., []string{"tag:tag"}, 1)
 	assert.Equal(t, `namespace.timing:6.000000|ms|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestNoTag(t *testing.T) {
+func TestFormatNoTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "gauge", 1., []string{}, 1)
 	assert.Equal(t, `gauge:1.000000|g`, string(buffer))
 }
 
-func TestOneTag(t *testing.T) {
+func TestFormatOneTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "gauge", 1., []string{"tag1:tag1"}, 1)
 	assert.Equal(t, `gauge:1.000000|g|#tag1:tag1`, string(buffer))
 }
 
-func TestTwoTag(t *testing.T) {
+func TestFormatTwoTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{"tag1:tag1", "tag2:tag2"}, 1)
 	assert.Equal(t, `metric:1.000000|g|#tag1:tag1,tag2:tag2`, string(buffer))
 }
 
-func TestRate(t *testing.T) {
+func TestFormatRate(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{}, 0.1)
 	assert.Equal(t, `metric:1.000000|g|@0.1`, string(buffer))
 }
 
-func TestRateAndTag(t *testing.T) {
+func TestFormatRateAndTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{"tag1:tag1"}, 0.1)
 	assert.Equal(t, `metric:1.000000|g|@0.1|#tag1:tag1`, string(buffer))
 }
 
-func TestNil(t *testing.T) {
+func TestFormatNil(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", nil, "metric", 1., nil, 1)
 	assert.Equal(t, `metric:1.000000|g`, string(buffer))
 }
 
-func TestTagRemoveNewLines(t *testing.T) {
+func TestFormatTagRemoveNewLines(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{"tag\n:d\nog\n"}, "metric", 1., []string{"\ntag\n:d\nog2\n"}, 0.1)
 	assert.Equal(t, `metric:1.000000|g|@0.1|#tag:dog,tag:dog2`, string(buffer))
 }
 
-func TestEvent(t *testing.T) {
+func TestFormatEvent(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title: "EvenTitle",
@@ -106,7 +106,7 @@ func TestEvent(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText`, string(buffer))
 }
 
-func TestEventEscapeText(t *testing.T) {
+func TestFormatEventEscapeText(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title: "EvenTitle",
@@ -115,7 +115,7 @@ func TestEventEscapeText(t *testing.T) {
 	assert.Equal(t, `_e{9,29}:EvenTitle|\nEventText\nLine2\n\nLine4\n`, string(buffer))
 }
 
-func TestEventTimeStamp(t *testing.T) {
+func TestFormatEventTimeStamp(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:     "EvenTitle",
@@ -125,7 +125,7 @@ func TestEventTimeStamp(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|d:1471219200`, string(buffer))
 }
 
-func TestEventHostname(t *testing.T) {
+func TestFormatEventHostname(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:    "EvenTitle",
@@ -135,7 +135,7 @@ func TestEventHostname(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|h:hostname`, string(buffer))
 }
 
-func TestEventAggregationKey(t *testing.T) {
+func TestFormatEventAggregationKey(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:          "EvenTitle",
@@ -145,7 +145,7 @@ func TestEventAggregationKey(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|k:aggregationKey`, string(buffer))
 }
 
-func TestEventPriority(t *testing.T) {
+func TestFormatEventPriority(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:    "EvenTitle",
@@ -155,7 +155,7 @@ func TestEventPriority(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|p:priority`, string(buffer))
 }
 
-func TestEventSourceTypeName(t *testing.T) {
+func TestFormatEventSourceTypeName(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:          "EvenTitle",
@@ -165,7 +165,7 @@ func TestEventSourceTypeName(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|s:sourceTypeName`, string(buffer))
 }
 
-func TestEventAlertType(t *testing.T) {
+func TestFormatEventAlertType(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:     "EvenTitle",
@@ -175,7 +175,7 @@ func TestEventAlertType(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|t:alertType`, string(buffer))
 }
 
-func TestEventOneTag(t *testing.T) {
+func TestFormatEventOneTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title: "EvenTitle",
@@ -184,7 +184,7 @@ func TestEventOneTag(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|#tag:test`, string(buffer))
 }
 
-func TestEventTwoTag(t *testing.T) {
+func TestFormatEventTwoTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title: "EvenTitle",
@@ -194,7 +194,7 @@ func TestEventTwoTag(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|#tag2:test,tag1:test`, string(buffer))
 }
 
-func TestEventAllOptions(t *testing.T) {
+func TestFormatEventAllOptions(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{
 		Title:          "EvenTitle",
@@ -210,13 +210,13 @@ func TestEventAllOptions(t *testing.T) {
 	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|d:1471219200|h:hostname|k:aggregationKey|p:priority|s:SourceTypeName|t:alertType|#tag:global,tag:normal`, string(buffer))
 }
 
-func TestEventNil(t *testing.T) {
+func TestFormatEventNil(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{}, []string{})
 	assert.Equal(t, `_e{0,0}:|`, string(buffer))
 }
 
-func TestServiceCheck(t *testing.T) {
+func TestFormatServiceCheck(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:   "service.check",
@@ -225,7 +225,7 @@ func TestServiceCheck(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0`, string(buffer))
 }
 
-func TestServiceCheckEscape(t *testing.T) {
+func TestFormatServiceCheckEscape(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:    "service.check",
@@ -235,7 +235,7 @@ func TestServiceCheckEscape(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|m:\n\nmessagem\:hello...\n\nm\:aa\nm\:m`, string(buffer))
 }
 
-func TestServiceCheckTimestamp(t *testing.T) {
+func TestFormatServiceCheckTimestamp(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:      "service.check",
@@ -245,7 +245,7 @@ func TestServiceCheckTimestamp(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|d:1471219200`, string(buffer))
 }
 
-func TestServiceCheckHostname(t *testing.T) {
+func TestFormatServiceCheckHostname(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:     "service.check",
@@ -255,7 +255,7 @@ func TestServiceCheckHostname(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|h:hostname`, string(buffer))
 }
 
-func TestServiceCheckMessage(t *testing.T) {
+func TestFormatServiceCheckMessage(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:    "service.check",
@@ -265,7 +265,7 @@ func TestServiceCheckMessage(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|m:message`, string(buffer))
 }
 
-func TestServiceCheckOneTag(t *testing.T) {
+func TestFormatServiceCheckOneTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:   "service.check",
@@ -275,7 +275,7 @@ func TestServiceCheckOneTag(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|#tag:tag`, string(buffer))
 }
 
-func TestServiceCheckTwoTag(t *testing.T) {
+func TestFormatServiceCheckTwoTag(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:   "service.check",
@@ -285,7 +285,7 @@ func TestServiceCheckTwoTag(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|#tag2:tag2,tag1:tag1`, string(buffer))
 }
 
-func TestServiceCheckAllOptions(t *testing.T) {
+func TestFormatServiceCheckAllOptions(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{
 		Name:      "service.check",
@@ -298,8 +298,14 @@ func TestServiceCheckAllOptions(t *testing.T) {
 	assert.Equal(t, `_sc|service.check|0|d:1471219200|h:hostname|#tag2:tag2,tag1:tag1|m:message`, string(buffer))
 }
 
-func TestServiceCheckNil(t *testing.T) {
+func TestFormatServiceCheckNil(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{}, nil)
 	assert.Equal(t, `_sc||0`, string(buffer))
+}
+
+func TestFormatSeparator(t *testing.T) {
+	var buffer []byte
+	buffer = appendSeparator(buffer)
+	assert.Equal(t, "\n", string(buffer))
 }

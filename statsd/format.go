@@ -235,3 +235,7 @@ func appendServiceCheck(buffer []byte, serviceCheck ServiceCheck, globalTags []s
 	}
 	return buffer
 }
+
+func appendSeparator(buffer []byte) []byte {
+	return append(buffer, '\n')
+}
