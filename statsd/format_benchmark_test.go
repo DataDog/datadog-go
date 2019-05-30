@@ -3,6 +3,7 @@ package statsd
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 var payloadSink []byte
@@ -12,6 +13,17 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 	var tags []string
 	for i := 0; i < tagsNumber; i++ {
 		tags = append(tags, fmt.Sprintf("tag%d:tag%d\n", i, i))
+	}
+	event := Event{
+		Title:          "EvenTitle",
+		Text:           "EventText",
+		Timestamp:      time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+		Hostname:       "hostname",
+		AggregationKey: "aggregationKey",
+		Priority:       "priority",
+		SourceTypeName: "SourceTypeName",
+		AlertType:      "alertType",
+		Tags:           tags,
 	}
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -23,6 +35,7 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 		payloadSink = appendIncrement(payloadSink[:0], "namespace", []string{}, "metric", tags, 0.1)
 		payloadSink = appendSet(payloadSink[:0], "namespace", []string{}, "metric", "setelement", tags, 0.1)
 		payloadSink = appendTiming(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
+		payloadSink = appendEvent(payloadSink[:0], event, []string{})
 	}
 }
 
