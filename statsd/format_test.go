@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -94,4 +95,123 @@ func TestTagRemoveNewLines(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{"tag\n:d\nog\n"}, "metric", 1., []string{"\ntag\n:d\nog2\n"}, 0.1)
 	assert.Equal(t, `metric:1.000000|g|@0.1|#tag:dog,tag:dog2`, string(buffer))
+}
+
+func TestEvent(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title: "EvenTitle",
+		Text:  "EventText",
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText`, string(buffer))
+}
+
+func TestEventEscapeText(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title: "EvenTitle",
+		Text:  "\nEventText\nLine2\n\nLine4\n",
+	}, []string{})
+	assert.Equal(t, `_e{9,29}:EvenTitle|\nEventText\nLine2\n\nLine4\n`, string(buffer))
+}
+
+func TestEventTimeStamp(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:     "EvenTitle",
+		Text:      "EventText",
+		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|d:1471219200`, string(buffer))
+}
+
+func TestEventHostname(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:    "EvenTitle",
+		Text:     "EventText",
+		Hostname: "hostname",
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|h:hostname`, string(buffer))
+}
+
+func TestEventAggregationKey(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:          "EvenTitle",
+		Text:           "EventText",
+		AggregationKey: "aggregationKey",
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|k:aggregationKey`, string(buffer))
+}
+
+func TestEventPriority(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:    "EvenTitle",
+		Text:     "EventText",
+		Priority: "priority",
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|p:priority`, string(buffer))
+}
+
+func TestEventSourceTypeName(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:          "EvenTitle",
+		Text:           "EventText",
+		SourceTypeName: "sourceTypeName",
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|s:sourceTypeName`, string(buffer))
+}
+
+func TestEventAlertType(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:     "EvenTitle",
+		Text:      "EventText",
+		AlertType: "alertType",
+	}, []string{})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|t:alertType`, string(buffer))
+}
+
+func TestEventOneTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title: "EvenTitle",
+		Text:  "EventText",
+	}, []string{"tag:test"})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|#tag:test`, string(buffer))
+}
+
+func TestEventTwoTag(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title: "EvenTitle",
+		Text:  "EventText",
+		Tags:  []string{"tag1:test"},
+	}, []string{"tag2:test"})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|#tag2:test,tag1:test`, string(buffer))
+}
+
+func TestEventAllOptions(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{
+		Title:          "EvenTitle",
+		Text:           "EventText",
+		Timestamp:      time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+		Hostname:       "hostname",
+		AggregationKey: "aggregationKey",
+		Priority:       "priority",
+		SourceTypeName: "SourceTypeName",
+		AlertType:      "alertType",
+		Tags:           []string{"tag:normal"},
+	}, []string{"tag:global"})
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|d:1471219200|h:hostname|k:aggregationKey|p:priority|s:SourceTypeName|t:alertType|#tag:global,tag:normal`, string(buffer))
+}
+
+func TestEventNil(t *testing.T) {
+	var buffer []byte
+	buffer = appendEvent(buffer, Event{}, []string{})
+	assert.Equal(t, `_e{0,0}:|`, string(buffer))
 }

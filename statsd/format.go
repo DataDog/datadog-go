@@ -130,3 +130,69 @@ func appendSet(buffer []byte, namespace string, globalTags []string, name string
 func appendTiming(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
 	return appendFloatMetric(buffer, timingSymbol, namespace, globalTags, name, value, tags, rate)
 }
+
+func escapedEventTextLen(text string) int {
+	return len(text) + strings.Count(text, "\n")
+}
+
+func appendEscapedEventText(buffer []byte, text string) []byte {
+	for _, b := range []byte(text) {
+		if b != '\n' {
+			buffer = append(buffer, b)
+		} else {
+			buffer = append(buffer, "\\n"...)
+		}
+	}
+	return buffer
+}
+
+func appendEvent(buffer []byte, event Event, globalTags []string) []byte {
+	escapedTextLen := escapedEventTextLen(event.Text)
+
+	buffer = append(buffer, "_e{"...)
+	buffer = strconv.AppendInt(buffer, int64(len(event.Title)), 10)
+	buffer = append(buffer, ',')
+	buffer = strconv.AppendInt(buffer, int64(escapedTextLen), 10)
+	buffer = append(buffer, "}:"...)
+	buffer = append(buffer, event.Title...)
+	buffer = append(buffer, '|')
+	if escapedTextLen != len(event.Text) {
+		buffer = appendEscapedEventText(buffer, event.Text)
+	} else {
+		buffer = append(buffer, event.Text...)
+	}
+
+	if !event.Timestamp.IsZero() {
+		buffer = append(buffer, "|d:"...)
+		buffer = strconv.AppendInt(buffer, int64(event.Timestamp.Unix()), 10)
+	}
+
+	if len(event.Hostname) != 0 {
+		buffer = append(buffer, "|h:"...)
+		buffer = append(buffer, event.Hostname...)
+	}
+
+	if len(event.AggregationKey) != 0 {
+		buffer = append(buffer, "|k:"...)
+		buffer = append(buffer, event.AggregationKey...)
+
+	}
+
+	if len(event.Priority) != 0 {
+		buffer = append(buffer, "|p:"...)
+		buffer = append(buffer, event.Priority...)
+	}
+
+	if len(event.SourceTypeName) != 0 {
+		buffer = append(buffer, "|s:"...)
+		buffer = append(buffer, event.SourceTypeName...)
+	}
+
+	if len(event.AlertType) != 0 {
+		buffer = append(buffer, "|t:"...)
+		buffer = append(buffer, string(event.AlertType)...)
+	}
+
+	buffer = appendTags(buffer, globalTags, event.Tags)
+	return buffer
+}
