@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -775,37 +774,6 @@ func (c *Client) formatV1(name string, value float64, tags []string, rate float6
 
 	return fmt.Sprintf("%s:%s", name, valueAsString)
 
-}
-
-func BenchmarkFormatV2(b *testing.B) {
-	b.StopTimer()
-	c := &Client{}
-	c.Namespace = "foo.bar."
-	c.Tags = []string{"app:foo", "host:bar"}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		c.formatV2("system.cpu.idle", 10, []string{"foo"}, 1)
-		c.formatV2("system.cpu.load", 0.1, nil, 0.9)
-	}
-}
-
-// V2 formatting function, added to client for tests
-func (c *Client) formatV2(name string, value float64, tags []string, rate float64) string {
-	var buf bytes.Buffer
-	if c.Namespace != "" {
-		buf.WriteString(c.Namespace)
-	}
-	buf.WriteString(name)
-	buf.WriteString(":")
-	buf.WriteString(fmt.Sprintf("%f|g", value))
-	if rate < 1 {
-		buf.WriteString(`|@`)
-		buf.WriteString(strconv.FormatFloat(rate, 'f', -1, 64))
-	}
-
-	writeTagString(&buf, c.Tags, tags)
-
-	return buf.String()
 }
 
 func TestEntityID(t *testing.T) {
