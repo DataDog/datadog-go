@@ -31,10 +31,13 @@ func TestBufferPoolEmpty(t *testing.T) {
 }
 
 func TestBufferReturn(t *testing.T) {
-	bufferPool := newBufferPool(10, 1024, 20)
+	bufferPool := newBufferPool(1, 1024, 20)
 	buffer := bufferPool.borrowBuffer()
+	buffer.writeCount("", nil, "", 1, nil, 1)
 
-	assert.Equal(t, 9, len(bufferPool.pool))
+	assert.Equal(t, 0, len(bufferPool.pool))
 	bufferPool.returnBuffer(buffer)
-	assert.Equal(t, 10, len(bufferPool.pool))
+	assert.Equal(t, 1, len(bufferPool.pool))
+	buffer = bufferPool.borrowBuffer()
+	assert.Equal(t, 0, len(buffer.bytes()))
 }
