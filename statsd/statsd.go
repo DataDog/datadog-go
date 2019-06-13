@@ -24,9 +24,8 @@ statsd is based on go-statsd-client.
 package statsd
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -77,20 +76,18 @@ func (e noClientErr) Error() string {
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
-	// Writer handles the underlying networking protocol
-	writer statsdWriter
+	// Sender handles the underlying networking protocol
+	sender *sender
 	// Namespace to prepend to all statsd calls
 	Namespace string
 	// Tags are global tags to be added to every statsd call
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
 	SkipErrors bool
-	// BufferLength is the length of the buffer in commands.
-	bufferLength int
-	flushTime    time.Duration
-	commands     [][]byte
-	buffer       bytes.Buffer
-	stop         chan struct{}
+	flushTime  time.Duration
+	bufferPool *bufferPool
+	buffer     *statsdBuffer
+	stop       chan struct{}
 	sync.Mutex
 }
 
@@ -117,7 +114,6 @@ func New(addr string, options ...Option) (*Client, error) {
 	c := Client{
 		Namespace: o.Namespace,
 		Tags:      o.Tags,
-		writer:    w,
 	}
 
 	// Inject DD_ENTITY_ID as a constant tag if found
@@ -127,13 +123,12 @@ func New(addr string, options ...Option) (*Client, error) {
 		c.Tags = append(c.Tags, entityTag)
 	}
 
-	if o.Buffered {
-		c.bufferLength = o.MaxMessagesPerPayload
-		c.commands = make([][]byte, 0, o.MaxMessagesPerPayload)
-		c.flushTime = time.Millisecond * 100
-		c.stop = make(chan struct{}, 1)
-		go c.watch()
-	}
+	c.bufferPool = newBufferPool(16, OptimalPayloadSize, o.MaxMessagesPerPayload)
+	c.buffer = c.bufferPool.borrowBuffer()
+	c.sender = newSender(w, 16, c.bufferPool)
+	c.flushTime = time.Millisecond * 100
+	c.stop = make(chan struct{}, 1)
+	go c.watch()
 
 	return &c, nil
 }
@@ -141,7 +136,12 @@ func New(addr string, options ...Option) (*Client, error) {
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser + SetWriteTimeout(time.Duration) error
 func NewWithWriter(w statsdWriter) (*Client, error) {
-	client := &Client{writer: w, SkipErrors: false}
+	//TODO: This is a hack
+	client, err := New("127.0.0.1:8125")
+	if err != nil {
+		return nil, err
+	}
+	client.sender = newSender(w, 16, client.bufferPool)
 
 	// Inject DD_ENTITY_ID as a constant tag if found
 	entityID := os.Getenv(entityIDEnvName)
@@ -167,7 +167,7 @@ func (c *Client) SetWriteTimeout(d time.Duration) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.writer.SetWriteTimeout(d)
+	return c.sender.transport.SetWriteTimeout(d)
 }
 
 func (c *Client) watch() {
@@ -177,76 +177,13 @@ func (c *Client) watch() {
 		select {
 		case <-ticker.C:
 			c.Lock()
-			if len(c.commands) > 0 {
-				// FIXME: eating error here
-				c.flushLocked()
-			}
+			c.flushLocked()
 			c.Unlock()
 		case <-c.stop:
 			ticker.Stop()
 			return
 		}
 	}
-}
-
-func (c *Client) append(cmd []byte) error {
-	c.Lock()
-	defer c.Unlock()
-	c.commands = append(c.commands, cmd)
-	// if we should flush, lets do it
-	if len(c.commands) == c.bufferLength {
-		if err := c.flushLocked(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Client) joinMaxSize(cmds [][]byte, sep string, maxSize int) ([][]byte, []int) {
-	c.buffer.Reset() //clear buffer
-
-	var frames [][]byte
-	var ncmds []int
-	sepBytes := []byte(sep)
-	sepLen := len(sep)
-
-	elem := 0
-	for _, cmd := range cmds {
-		needed := len(cmd)
-
-		if elem != 0 {
-			needed = needed + sepLen
-		}
-
-		if c.buffer.Len()+needed <= maxSize {
-			if elem != 0 {
-				c.buffer.Write(sepBytes)
-			}
-			c.buffer.Write(cmd)
-			elem++
-		} else {
-			frames = append(frames, copyAndResetBuffer(&c.buffer))
-			ncmds = append(ncmds, elem)
-			// if cmd is bigger than maxSize it will get flushed on next loop
-			c.buffer.Write(cmd)
-			elem = 1
-		}
-	}
-
-	//add whatever is left! if there's actually something
-	if c.buffer.Len() > 0 {
-		frames = append(frames, copyAndResetBuffer(&c.buffer))
-		ncmds = append(ncmds, elem)
-	}
-
-	return frames, ncmds
-}
-
-func copyAndResetBuffer(buf *bytes.Buffer) []byte {
-	tmpBuf := make([]byte, buf.Len())
-	copy(tmpBuf, buf.Bytes())
-	buf.Reset()
-	return tmpBuf
 }
 
 // Flush forces a flush of the pending commands in the buffer
@@ -256,55 +193,20 @@ func (c *Client) Flush() error {
 	}
 	c.Lock()
 	defer c.Unlock()
-	return c.flushLocked()
+	c.flushLocked()
+	return nil
 }
 
 // flush the commands in the buffer.  Lock must be held by caller.
-func (c *Client) flushLocked() error {
-	frames, flushable := c.joinMaxSize(c.commands, "\n", OptimalPayloadSize)
-	var err error
-	cmdsFlushed := 0
-	for i, data := range frames {
-		_, e := c.writer.Write(data)
-		if e != nil {
-			err = e
-			break
-		}
-		cmdsFlushed += flushable[i]
+func (c *Client) flushLocked() {
+	if len(c.buffer.bytes()) > 0 {
+		c.sender.send(c.buffer)
+		c.buffer = c.bufferPool.borrowBuffer()
 	}
-
-	// clear the slice with a slice op, doesn't realloc
-	if cmdsFlushed == len(c.commands) {
-		c.commands = c.commands[:0]
-	} else {
-		//this case will cause a future realloc...
-		// drop problematic command though (sorry).
-		c.commands = c.commands[cmdsFlushed+1:]
-	}
-	return err
-}
-
-func (c *Client) sendMsg(msg []byte) error {
-	// return an error if message is bigger than MaxUDPPayloadSize
-	if len(msg) > MaxUDPPayloadSize {
-		return errors.New("message size exceeds MaxUDPPayloadSize")
-	}
-
-	// if this client is buffered, then we'll just append this
-	if c.bufferLength > 0 {
-		return c.append(msg)
-	}
-
-	_, err := c.writer.Write(msg)
-
-	if c.SkipErrors {
-		return nil
-	}
-	return err
 }
 
 func (c *Client) shouldSample(rate float64) bool {
-	if c.shouldSample(rate) {
+	if rate < 1 && rand.Float64() > rate {
 		return true
 	}
 	return false
@@ -318,9 +220,14 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendGauge(buf, c.Namespace, c.Tags, name, value, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeGauge(c.Namespace, c.Tags, name, value, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeGauge(c.Namespace, c.Tags, name, value, tags, rate)
+	}
+	return err
 }
 
 // Count tracks how many times something happened per second.
@@ -331,9 +238,14 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendCount(buf, c.Namespace, c.Tags, name, value, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeCount(c.Namespace, c.Tags, name, value, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeCount(c.Namespace, c.Tags, name, value, tags, rate)
+	}
+	return err
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -344,9 +256,14 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendHistogram(buf, c.Namespace, c.Tags, name, value, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeHistogram(c.Namespace, c.Tags, name, value, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeHistogram(c.Namespace, c.Tags, name, value, tags, rate)
+	}
+	return err
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -357,9 +274,14 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendDistribution(buf, c.Namespace, c.Tags, name, value, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeDistribution(c.Namespace, c.Tags, name, value, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeDistribution(c.Namespace, c.Tags, name, value, tags, rate)
+	}
+	return err
 }
 
 // Decr is just Count of -1
@@ -370,9 +292,14 @@ func (c *Client) Decr(name string, tags []string, rate float64) error {
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendDecrement(buf, c.Namespace, c.Tags, name, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeDecrement(c.Namespace, c.Tags, name, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeDecrement(c.Namespace, c.Tags, name, tags, rate)
+	}
+	return err
 }
 
 // Incr is just Count of 1
@@ -383,9 +310,14 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendIncrement(buf, c.Namespace, c.Tags, name, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeIncrement(c.Namespace, c.Tags, name, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeIncrement(c.Namespace, c.Tags, name, tags, rate)
+	}
+	return err
 }
 
 // Set counts the number of unique elements in a group.
@@ -396,9 +328,14 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendSet(buf, c.Namespace, c.Tags, name, value, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeSet(c.Namespace, c.Tags, name, value, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeSet(c.Namespace, c.Tags, name, value, tags, rate)
+	}
+	return err
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -415,9 +352,14 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c.shouldSample(rate) {
 		return nil
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendTiming(buf, c.Namespace, c.Tags, name, value, tags, rate)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeTiming(c.Namespace, c.Tags, name, value, tags, rate)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeTiming(c.Namespace, c.Tags, name, value, tags, rate)
+	}
+	return err
 }
 
 // Event sends the provided Event.
@@ -425,9 +367,14 @@ func (c *Client) Event(e *Event) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendEvent(buf, *e, c.Tags)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeEvent(*e, c.Tags)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeEvent(*e, c.Tags)
+	}
+	return err
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -441,9 +388,14 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	buf := make([]byte, 0, 200)
-	buf = appendServiceCheck(buf, *sc, c.Tags)
-	return c.sendMsg(buf)
+	c.Lock()
+	defer c.Unlock()
+	err := c.buffer.writeServiceCheck(*sc, c.Tags)
+	if err == errBufferFull {
+		c.flushLocked()
+		return c.buffer.writeServiceCheck(*sc, c.Tags)
+	}
+	return err
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -461,13 +413,8 @@ func (c *Client) Close() error {
 	case c.stop <- struct{}{}:
 	default:
 	}
-
-	// if this client is buffered, flush before closing the writer
-	if c.bufferLength > 0 {
-		if err := c.Flush(); err != nil {
-			return err
-		}
+	if err := c.Flush(); err != nil {
+		return err
 	}
-
-	return c.writer.Close()
+	return c.sender.close()
 }

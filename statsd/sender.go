@@ -35,6 +35,7 @@ func (s *sender) send(buffer *statsdBuffer) {
 	select {
 	case s.queue <- buffer:
 	default:
+		s.pool.returnBuffer(buffer)
 	}
 }
 
@@ -50,7 +51,8 @@ func (s *sender) sendLoop() {
 	}
 }
 
-func (s *sender) close() {
-	s.transport.Close()
+func (s *sender) close() error {
+	err := s.transport.Close()
 	close(s.stop)
+	return err
 }
