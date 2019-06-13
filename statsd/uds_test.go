@@ -55,12 +55,6 @@ type UdsTestSuite struct {
 	options []Option
 }
 
-func TestUdsAsync(t *testing.T) {
-	suite.Run(t, &UdsTestSuite{
-		options: []Option{WithAsyncUDS()},
-	})
-}
-
 func TestUdsBlocking(t *testing.T) {
 	suite.Run(t, &UdsTestSuite{})
 }

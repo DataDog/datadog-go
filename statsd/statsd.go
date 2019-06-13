@@ -122,10 +122,8 @@ func New(addr string, options ...Option) (*Client, error) {
 
 	if !strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err = newUDPWriter(addr)
-	} else if o.AsyncUDS {
-		w, err = newAsyncUdsWriter(addr[len(UnixAddressPrefix)-1:])
 	} else {
-		w, err = newBlockingUdsWriter(addr[len(UnixAddressPrefix)-1:])
+		w, err = newUdsWriter(addr[len(UnixAddressPrefix)-1:])
 	}
 	if err != nil {
 		return nil, err
