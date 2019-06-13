@@ -90,14 +90,6 @@ var (
 	timingSuffix       = []byte("|ms")
 )
 
-// A statsdWriter offers a standard interface regardless of the underlying
-// protocol. For now UDS and UPD writers are available.
-type statsdWriter interface {
-	Write(data []byte) (n int, err error)
-	SetWriteTimeout(time.Duration) error
-	Close() error
-}
-
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
