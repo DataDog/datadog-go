@@ -27,7 +27,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -304,12 +303,19 @@ func (c *Client) sendMsg(msg []byte) error {
 	return err
 }
 
+func (c *Client) shouldSample(rate float64) bool {
+	if c.shouldSample(rate) {
+		return true
+	}
+	return false
+}
+
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -322,7 +328,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -335,7 +341,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -348,7 +354,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -361,7 +367,7 @@ func (c *Client) Decr(name string, tags []string, rate float64) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -374,7 +380,7 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -387,7 +393,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
@@ -406,7 +412,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
-	if rate < 1 && rand.Float64() > rate {
+	if c.shouldSample(rate) {
 		return nil
 	}
 	buf := make([]byte, 0, 200)
