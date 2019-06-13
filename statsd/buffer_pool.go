@@ -32,7 +32,7 @@ func (p *bufferPool) borrowBuffer() *statsdBuffer {
 }
 
 func (p *bufferPool) returnBuffer(buffer *statsdBuffer) {
-	buffer.buffer = buffer.buffer[0:0]
+	buffer.reset()
 	select {
 	case p.pool <- buffer:
 	default:

@@ -25,8 +25,8 @@ func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name st
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendGauge(b.buffer, namespace, globalTags, name, value, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -35,8 +35,8 @@ func (b *statsdBuffer) writeCount(namespace string, globalTags []string, name st
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendCount(b.buffer, namespace, globalTags, name, value, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -45,8 +45,8 @@ func (b *statsdBuffer) writeHistogram(namespace string, globalTags []string, nam
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendHistogram(b.buffer, namespace, globalTags, name, value, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -55,8 +55,8 @@ func (b *statsdBuffer) writeDistribution(namespace string, globalTags []string, 
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendDistribution(b.buffer, namespace, globalTags, name, value, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -65,8 +65,8 @@ func (b *statsdBuffer) writeDecrement(namespace string, globalTags []string, nam
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendDecrement(b.buffer, namespace, globalTags, name, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -75,8 +75,8 @@ func (b *statsdBuffer) writeIncrement(namespace string, globalTags []string, nam
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendIncrement(b.buffer, namespace, globalTags, name, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -85,8 +85,8 @@ func (b *statsdBuffer) writeSet(namespace string, globalTags []string, name stri
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendSet(b.buffer, namespace, globalTags, name, value, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -95,8 +95,8 @@ func (b *statsdBuffer) writeTiming(namespace string, globalTags []string, name s
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendTiming(b.buffer, namespace, globalTags, name, value, tags, rate)
 	return b.validateNewElement(originalBuffer)
 }
@@ -105,8 +105,8 @@ func (b *statsdBuffer) writeEvent(event Event, globalTags []string) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendEvent(b.buffer, event, globalTags)
 	return b.validateNewElement(originalBuffer)
 }
@@ -115,8 +115,8 @@ func (b *statsdBuffer) writeServiceCheck(serviceCheck ServiceCheck, globalTags [
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
-	b.writeSeparator()
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendServiceCheck(b.buffer, serviceCheck, globalTags)
 	return b.validateNewElement(originalBuffer)
 }
@@ -134,6 +134,11 @@ func (b *statsdBuffer) writeSeparator() {
 	if b.elementCount != 0 {
 		b.buffer = appendSeparator(b.buffer)
 	}
+}
+
+func (b *statsdBuffer) reset() {
+	b.buffer = b.buffer[:0]
+	b.elementCount = 0
 }
 
 func (b *statsdBuffer) bytes() []byte {
