@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -75,20 +74,6 @@ const ErrNoClient = noClientErr("statsd client is nil")
 func (e noClientErr) Error() string {
 	return string(e)
 }
-
-/*
-Stat suffixes
-*/
-var (
-	gaugeSuffix        = []byte("|g")
-	countSuffix        = []byte("|c")
-	histogramSuffix    = []byte("|h")
-	distributionSuffix = []byte("|d")
-	decrSuffix         = []byte("-1|c")
-	incrSuffix         = []byte("1|c")
-	setSuffix          = []byte("|s")
-	timingSuffix       = []byte("|ms")
-)
 
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
@@ -176,44 +161,6 @@ func NewWithWriter(w statsdWriter) (*Client, error) {
 // and (optionally) the DD_DOGSTATSD_PORT environment variables to build the target address.
 func NewBuffered(addr string, buflen int) (*Client, error) {
 	return New(addr, Buffered(), WithMaxMessagesPerPayload(buflen))
-}
-
-// format a message from its name, value, tags and rate.  Also adds global
-// namespace and tags.
-func (c *Client) format(name string, value interface{}, suffix []byte, tags []string, rate float64) []byte {
-	// preallocated buffer, stack allocated as long as it doesn't escape
-	buf := make([]byte, 0, 200)
-
-	if c.Namespace != "" {
-		buf = append(buf, c.Namespace...)
-	}
-	buf = append(buf, name...)
-	buf = append(buf, ':')
-
-	switch val := value.(type) {
-	case float64:
-		buf = strconv.AppendFloat(buf, val, 'f', 6, 64)
-
-	case int64:
-		buf = strconv.AppendInt(buf, val, 10)
-
-	case string:
-		buf = append(buf, val...)
-
-	default:
-		// do nothing
-	}
-	buf = append(buf, suffix...)
-
-	if rate < 1 {
-		buf = append(buf, "|@"...)
-		buf = strconv.AppendFloat(buf, rate, 'f', -1, 64)
-	}
-
-	buf = appendTags(buf, c.Tags, tags)
-
-	// non-zeroing copy to avoid referencing a larger than necessary underlying array
-	return append([]byte(nil), buf...)
 }
 
 // SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP.
@@ -357,51 +304,95 @@ func (c *Client) sendMsg(msg []byte) error {
 	return err
 }
 
-// send handles sampling and sends the message over UDP. It also adds global namespace prefixes and tags.
-func (c *Client) send(name string, value interface{}, suffix []byte, tags []string, rate float64) error {
+// Gauge measures the value of a metric at a particular time.
+func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
 	if c == nil {
 		return ErrNoClient
 	}
 	if rate < 1 && rand.Float64() > rate {
 		return nil
 	}
-	data := c.format(name, value, suffix, tags, rate)
-	return c.sendMsg(data)
-}
-
-// Gauge measures the value of a metric at a particular time.
-func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
-	return c.send(name, value, gaugeSuffix, tags, rate)
+	buf := make([]byte, 0, 200)
+	buf = appendGauge(buf, c.Namespace, c.Tags, name, value, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
-	return c.send(name, value, countSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendCount(buf, c.Namespace, c.Tags, name, value, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
-	return c.send(name, value, histogramSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendHistogram(buf, c.Namespace, c.Tags, name, value, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
 func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
-	return c.send(name, value, distributionSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendDistribution(buf, c.Namespace, c.Tags, name, value, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Decr is just Count of -1
 func (c *Client) Decr(name string, tags []string, rate float64) error {
-	return c.send(name, nil, decrSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendDecrement(buf, c.Namespace, c.Tags, name, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Incr is just Count of 1
 func (c *Client) Incr(name string, tags []string, rate float64) error {
-	return c.send(name, nil, incrSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendIncrement(buf, c.Namespace, c.Tags, name, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
-	return c.send(name, value, setSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendSet(buf, c.Namespace, c.Tags, name, value, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -412,7 +403,15 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
-	return c.send(name, value, timingSuffix, tags, rate)
+	if c == nil {
+		return ErrNoClient
+	}
+	if rate < 1 && rand.Float64() > rate {
+		return nil
+	}
+	buf := make([]byte, 0, 200)
+	buf = appendTiming(buf, c.Namespace, c.Tags, name, value, tags, rate)
+	return c.sendMsg(buf)
 }
 
 // Event sends the provided Event.
@@ -420,11 +419,9 @@ func (c *Client) Event(e *Event) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	stat, err := e.Encode(c.Tags...)
-	if err != nil {
-		return err
-	}
-	return c.sendMsg([]byte(stat))
+	buf := make([]byte, 0, 200)
+	buf = appendEvent(buf, *e, c.Tags)
+	return c.sendMsg(buf)
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -438,11 +435,9 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	stat, err := sc.Encode(c.Tags...)
-	if err != nil {
-		return err
-	}
-	return c.sendMsg([]byte(stat))
+	buf := make([]byte, 0, 200)
+	buf = appendServiceCheck(buf, *sc, c.Tags)
+	return c.sendMsg(buf)
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
