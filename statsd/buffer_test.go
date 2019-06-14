@@ -10,7 +10,7 @@ func TestBufferGauge(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, `namespace.metric:1.000000|g|#tag:tag`, string(buffer.bytes()))
+	assert.Equal(t, `namespace.metric:1|g|#tag:tag`, string(buffer.bytes()))
 }
 
 func TestBufferCount(t *testing.T) {
@@ -24,14 +24,14 @@ func TestBufferHistogram(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, `namespace.metric:1.000000|h|#tag:tag`, string(buffer.bytes()))
+	assert.Equal(t, `namespace.metric:1|h|#tag:tag`, string(buffer.bytes()))
 }
 
 func TestBufferDistribution(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, `namespace.metric:1.000000|d|#tag:tag`, string(buffer.bytes()))
+	assert.Equal(t, `namespace.metric:1|d|#tag:tag`, string(buffer.bytes()))
 }
 
 func TestBufferDecrement(t *testing.T) {
@@ -85,10 +85,10 @@ func TestBufferFullItems(t *testing.T) {
 }
 
 func TestBufferFullSize(t *testing.T) {
-	buffer := newStatsdBuffer(36, 10)
+	buffer := newStatsdBuffer(29, 10)
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
-	assert.Len(t, buffer.bytes(), 36)
+	assert.Len(t, buffer.bytes(), 29)
 	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Equal(t, errBufferFull, err)
 }
@@ -98,5 +98,5 @@ func TestBufferSeparator(t *testing.T) {
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
-	assert.Equal(t, "namespace.metric:1.000000|g|#tag:tag\nnamespace.metric:1.000000|g|#tag:tag", string(buffer.bytes()))
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag\nnamespace.metric:1|g|#tag:tag", string(buffer.bytes()))
 }

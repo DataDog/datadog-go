@@ -69,9 +69,9 @@ func appendTags(buffer []byte, globalTags []string, tags []string) []byte {
 	return buffer
 }
 
-func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
+func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64, percision int) []byte {
 	buffer = appendHeader(buffer, namespace, name)
-	buffer = strconv.AppendFloat(buffer, value, 'f', 6, 64)
+	buffer = strconv.AppendFloat(buffer, value, 'f', percision, 64)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
 	buffer = appendRate(buffer, rate)
@@ -100,7 +100,7 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 }
 
 func appendGauge(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, gaugeSymbol, namespace, globalTags, name, value, tags, rate)
+	return appendFloatMetric(buffer, gaugeSymbol, namespace, globalTags, name, value, tags, rate, -1)
 }
 
 func appendCount(buffer []byte, namespace string, globalTags []string, name string, value int64, tags []string, rate float64) []byte {
@@ -108,11 +108,11 @@ func appendCount(buffer []byte, namespace string, globalTags []string, name stri
 }
 
 func appendHistogram(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, histogramSymbol, namespace, globalTags, name, value, tags, rate)
+	return appendFloatMetric(buffer, histogramSymbol, namespace, globalTags, name, value, tags, rate, -1)
 }
 
 func appendDistribution(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, distributionSymbol, namespace, globalTags, name, value, tags, rate)
+	return appendFloatMetric(buffer, distributionSymbol, namespace, globalTags, name, value, tags, rate, -1)
 }
 
 func appendDecrement(buffer []byte, namespace string, globalTags []string, name string, tags []string, rate float64) []byte {
@@ -128,7 +128,7 @@ func appendSet(buffer []byte, namespace string, globalTags []string, name string
 }
 
 func appendTiming(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, timingSymbol, namespace, globalTags, name, value, tags, rate)
+	return appendFloatMetric(buffer, timingSymbol, namespace, globalTags, name, value, tags, rate, 6)
 }
 
 func escapedEventTextLen(text string) int {
