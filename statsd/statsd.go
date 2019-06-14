@@ -186,7 +186,9 @@ func (c *Client) watch() {
 	}
 }
 
-// Flush forces a flush of the pending commands in the buffer
+// Flush forces a flush of all the queued dogstatsd payloads
+// This method is blocking and will not return untill everything is sent
+// trough the network
 func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
@@ -194,10 +196,12 @@ func (c *Client) Flush() error {
 	c.Lock()
 	defer c.Unlock()
 	c.flushLocked()
+	c.sender.flush()
 	return nil
 }
 
-// flush the commands in the buffer.  Lock must be held by caller.
+// flush the current buffer. Lock must be held by caller.
+// flushed buffer is sent as
 func (c *Client) flushLocked() {
 	if len(c.buffer.bytes()) > 0 {
 		c.sender.send(c.buffer)

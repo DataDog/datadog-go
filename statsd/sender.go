@@ -51,7 +51,20 @@ func (s *sender) sendLoop() {
 	}
 }
 
+func (s *sender) flush() {
+	for {
+		select {
+		case buffer := <-s.queue:
+			s.transport.Write(buffer.bytes())
+			s.pool.returnBuffer(buffer)
+		default:
+			return
+		}
+	}
+}
+
 func (s *sender) close() error {
+	s.flush()
 	err := s.transport.Close()
 	close(s.stop)
 	return err

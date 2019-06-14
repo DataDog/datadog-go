@@ -125,7 +125,7 @@ func (suite *UdsTestSuite) TestClientUDSConcurrent() {
 	server := newTestUnixgramServer(suite.T())
 	defer server.Cleanup()
 
-	client, err := New(server.AddrString())
+	client, err := New(server.AddrString(), WithMaxMessagesPerPayload(1))
 	if err != nil {
 		suite.T().Fatal(err)
 	}
@@ -144,7 +144,7 @@ func (suite *UdsTestSuite) TestClientUDSConcurrent() {
 	var msgs []string
 	for {
 		bytes := make([]byte, 1024)
-		server.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		server.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
 		n, err := server.Read(bytes)
 		if err, ok := err.(net.Error); ok && err.Timeout() {
 			break
