@@ -31,18 +31,6 @@ func TestFormatAppendDistribution(t *testing.T) {
 	assert.Equal(t, `namespace.distribution:4|d|#global:tag,tag:tag`, string(buffer))
 }
 
-func TestFormatAppendDecrement(t *testing.T) {
-	var buffer []byte
-	buffer = appendDecrement(buffer, "namespace.", []string{"global:tag"}, "decrement", []string{"tag:tag"}, 1)
-	assert.Equal(t, `namespace.decrement:-1|c|#global:tag,tag:tag`, string(buffer))
-}
-
-func TestFormatAppendIncrement(t *testing.T) {
-	var buffer []byte
-	buffer = appendIncrement(buffer, "namespace.", []string{"global:tag"}, "increment", []string{"tag:tag"}, 1)
-	assert.Equal(t, `namespace.increment:1|c|#global:tag,tag:tag`, string(buffer))
-}
-
 func TestFormatAppendSet(t *testing.T) {
 	var buffer []byte
 	buffer = appendSet(buffer, "namespace.", []string{"global:tag"}, "set", "five", []string{"tag:tag"}, 1)

@@ -39,8 +39,6 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 		payloadSink = appendCount(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
 		payloadSink = appendHistogram(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
 		payloadSink = appendDistribution(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
-		payloadSink = appendDecrement(payloadSink[:0], "namespace", []string{}, "metric", tags, 0.1)
-		payloadSink = appendIncrement(payloadSink[:0], "namespace", []string{}, "metric", tags, 0.1)
 		payloadSink = appendSet(payloadSink[:0], "namespace", []string{}, "metric", "setelement", tags, 0.1)
 		payloadSink = appendTiming(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
 		payloadSink = appendEvent(payloadSink[:0], event, []string{})

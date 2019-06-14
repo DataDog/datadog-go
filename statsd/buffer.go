@@ -61,26 +61,6 @@ func (b *statsdBuffer) writeDistribution(namespace string, globalTags []string, 
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeDecrement(namespace string, globalTags []string, name string, tags []string, rate float64) error {
-	if b.elementCount >= b.maxElements {
-		return errBufferFull
-	}
-	originalBuffer := b.buffer
-	b.writeSeparator()
-	b.buffer = appendDecrement(b.buffer, namespace, globalTags, name, tags, rate)
-	return b.validateNewElement(originalBuffer)
-}
-
-func (b *statsdBuffer) writeIncrement(namespace string, globalTags []string, name string, tags []string, rate float64) error {
-	if b.elementCount >= b.maxElements {
-		return errBufferFull
-	}
-	originalBuffer := b.buffer
-	b.writeSeparator()
-	b.buffer = appendIncrement(b.buffer, namespace, globalTags, name, tags, rate)
-	return b.validateNewElement(originalBuffer)
-}
-
 func (b *statsdBuffer) writeSet(namespace string, globalTags []string, name string, value string, tags []string, rate float64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull

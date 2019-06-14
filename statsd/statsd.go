@@ -290,38 +290,12 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 
 // Decr is just Count of -1
 func (c *Client) Decr(name string, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	defer c.Unlock()
-	err := c.buffer.writeDecrement(c.Namespace, c.Tags, name, tags, rate)
-	if err == errBufferFull {
-		c.flushLocked()
-		return c.buffer.writeDecrement(c.Namespace, c.Tags, name, tags, rate)
-	}
-	return err
+	return c.Count(name, -1, tags, rate)
 }
 
 // Incr is just Count of 1
 func (c *Client) Incr(name string, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	defer c.Unlock()
-	err := c.buffer.writeIncrement(c.Namespace, c.Tags, name, tags, rate)
-	if err == errBufferFull {
-		c.flushLocked()
-		return c.buffer.writeIncrement(c.Namespace, c.Tags, name, tags, rate)
-	}
-	return err
+	return c.Count(name, 1, tags, rate)
 }
 
 // Set counts the number of unique elements in a group.

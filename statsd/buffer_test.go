@@ -33,21 +33,6 @@ func TestBufferDistribution(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, `namespace.metric:1|d|#tag:tag`, string(buffer.bytes()))
 }
-
-func TestBufferDecrement(t *testing.T) {
-	buffer := newStatsdBuffer(1024, 1)
-	err := buffer.writeDecrement("namespace.", []string{"tag:tag"}, "metric", []string{}, 1)
-	assert.Nil(t, err)
-	assert.Equal(t, `namespace.metric:-1|c|#tag:tag`, string(buffer.bytes()))
-}
-
-func TestBufferIncrement(t *testing.T) {
-	buffer := newStatsdBuffer(1024, 1)
-	err := buffer.writeIncrement("namespace.", []string{"tag:tag"}, "metric", []string{}, 1)
-	assert.Nil(t, err)
-	assert.Equal(t, `namespace.metric:1|c|#tag:tag`, string(buffer.bytes()))
-}
-
 func TestBufferSet(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1)

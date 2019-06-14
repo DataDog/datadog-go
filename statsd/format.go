@@ -115,14 +115,6 @@ func appendDistribution(buffer []byte, namespace string, globalTags []string, na
 	return appendFloatMetric(buffer, distributionSymbol, namespace, globalTags, name, value, tags, rate, -1)
 }
 
-func appendDecrement(buffer []byte, namespace string, globalTags []string, name string, tags []string, rate float64) []byte {
-	return appendIntegerMetric(buffer, countSymbol, namespace, globalTags, name, -1, tags, rate)
-}
-
-func appendIncrement(buffer []byte, namespace string, globalTags []string, name string, tags []string, rate float64) []byte {
-	return appendIntegerMetric(buffer, countSymbol, namespace, globalTags, name, 1, tags, rate)
-}
-
 func appendSet(buffer []byte, namespace string, globalTags []string, name string, value string, tags []string, rate float64) []byte {
 	return appendStringMetric(buffer, setSymbol, namespace, globalTags, name, value, tags, rate)
 }
