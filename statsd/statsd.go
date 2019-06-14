@@ -94,12 +94,8 @@ type Client struct {
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
 // "unix:///path/to/socket".
 func New(addr string, options ...Option) (*Client, error) {
-	o, err := resolveOptions(options)
-	if err != nil {
-		return nil, err
-	}
-
 	var w statsdWriter
+	var err error
 
 	if !strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err = newUDPWriter(addr)
@@ -109,6 +105,17 @@ func New(addr string, options ...Option) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	return NewWithWriter(w, options...)
+}
+
+// NewWithWriter creates a new Client with given writer. Writer is a
+// io.WriteCloser + SetWriteTimeout(time.Duration) error
+func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
+	o, err := resolveOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
 	w.SetWriteTimeout(o.WriteTimeoutUDS)
 
 	c := Client{
@@ -131,26 +138,6 @@ func New(addr string, options ...Option) (*Client, error) {
 	go c.watch()
 
 	return &c, nil
-}
-
-// NewWithWriter creates a new Client with given writer. Writer is a
-// io.WriteCloser + SetWriteTimeout(time.Duration) error
-func NewWithWriter(w statsdWriter) (*Client, error) {
-	//TODO: This is a hack
-	client, err := New("127.0.0.1:8125")
-	if err != nil {
-		return nil, err
-	}
-	client.sender = newSender(w, 16, client.bufferPool)
-
-	// Inject DD_ENTITY_ID as a constant tag if found
-	entityID := os.Getenv(entityIDEnvName)
-	if entityID != "" {
-		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
-		client.Tags = append(client.Tags, entityTag)
-	}
-
-	return client, nil
 }
 
 // NewBuffered returns a Client that buffers its output and sends it in chunks.
