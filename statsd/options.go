@@ -9,6 +9,8 @@ var (
 	DefaultTags = []string{}
 	// DefaultBuffered is the default value for the Buffered option
 	DefaultBuffered = false
+	// DefaultMaxBytePerPayload is the default value for the MaxBytePerPayload option
+	DefaultMaxBytePerPayload = 0
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
 	DefaultMaxMessagesPerPayload = 16
 	// DefaultAsyncUDS is the default value for the AsyncUDS option
@@ -27,6 +29,11 @@ type Options struct {
 	// until the total size of the payload exceeds MaxMessagesPerPayload metrics, events and/or service
 	// checks or after 100ms since the payload startedto be built.
 	Buffered bool
+	// MaxMessagesPerPayload is the maximum number of bytes a single payload will contain.
+	// The magic value 0 will set the option to the optimal size for the transport
+	// protocol used when creating the client: 1432 for UDP and 8192 for UDS.
+	// Note that this option only takes effect when the client is buffered.
+	MaxBytePerPayload int
 	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
 	// Note that this option only takes effect when the client is buffered.
 	MaxMessagesPerPayload int
@@ -42,6 +49,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		Namespace:             DefaultNamespace,
 		Tags:                  DefaultTags,
 		Buffered:              DefaultBuffered,
+		MaxBytePerPayload:     DefaultMaxBytePerPayload,
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
 		AsyncUDS:              DefaultAsyncUDS,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
@@ -88,6 +96,14 @@ func Buffered() Option {
 func WithMaxMessagesPerPayload(maxMessagesPerPayload int) Option {
 	return func(o *Options) error {
 		o.MaxMessagesPerPayload = maxMessagesPerPayload
+		return nil
+	}
+}
+
+// WithMaxBytePerPayload sets the MaxBytePerPayload option.
+func WithMaxBytePerPayload(maxBytePerPayload int) Option {
+	return func(o *Options) error {
+		o.MaxBytePerPayload = maxBytePerPayload
 		return nil
 	}
 }

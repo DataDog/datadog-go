@@ -33,15 +33,12 @@ import (
 )
 
 /*
-OptimalPayloadSize defines the optimal payload size for a UDP datagram, 1432 bytes
+OptimalUDPPayloadSize defines the optimal payload size for a UDP datagram, 1432 bytes
 is optimal for regular networks with an MTU of 1500 so datagrams don't get
 fragmented. It's generally recommended not to fragment UDP datagrams as losing
 a single fragment will cause the entire datagram to be lost.
-
-This can be increased if your network has a greater MTU or you don't mind UDP
-datagrams getting fragmented. The practical limit is MaxUDPPayloadSize
 */
-const OptimalPayloadSize = 1432
+const OptimalUDPPayloadSize = 1432
 
 /*
 MaxUDPPayloadSize defines the maximum payload size for a UDP datagram.
@@ -50,6 +47,13 @@ Its value comes from the calculation: 65535 bytes Max UDP datagram size -
 any number greater than that will see frames being cut out.
 */
 const MaxUDPPayloadSize = 65467
+
+/*
+DefaultMaxAgentPayloadSize is the default maximum payload size the agent
+can receive. This can be adjusted by changing dogstatsd_buffer_size in the
+agent configuration file datadog.yaml.
+*/
+const DefaultMaxAgentPayloadSize = 8192
 
 /*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
@@ -95,17 +99,26 @@ type Client struct {
 // "unix:///path/to/socket".
 func New(addr string, options ...Option) (*Client, error) {
 	var w statsdWriter
-	var err error
+	o, err := resolveOptions(options)
+	if err != nil {
+		return nil, err
+	}
 
+	optimalPayloadSize := OptimalUDPPayloadSize
 	if !strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err = newUDPWriter(addr)
 	} else {
+		optimalPayloadSize = DefaultMaxAgentPayloadSize
 		w, err = newUdsWriter(addr[len(UnixAddressPrefix)-1:])
 	}
 	if err != nil {
 		return nil, err
 	}
-	return NewWithWriter(w, options...)
+
+	if o.MaxBytePerPayload == 0 {
+		o.MaxBytePerPayload = optimalPayloadSize
+	}
+	return newWithWriter(w, o)
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
@@ -115,6 +128,10 @@ func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	return newWithWriter(w, o)
+}
+
+func newWithWriter(w statsdWriter, o *Options) (*Client, error) {
 
 	w.SetWriteTimeout(o.WriteTimeoutUDS)
 
@@ -130,7 +147,11 @@ func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
 		c.Tags = append(c.Tags, entityTag)
 	}
 
-	c.bufferPool = newBufferPool(16, OptimalPayloadSize, o.MaxMessagesPerPayload)
+	if o.MaxBytePerPayload == 0 {
+		o.MaxBytePerPayload = OptimalUDPPayloadSize
+	}
+
+	c.bufferPool = newBufferPool(16, o.MaxBytePerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
 	c.sender = newSender(w, 16, c.bufferPool)
 	c.flushTime = time.Millisecond * 100
