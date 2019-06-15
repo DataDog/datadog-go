@@ -1,6 +1,9 @@
 package statsd
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 var (
 	// DefaultNamespace is the default value for the Namespace option
@@ -12,13 +15,13 @@ var (
 	// DefaultMaxBytePerPayload is the default value for the MaxBytePerPayload option
 	DefaultMaxBytePerPayload = 0
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
-	DefaultMaxMessagesPerPayload = 16
+	DefaultMaxMessagesPerPayload = math.MaxInt32
 	// DefaultBufferPoolSize is the default value for the DefaultBufferPoolSize option
-	DefaultBufferPoolSize = 16
+	DefaultBufferPoolSize = 2048
 	// DefaultBufferFlushInterval is the default value for the BufferFlushInterval option
 	DefaultBufferFlushInterval = 100 * time.Millisecond
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
-	DefaultSenderQueueSize = 16
+	DefaultSenderQueueSize = 2048
 	// DefaultAsyncUDS is the default value for the AsyncUDS option
 	DefaultAsyncUDS = false
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
