@@ -15,6 +15,8 @@ var (
 	DefaultMaxMessagesPerPayload = 16
 	// DefaultBufferPoolSize is the default value for the DefaultBufferPoolSize option
 	DefaultBufferPoolSize = 16
+	// DefaultBufferFlushInterval is the default value for the BufferFlushInterval option
+	DefaultBufferFlushInterval = 100 * time.Millisecond
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
 	DefaultSenderQueueSize = 16
 	// DefaultAsyncUDS is the default value for the AsyncUDS option
@@ -43,6 +45,8 @@ type Options struct {
 	MaxMessagesPerPayload int
 	// BufferPoolSize is the size of the pool of buffers in number of buffers.
 	BufferPoolSize int
+	// BufferFlushInterval is the interval after which the current buffer will get flushed.
+	BufferFlushInterval time.Duration
 	// SenderQueueSize is the size of the sender queue in number of buffers.
 	SenderQueueSize int
 	// AsyncUDS allows to switch between async and blocking mode for UDS.
@@ -60,6 +64,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		MaxBytePerPayload:     DefaultMaxBytePerPayload,
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
 		BufferPoolSize:        DefaultBufferPoolSize,
+		BufferFlushInterval:   DefaultBufferFlushInterval,
 		SenderQueueSize:       DefaultSenderQueueSize,
 		AsyncUDS:              DefaultAsyncUDS,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
@@ -122,6 +127,14 @@ func WithMaxBytePerPayload(maxBytePerPayload int) Option {
 func WithBufferPoolSize(bufferPoolSize int) Option {
 	return func(o *Options) error {
 		o.BufferPoolSize = bufferPoolSize
+		return nil
+	}
+}
+
+// WithBufferFlushInterval sets the BufferFlushInterval option.
+func WithBufferFlushInterval(bufferFlushInterval time.Duration) Option {
+	return func(o *Options) error {
+		o.BufferFlushInterval = bufferFlushInterval
 		return nil
 	}
 }

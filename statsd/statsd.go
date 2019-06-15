@@ -154,7 +154,7 @@ func newWithWriter(w statsdWriter, o *Options) (*Client, error) {
 	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytePerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
 	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
-	c.flushTime = time.Millisecond * 100
+	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
 	go c.watch()
 
