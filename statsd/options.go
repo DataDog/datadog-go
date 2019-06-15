@@ -13,6 +13,10 @@ var (
 	DefaultMaxBytePerPayload = 0
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
 	DefaultMaxMessagesPerPayload = 16
+	// DefaultBufferPoolSize is the default value for the DefaultBufferPoolSize option
+	DefaultBufferPoolSize = 16
+	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
+	DefaultSenderQueueSize = 16
 	// DefaultAsyncUDS is the default value for the AsyncUDS option
 	DefaultAsyncUDS = false
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
@@ -37,6 +41,10 @@ type Options struct {
 	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
 	// Note that this option only takes effect when the client is buffered.
 	MaxMessagesPerPayload int
+	// BufferPoolSize is the size of the pool of buffers in number of buffers.
+	BufferPoolSize int
+	// SenderQueueSize is the size of the sender queue in number of buffers.
+	SenderQueueSize int
 	// AsyncUDS allows to switch between async and blocking mode for UDS.
 	// Blocking mode allows for error checking but does not guarentee that calls won't block the execution.
 	AsyncUDS bool
@@ -51,6 +59,8 @@ func resolveOptions(options []Option) (*Options, error) {
 		Buffered:              DefaultBuffered,
 		MaxBytePerPayload:     DefaultMaxBytePerPayload,
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
+		BufferPoolSize:        DefaultBufferPoolSize,
+		SenderQueueSize:       DefaultSenderQueueSize,
 		AsyncUDS:              DefaultAsyncUDS,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
 	}
@@ -104,6 +114,22 @@ func WithMaxMessagesPerPayload(maxMessagesPerPayload int) Option {
 func WithMaxBytePerPayload(maxBytePerPayload int) Option {
 	return func(o *Options) error {
 		o.MaxBytePerPayload = maxBytePerPayload
+		return nil
+	}
+}
+
+// WithBufferPoolSize sets the BufferPoolSize option.
+func WithBufferPoolSize(bufferPoolSize int) Option {
+	return func(o *Options) error {
+		o.BufferPoolSize = bufferPoolSize
+		return nil
+	}
+}
+
+// WithSenderQueueSize sets the SenderQueueSize option.
+func WithSenderQueueSize(senderQueueSize int) Option {
+	return func(o *Options) error {
+		o.SenderQueueSize = senderQueueSize
 		return nil
 	}
 }

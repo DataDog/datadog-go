@@ -151,9 +151,9 @@ func newWithWriter(w statsdWriter, o *Options) (*Client, error) {
 		o.MaxBytePerPayload = OptimalUDPPayloadSize
 	}
 
-	c.bufferPool = newBufferPool(16, o.MaxBytePerPayload, o.MaxMessagesPerPayload)
+	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytePerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
-	c.sender = newSender(w, 16, c.bufferPool)
+	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
 	c.flushTime = time.Millisecond * 100
 	c.stop = make(chan struct{}, 1)
 	go c.watch()
