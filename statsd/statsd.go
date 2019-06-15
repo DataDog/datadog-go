@@ -194,6 +194,11 @@ func (c *Client) watch() {
 	}
 }
 
+// GetSenderMetrics returns the metrics of the sender
+func (c *Client) GetSenderMetrics() SenderMetrics {
+	return c.sender.getMetrics()
+}
+
 // Flush forces a flush of all the queued dogstatsd payloads
 // This method is blocking and will not return untill everything is sent
 // trough the network
