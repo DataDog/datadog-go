@@ -28,13 +28,15 @@ func (w *mockedWriter) Close() error {
 func TestSender(t *testing.T) {
 	writer := new(mockedWriter)
 	writer.On("Write", mock.Anything).Return(0, nil)
+	writer.On("Close").Return(nil)
 	pool := newBufferPool(10, 1024, 1)
 	sender := newSender(writer, 10, pool)
 	buffer := pool.borrowBuffer()
 
 	sender.send(buffer)
 
-	time.Sleep(1 * time.Second)
+	err := sender.close()
+	assert.Nil(t, err)
 	writer.AssertCalled(t, "Write", buffer.bytes())
 	assert.Equal(t, 10, len(pool.pool))
 }
