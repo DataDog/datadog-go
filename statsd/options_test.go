@@ -24,13 +24,11 @@ func TestDefaultOptions(t *testing.T) {
 func TestOptions(t *testing.T) {
 	testNamespace := "datadog."
 	testTags := []string{"rocks"}
-	testBuffered := true
 	testMaxBytePerPayload := 2048
 	testMaxMessagePerPayload := 1024
 	testBufferPoolSize := 32
 	testBufferFlushInterval := 48 * time.Second
 	testSenderQueueSize := 64
-	testAsyncUDS := true
 	testWriteTimeoutUDS := 1 * time.Minute
 
 	options, err := resolveOptions([]Option{
