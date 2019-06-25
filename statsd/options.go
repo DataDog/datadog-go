@@ -34,10 +34,6 @@ type Options struct {
 	Namespace string
 	// Tags are global tags to be applied to every metrics, events and service checks.
 	Tags []string
-	// Buffered allows to pack multiple DogStatsD messages in one payload. Messages will be buffered
-	// until the total size of the payload exceeds MaxMessagesPerPayload metrics, events and/or service
-	// checks or after 100ms since the payload startedto be built.
-	Buffered bool
 	// MaxMessagesPerPayload is the maximum number of bytes a single payload will contain.
 	// The magic value 0 will set the option to the optimal size for the transport
 	// protocol used when creating the client: 1432 for UDP and 8192 for UDS.
@@ -52,9 +48,6 @@ type Options struct {
 	BufferFlushInterval time.Duration
 	// SenderQueueSize is the size of the sender queue in number of buffers.
 	SenderQueueSize int
-	// AsyncUDS allows to switch between async and blocking mode for UDS.
-	// Blocking mode allows for error checking but does not guarentee that calls won't block the execution.
-	AsyncUDS bool
 	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
 	WriteTimeoutUDS time.Duration
 }
@@ -63,13 +56,11 @@ func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
 		Namespace:             DefaultNamespace,
 		Tags:                  DefaultTags,
-		Buffered:              DefaultBuffered,
 		MaxBytePerPayload:     DefaultMaxBytePerPayload,
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
 		BufferPoolSize:        DefaultBufferPoolSize,
 		BufferFlushInterval:   DefaultBufferFlushInterval,
 		SenderQueueSize:       DefaultSenderQueueSize,
-		AsyncUDS:              DefaultAsyncUDS,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
 	}
 
@@ -98,14 +89,6 @@ func WithNamespace(namespace string) Option {
 func WithTags(tags []string) Option {
 	return func(o *Options) error {
 		o.Tags = tags
-		return nil
-	}
-}
-
-// Buffered sets the Buffered option.
-func Buffered() Option {
-	return func(o *Options) error {
-		o.Buffered = true
 		return nil
 	}
 }
@@ -146,14 +129,6 @@ func WithBufferFlushInterval(bufferFlushInterval time.Duration) Option {
 func WithSenderQueueSize(senderQueueSize int) Option {
 	return func(o *Options) error {
 		o.SenderQueueSize = senderQueueSize
-		return nil
-	}
-}
-
-// WithAsyncUDS sets the AsyncUDS option.
-func WithAsyncUDS() Option {
-	return func(o *Options) error {
-		o.AsyncUDS = true
 		return nil
 	}
 }

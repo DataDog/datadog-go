@@ -13,13 +13,11 @@ func TestDefaultOptions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, options.Namespace, DefaultNamespace)
 	assert.Equal(t, options.Tags, DefaultTags)
-	assert.Equal(t, options.Buffered, DefaultBuffered)
 	assert.Equal(t, options.MaxBytePerPayload, DefaultMaxBytePerPayload)
 	assert.Equal(t, options.MaxMessagesPerPayload, DefaultMaxMessagesPerPayload)
 	assert.Equal(t, options.BufferPoolSize, DefaultBufferPoolSize)
 	assert.Equal(t, options.BufferFlushInterval, DefaultBufferFlushInterval)
 	assert.Equal(t, options.SenderQueueSize, DefaultSenderQueueSize)
-	assert.Equal(t, options.AsyncUDS, DefaultAsyncUDS)
 	assert.Equal(t, options.WriteTimeoutUDS, DefaultWriteTimeoutUDS)
 }
 
@@ -38,25 +36,21 @@ func TestOptions(t *testing.T) {
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
 		WithTags(testTags),
-		Buffered(),
 		WithMaxBytePerPayload(testMaxBytePerPayload),
 		WithMaxMessagesPerPayload(testMaxMessagePerPayload),
 		WithBufferPoolSize(testBufferPoolSize),
 		WithBufferFlushInterval(testBufferFlushInterval),
 		WithSenderQueueSize(testSenderQueueSize),
-		WithAsyncUDS(),
 		WithWriteTimeoutUDS(testWriteTimeoutUDS),
 	})
 
 	assert.NoError(t, err)
 	assert.Equal(t, options.Namespace, testNamespace)
 	assert.Equal(t, options.Tags, testTags)
-	assert.Equal(t, options.Buffered, testBuffered)
 	assert.Equal(t, options.MaxBytePerPayload, testMaxBytePerPayload)
 	assert.Equal(t, options.MaxMessagesPerPayload, testMaxMessagePerPayload)
 	assert.Equal(t, options.BufferPoolSize, testBufferPoolSize)
 	assert.Equal(t, options.BufferFlushInterval, testBufferFlushInterval)
 	assert.Equal(t, options.SenderQueueSize, testSenderQueueSize)
-	assert.Equal(t, options.AsyncUDS, testAsyncUDS)
 	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
 }

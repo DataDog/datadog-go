@@ -167,7 +167,7 @@ func newWithWriter(w statsdWriter, o *Options) (*Client, error) {
 // When addr is empty, the client will default to a UDP client and use the DD_AGENT_HOST
 // and (optionally) the DD_DOGSTATSD_PORT environment variables to build the target address.
 func NewBuffered(addr string, buflen int) (*Client, error) {
-	return New(addr, Buffered(), WithMaxMessagesPerPayload(buflen))
+	return New(addr, WithMaxMessagesPerPayload(buflen))
 }
 
 // SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP.
