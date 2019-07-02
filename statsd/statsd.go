@@ -56,6 +56,17 @@ agent configuration file datadog.yaml.
 const DefaultMaxAgentPayloadSize = 8192
 
 /*
+TelemetryInterval is the interval at which telemetry will be sent by the client.
+*/
+const TelemetryInterval = 10 * time.Second
+
+/*
+telemetryTags is the list of tags that will be attached to all telemetry
+metrics.
+*/
+var telemetryTags = []string{"client:go"}
+
+/*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
 traffic instead of UDP.
 */
@@ -157,6 +168,7 @@ func newWithWriter(w statsdWriter, o *Options) (*Client, error) {
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
 	go c.watch()
+	go c.telemetry()
 
 	return &c, nil
 }
@@ -187,6 +199,27 @@ func (c *Client) watch() {
 			c.Lock()
 			c.flushLocked()
 			c.Unlock()
+		case <-c.stop:
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+func (c *Client) telemetry() {
+	ticker := time.NewTicker(TelemetryInterval)
+	for {
+		select {
+		case <-ticker.C:
+			metrics := c.sender.getMetrics()
+			c.Count("datadog.dogstatsd.client.packets", int64(metrics.TotalSentPayloads), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.bytes", int64(metrics.TotalSentBytes), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.bytes_dropped_queue", int64(metrics.TotalDroppedBytesQueueFull), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.packets_dropped_writer", int64(metrics.TotalDroppedPayloadsWriter), telemetryTags, 1)
+			c.Count("datadog.dogstatsd.client.bytes_dropped_writer", int64(metrics.TotalDroppedBytesWriter), telemetryTags, 1)
 		case <-c.stop:
 			ticker.Stop()
 			return
