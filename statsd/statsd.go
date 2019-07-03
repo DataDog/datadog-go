@@ -211,7 +211,7 @@ func (c *Client) telemetry() {
 	for {
 		select {
 		case <-ticker.C:
-			metrics := c.sender.getMetrics()
+			metrics := c.sender.flushMetrics()
 			c.Count("datadog.dogstatsd.client.packets", int64(metrics.TotalSentPayloads), telemetryTags, 1)
 			c.Count("datadog.dogstatsd.client.bytes", int64(metrics.TotalSentBytes), telemetryTags, 1)
 			c.Count("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), telemetryTags, 1)
@@ -225,11 +225,6 @@ func (c *Client) telemetry() {
 			return
 		}
 	}
-}
-
-// GetSenderMetrics returns the metrics of the sender
-func (c *Client) GetSenderMetrics() SenderMetrics {
-	return c.sender.getMetrics()
 }
 
 // Flush forces a flush of all the queued dogstatsd payloads

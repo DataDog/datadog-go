@@ -73,16 +73,16 @@ func (s *sender) write(buffer *statsdBuffer) {
 	s.pool.returnBuffer(buffer)
 }
 
-func (s *sender) getMetrics() SenderMetrics {
+func (s *sender) flushMetrics() SenderMetrics {
 	return SenderMetrics{
-		TotalSentBytes:                atomic.LoadUint64(&s.metrics.TotalSentBytes),
-		TotalSentPayloads:             atomic.LoadUint64(&s.metrics.TotalSentPayloads),
-		TotalDroppedPayloads:          atomic.LoadUint64(&s.metrics.TotalDroppedPayloads),
-		TotalDroppedBytes:             atomic.LoadUint64(&s.metrics.TotalDroppedBytes),
-		TotalDroppedPayloadsQueueFull: atomic.LoadUint64(&s.metrics.TotalDroppedPayloadsQueueFull),
-		TotalDroppedBytesQueueFull:    atomic.LoadUint64(&s.metrics.TotalDroppedBytesQueueFull),
-		TotalDroppedPayloadsWriter:    atomic.LoadUint64(&s.metrics.TotalDroppedPayloadsWriter),
-		TotalDroppedBytesWriter:       atomic.LoadUint64(&s.metrics.TotalDroppedBytesWriter),
+		TotalSentBytes:                atomic.SwapUint64(&s.metrics.TotalSentBytes, 0),
+		TotalSentPayloads:             atomic.SwapUint64(&s.metrics.TotalSentPayloads, 0),
+		TotalDroppedPayloads:          atomic.SwapUint64(&s.metrics.TotalDroppedPayloads, 0),
+		TotalDroppedBytes:             atomic.SwapUint64(&s.metrics.TotalDroppedBytes, 0),
+		TotalDroppedPayloadsQueueFull: atomic.SwapUint64(&s.metrics.TotalDroppedPayloadsQueueFull, 0),
+		TotalDroppedBytesQueueFull:    atomic.SwapUint64(&s.metrics.TotalDroppedBytesQueueFull, 0),
+		TotalDroppedPayloadsWriter:    atomic.SwapUint64(&s.metrics.TotalDroppedPayloadsWriter, 0),
+		TotalDroppedBytesWriter:       atomic.SwapUint64(&s.metrics.TotalDroppedBytesWriter, 0),
 	}
 }
 
