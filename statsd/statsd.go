@@ -24,9 +24,11 @@ statsd is based on go-statsd-client.
 package statsd
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime/trace"
 	"strings"
 	"sync"
 	"time"
@@ -265,6 +267,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.shouldSample(rate) {
 		return nil
 	}
+	_, task := trace.NewTask(context.Background(), "gauge")
 	c.Lock()
 	var err error
 	if err = c.buffer.writeGauge(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
@@ -272,6 +275,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 		err = c.buffer.writeGauge(c.Namespace, c.Tags, name, value, tags, rate)
 	}
 	c.Unlock()
+	task.End()
 	return err
 }
 
@@ -283,6 +287,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c.shouldSample(rate) {
 		return nil
 	}
+	_, task := trace.NewTask(context.Background(), "count")
 	c.Lock()
 	var err error
 	if err = c.buffer.writeCount(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
@@ -290,6 +295,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 		err = c.buffer.writeCount(c.Namespace, c.Tags, name, value, tags, rate)
 	}
 	c.Unlock()
+	task.End()
 	return err
 }
 
@@ -301,6 +307,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.shouldSample(rate) {
 		return nil
 	}
+	_, task := trace.NewTask(context.Background(), "histogram")
 	c.Lock()
 	var err error
 	if err = c.buffer.writeHistogram(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
@@ -308,6 +315,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 		err = c.buffer.writeHistogram(c.Namespace, c.Tags, name, value, tags, rate)
 	}
 	c.Unlock()
+	task.End()
 	return err
 }
 
@@ -319,6 +327,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.shouldSample(rate) {
 		return nil
 	}
+	_, task := trace.NewTask(context.Background(), "distribution")
 	c.Lock()
 	var err error
 	if err = c.buffer.writeDistribution(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
@@ -326,6 +335,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		err = c.buffer.writeDistribution(c.Namespace, c.Tags, name, value, tags, rate)
 	}
 	c.Unlock()
+	task.End()
 	return err
 }
 
@@ -347,6 +357,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c.shouldSample(rate) {
 		return nil
 	}
+	_, task := trace.NewTask(context.Background(), "set")
 	c.Lock()
 	var err error
 	if err = c.buffer.writeSet(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
@@ -354,6 +365,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 		err = c.buffer.writeSet(c.Namespace, c.Tags, name, value, tags, rate)
 	}
 	c.Unlock()
+	task.End()
 	return err
 }
 
@@ -368,6 +380,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
+	_, task := trace.NewTask(context.Background(), "timing")
 	if c.shouldSample(rate) {
 		return nil
 	}
@@ -378,6 +391,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 		err = c.buffer.writeTiming(c.Namespace, c.Tags, name, value, tags, rate)
 	}
 	c.Unlock()
+	task.End()
 	return err
 }
 
