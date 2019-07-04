@@ -454,8 +454,8 @@ func (c *Client) Close() error {
 
 func startTracing(name string) func() {
 	if trace.IsEnabled() {
-		_, task := trace.NewTask(context.Background(), name)
-		return task.End
+		region := trace.StartRegion(context.Background(), name)
+		return region.End
 	}
 	return func() {}
 }
