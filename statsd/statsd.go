@@ -25,11 +25,13 @@ package statsd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
+	"runtime/trace"
 	"strconv"
 	"strings"
 	"sync"
@@ -382,36 +384,43 @@ func (c *Client) send(name string, value interface{}, suffix []byte, tags []stri
 
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
+	defer startTracing("gauge")()
 	return c.send(name, value, gaugeSuffix, tags, rate)
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
+	defer startTracing("Count")()
 	return c.send(name, value, countSuffix, tags, rate)
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
+	defer startTracing("Histogram")()
 	return c.send(name, value, histogramSuffix, tags, rate)
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
 func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
+	defer startTracing("Distribution")()
 	return c.send(name, value, distributionSuffix, tags, rate)
 }
 
 // Decr is just Count of -1
 func (c *Client) Decr(name string, tags []string, rate float64) error {
+	defer startTracing("Decr")()
 	return c.send(name, nil, decrSuffix, tags, rate)
 }
 
 // Incr is just Count of 1
 func (c *Client) Incr(name string, tags []string, rate float64) error {
+	defer startTracing("Incr")()
 	return c.send(name, nil, incrSuffix, tags, rate)
 }
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
+	defer startTracing("Set")()
 	return c.send(name, value, setSuffix, tags, rate)
 }
 
@@ -423,6 +432,7 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
+	defer startTracing("TimeInMilliseconds")()
 	return c.send(name, value, timingSuffix, tags, rate)
 }
 
@@ -764,4 +774,12 @@ func appendWithoutNewlines(buf []byte, s string) []byte {
 		}
 	}
 	return buf
+}
+
+func startTracing(name string) func() {
+	if trace.IsEnabled() {
+		_, task := trace.NewTask(context.Background(), name)
+		return task.End
+	}
+	return func() {}
 }
