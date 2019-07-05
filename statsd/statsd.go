@@ -78,6 +78,31 @@ const (
 	entityIDTagName = "dd.internal.entity_id"
 )
 
+type metricType int
+
+const (
+	gauge metricType = iota
+	count
+	histogram
+	distribution
+	set
+	timing
+	event
+	serviceCheck
+)
+
+type metric struct {
+	metricType metricType
+	name       string
+	fvalue     float64
+	ivalue     int64
+	svalue     string
+	evalue     *Event
+	scvalue    *ServiceCheck
+	tags       []string
+	rate       float64
+}
+
 type noClientErr string
 
 // ErrNoClient is returned if statsd reporting methods are invoked on
@@ -257,76 +282,64 @@ func (c *Client) shouldSample(rate float64) bool {
 	return false
 }
 
-// Gauge measures the value of a metric at a particular time.
-func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
+func (c *Client) writeMetric(m metric) error {
+	switch m.metricType {
+	case gauge:
+		return c.buffer.writeGauge(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+	case count:
+		return c.buffer.writeCount(c.Namespace, c.Tags, m.name, m.ivalue, m.tags, m.rate)
+	case histogram:
+		return c.buffer.writeHistogram(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+	case distribution:
+		return c.buffer.writeDistribution(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+	case set:
+		return c.buffer.writeSet(c.Namespace, c.Tags, m.name, m.svalue, m.tags, m.rate)
+	case timing:
+		return c.buffer.writeTiming(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+	case event:
+		return c.buffer.writeEvent(*m.evalue, c.Tags)
+	case serviceCheck:
+		return c.buffer.writeServiceCheck(*m.scvalue, c.Tags)
+	default:
+		panic(1)
+	}
+}
+
+func (c *Client) addMetric(m metric) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	if c.shouldSample(rate) {
+	if c.shouldSample(m.rate) {
 		return nil
 	}
 	c.Lock()
 	var err error
-	if err = c.buffer.writeGauge(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
+	if err = c.writeMetric(m); err == errBufferFull {
 		c.flushLocked()
-		err = c.buffer.writeGauge(c.Namespace, c.Tags, name, value, tags, rate)
+		err = c.writeMetric(m)
 	}
 	c.Unlock()
 	return err
+}
+
+// Gauge measures the value of a metric at a particular time.
+func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
+	return c.addMetric(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeCount(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeCount(c.Namespace, c.Tags, name, value, tags, rate)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeHistogram(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeHistogram(c.Namespace, c.Tags, name, value, tags, rate)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
 func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeDistribution(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeDistribution(c.Namespace, c.Tags, name, value, tags, rate)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Decr is just Count of -1
@@ -341,20 +354,7 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeSet(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeSet(c.Namespace, c.Tags, name, value, tags, rate)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -365,35 +365,12 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	if c.shouldSample(rate) {
-		return nil
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeTiming(c.Namespace, c.Tags, name, value, tags, rate); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeTiming(c.Namespace, c.Tags, name, value, tags, rate)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeEvent(*e, c.Tags); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeEvent(*e, c.Tags)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: event, evalue: e, rate: 1})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -404,17 +381,7 @@ func (c *Client) SimpleEvent(title, text string) error {
 
 // ServiceCheck sends the provided ServiceCheck.
 func (c *Client) ServiceCheck(sc *ServiceCheck) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	c.Lock()
-	var err error
-	if err = c.buffer.writeServiceCheck(*sc, c.Tags); err == errBufferFull {
-		c.flushLocked()
-		err = c.buffer.writeServiceCheck(*sc, c.Tags)
-	}
-	c.Unlock()
-	return err
+	return c.addMetric(metric{metricType: serviceCheck, scvalue: sc, rate: 1})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
