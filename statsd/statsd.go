@@ -239,8 +239,8 @@ func (c *Client) telemetry() {
 		select {
 		case <-ticker.C:
 			metrics := c.sender.flushMetrics()
-			c.telemetryCount("datadog.dogstatsd.client.packets", int64(metrics.TotalSentPayloads), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes", int64(metrics.TotalSentBytes), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_sent", int64(metrics.TotalSentPayloads), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(metrics.TotalSentBytes), telemetryTags, 1)
 			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), telemetryTags, 1)
 			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), telemetryTags, 1)
 			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), telemetryTags, 1)
