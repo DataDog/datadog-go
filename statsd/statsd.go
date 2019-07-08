@@ -93,6 +93,8 @@ const (
 
 type metric struct {
 	metricType metricType
+	namespace  string
+	globalTags []string
 	name       string
 	fvalue     float64
 	ivalue     int64
@@ -237,19 +239,24 @@ func (c *Client) telemetry() {
 		select {
 		case <-ticker.C:
 			metrics := c.sender.flushMetrics()
-			c.Count("datadog.dogstatsd.client.packets", int64(metrics.TotalSentPayloads), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.bytes", int64(metrics.TotalSentBytes), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.bytes_dropped_queue", int64(metrics.TotalDroppedBytesQueueFull), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.packets_dropped_writer", int64(metrics.TotalDroppedPayloadsWriter), telemetryTags, 1)
-			c.Count("datadog.dogstatsd.client.bytes_dropped_writer", int64(metrics.TotalDroppedBytesWriter), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets", int64(metrics.TotalSentPayloads), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes", int64(metrics.TotalSentBytes), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(metrics.TotalDroppedBytesQueueFull), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(metrics.TotalDroppedPayloadsWriter), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(metrics.TotalDroppedBytesWriter), telemetryTags, 1)
 		case <-c.stop:
 			ticker.Stop()
 			return
 		}
 	}
+}
+
+// same as Count but without global namespace / tags
+func (c *Client) telemetryCount(name string, value int64, tags []string, rate float64) {
+	c.addMetric(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
 }
 
 // Flush forces a flush of all the queued dogstatsd payloads
@@ -282,24 +289,38 @@ func (c *Client) shouldSample(rate float64) bool {
 	return false
 }
 
+func (c *Client) globalTags() []string {
+	if c != nil {
+		return c.Tags
+	}
+	return nil
+}
+
+func (c *Client) namespace() string {
+	if c != nil {
+		return c.Namespace
+	}
+	return ""
+}
+
 func (c *Client) writeMetric(m metric) error {
 	switch m.metricType {
 	case gauge:
-		return c.buffer.writeGauge(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case count:
-		return c.buffer.writeCount(c.Namespace, c.Tags, m.name, m.ivalue, m.tags, m.rate)
+		return c.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate)
 	case histogram:
-		return c.buffer.writeHistogram(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeHistogram(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case distribution:
-		return c.buffer.writeDistribution(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeDistribution(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case set:
-		return c.buffer.writeSet(c.Namespace, c.Tags, m.name, m.svalue, m.tags, m.rate)
+		return c.buffer.writeSet(m.namespace, m.globalTags, m.name, m.svalue, m.tags, m.rate)
 	case timing:
-		return c.buffer.writeTiming(c.Namespace, c.Tags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case event:
-		return c.buffer.writeEvent(*m.evalue, c.Tags)
+		return c.buffer.writeEvent(*m.evalue, m.globalTags)
 	case serviceCheck:
-		return c.buffer.writeServiceCheck(*m.scvalue, c.Tags)
+		return c.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
 	default:
 		panic(1)
 	}
@@ -324,22 +345,22 @@ func (c *Client) addMetric(m metric) error {
 
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
-	return c.addMetric(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
 func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Decr is just Count of -1
@@ -354,7 +375,7 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
-	return c.addMetric(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: set, name: name, svalue: value, tags: tags, rate: rate})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -365,12 +386,12 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
-	return c.addMetric(metric{metricType: event, evalue: e, rate: 1})
+	return c.addMetric(metric{globalTags: c.globalTags(), metricType: event, evalue: e, rate: 1})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -381,7 +402,7 @@ func (c *Client) SimpleEvent(title, text string) error {
 
 // ServiceCheck sends the provided ServiceCheck.
 func (c *Client) ServiceCheck(sc *ServiceCheck) error {
-	return c.addMetric(metric{metricType: serviceCheck, scvalue: sc, rate: 1})
+	return c.addMetric(metric{globalTags: c.globalTags(), metricType: serviceCheck, scvalue: sc, rate: 1})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
