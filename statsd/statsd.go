@@ -322,7 +322,7 @@ func (c *Client) writeMetric(m metric) error {
 	case serviceCheck:
 		return c.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
 	default:
-		panic(1)
+		return nil
 	}
 }
 
