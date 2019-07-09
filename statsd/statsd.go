@@ -61,10 +61,9 @@ TelemetryInterval is the interval at which telemetry will be sent by the client.
 const TelemetryInterval = 10 * time.Second
 
 /*
-telemetryTags is the list of tags that will be attached to all telemetry
-metrics.
+clientTelemetryTag is a tag identifying this specific client.
 */
-var telemetryTags = []string{"client:go"}
+var clientTelemetryTag = "client:go"
 
 /*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
@@ -125,11 +124,12 @@ type Client struct {
 	// Tags are global tags to be added to every statsd call
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
-	SkipErrors bool
-	flushTime  time.Duration
-	bufferPool *bufferPool
-	buffer     *statsdBuffer
-	stop       chan struct{}
+	SkipErrors    bool
+	flushTime     time.Duration
+	bufferPool    *bufferPool
+	buffer        *statsdBuffer
+	telemetryTags []string
+	stop          chan struct{}
 	sync.Mutex
 }
 
@@ -142,12 +142,15 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
+	var writerType string
 	optimalPayloadSize := OptimalUDPPayloadSize
 	if !strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err = newUDPWriter(addr)
+		writerType = "udp"
 	} else {
 		optimalPayloadSize = DefaultMaxAgentPayloadSize
 		w, err = newUdsWriter(addr[len(UnixAddressPrefix)-1:])
+		writerType = "uds"
 	}
 	if err != nil {
 		return nil, err
@@ -156,7 +159,7 @@ func New(addr string, options ...Option) (*Client, error) {
 	if o.MaxBytePerPayload == 0 {
 		o.MaxBytePerPayload = optimalPayloadSize
 	}
-	return newWithWriter(w, o)
+	return newWithWriter(w, o, writerType)
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
@@ -166,16 +169,17 @@ func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newWithWriter(w, o)
+	return newWithWriter(w, o, "custom")
 }
 
-func newWithWriter(w statsdWriter, o *Options) (*Client, error) {
+func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, error) {
 
 	w.SetWriteTimeout(o.WriteTimeoutUDS)
 
 	c := Client{
-		Namespace: o.Namespace,
-		Tags:      o.Tags,
+		Namespace:     o.Namespace,
+		Tags:          o.Tags,
+		telemetryTags: []string{clientTelemetryTag, "transport:" + writerName},
 	}
 
 	// Inject DD_ENTITY_ID as a constant tag if found
@@ -239,14 +243,14 @@ func (c *Client) telemetry() {
 		select {
 		case <-ticker.C:
 			metrics := c.sender.flushMetrics()
-			c.telemetryCount("datadog.dogstatsd.client.packets_sent", int64(metrics.TotalSentPayloads), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(metrics.TotalSentBytes), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(metrics.TotalDroppedBytesQueueFull), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(metrics.TotalDroppedPayloadsWriter), telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(metrics.TotalDroppedBytesWriter), telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_sent", int64(metrics.TotalSentPayloads), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(metrics.TotalSentBytes), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(metrics.TotalDroppedBytesQueueFull), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(metrics.TotalDroppedPayloadsWriter), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(metrics.TotalDroppedBytesWriter), c.telemetryTags, 1)
 		case <-c.stop:
 			ticker.Stop()
 			return
