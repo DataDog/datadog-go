@@ -167,7 +167,6 @@ func appendEvent(buffer []byte, event Event, globalTags []string) []byte {
 	if len(event.AggregationKey) != 0 {
 		buffer = append(buffer, "|k:"...)
 		buffer = append(buffer, event.AggregationKey...)
-
 	}
 
 	if len(event.Priority) != 0 {
