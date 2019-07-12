@@ -35,6 +35,7 @@ type Options struct {
 	// protocol used when creating the client: 1432 for UDP and 8192 for UDS.
 	MaxBytesPerPayload int
 	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
+	// This option can be set to `1` to create an unbuffered client.
 	MaxMessagesPerPayload int
 	// BufferPoolSize is the size of the pool of buffers in number of buffers.
 	BufferPoolSize int
