@@ -12,8 +12,8 @@ var (
 	DefaultTags = []string{}
 	// DefaultBuffered is the default value for the Buffered option
 	DefaultBuffered = false
-	// DefaultMaxBytePerPayload is the default value for the MaxBytePerPayload option
-	DefaultMaxBytePerPayload = 0
+	// DefaultMaxBytesPerPayload is the default value for the MaxBytesPerPayload option
+	DefaultMaxBytesPerPayload = 0
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
 	DefaultMaxMessagesPerPayload = math.MaxInt32
 	// DefaultBufferPoolSize is the default value for the DefaultBufferPoolSize option
@@ -34,11 +34,11 @@ type Options struct {
 	Namespace string
 	// Tags are global tags to be applied to every metrics, events and service checks.
 	Tags []string
-	// MaxMessagesPerPayload is the maximum number of bytes a single payload will contain.
+	// MaxBytesPerPayload is the maximum number of bytes a single payload will contain.
 	// The magic value 0 will set the option to the optimal size for the transport
 	// protocol used when creating the client: 1432 for UDP and 8192 for UDS.
 	// Note that this option only takes effect when the client is buffered.
-	MaxBytePerPayload int
+	MaxBytesPerPayload int
 	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
 	// Note that this option only takes effect when the client is buffered.
 	MaxMessagesPerPayload int
@@ -56,7 +56,7 @@ func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
 		Namespace:             DefaultNamespace,
 		Tags:                  DefaultTags,
-		MaxBytePerPayload:     DefaultMaxBytePerPayload,
+		MaxBytesPerPayload:    DefaultMaxBytesPerPayload,
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
 		BufferPoolSize:        DefaultBufferPoolSize,
 		BufferFlushInterval:   DefaultBufferFlushInterval,
@@ -101,10 +101,10 @@ func WithMaxMessagesPerPayload(maxMessagesPerPayload int) Option {
 	}
 }
 
-// WithMaxBytePerPayload sets the MaxBytePerPayload option.
-func WithMaxBytePerPayload(maxBytePerPayload int) Option {
+// WithMaxBytesPerPayload sets the MaxBytesPerPayload option.
+func WithMaxBytesPerPayload(MaxBytesPerPayload int) Option {
 	return func(o *Options) error {
-		o.MaxBytePerPayload = maxBytePerPayload
+		o.MaxBytesPerPayload = MaxBytesPerPayload
 		return nil
 	}
 }

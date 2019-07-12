@@ -13,7 +13,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, options.Namespace, DefaultNamespace)
 	assert.Equal(t, options.Tags, DefaultTags)
-	assert.Equal(t, options.MaxBytePerPayload, DefaultMaxBytePerPayload)
+	assert.Equal(t, options.MaxBytesPerPayload, DefaultMaxBytesPerPayload)
 	assert.Equal(t, options.MaxMessagesPerPayload, DefaultMaxMessagesPerPayload)
 	assert.Equal(t, options.BufferPoolSize, DefaultBufferPoolSize)
 	assert.Equal(t, options.BufferFlushInterval, DefaultBufferFlushInterval)
@@ -24,7 +24,7 @@ func TestDefaultOptions(t *testing.T) {
 func TestOptions(t *testing.T) {
 	testNamespace := "datadog."
 	testTags := []string{"rocks"}
-	testMaxBytePerPayload := 2048
+	testMaxBytesPerPayload := 2048
 	testMaxMessagePerPayload := 1024
 	testBufferPoolSize := 32
 	testBufferFlushInterval := 48 * time.Second
@@ -34,7 +34,7 @@ func TestOptions(t *testing.T) {
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
 		WithTags(testTags),
-		WithMaxBytePerPayload(testMaxBytePerPayload),
+		WithMaxBytesPerPayload(testMaxBytesPerPayload),
 		WithMaxMessagesPerPayload(testMaxMessagePerPayload),
 		WithBufferPoolSize(testBufferPoolSize),
 		WithBufferFlushInterval(testBufferFlushInterval),
@@ -45,7 +45,7 @@ func TestOptions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, options.Namespace, testNamespace)
 	assert.Equal(t, options.Tags, testTags)
-	assert.Equal(t, options.MaxBytePerPayload, testMaxBytePerPayload)
+	assert.Equal(t, options.MaxBytesPerPayload, testMaxBytesPerPayload)
 	assert.Equal(t, options.MaxMessagesPerPayload, testMaxMessagePerPayload)
 	assert.Equal(t, options.BufferPoolSize, testBufferPoolSize)
 	assert.Equal(t, options.BufferFlushInterval, testBufferFlushInterval)

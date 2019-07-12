@@ -156,8 +156,8 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	if o.MaxBytePerPayload == 0 {
-		o.MaxBytePerPayload = optimalPayloadSize
+	if o.MaxBytesPerPayload == 0 {
+		o.MaxBytesPerPayload = optimalPayloadSize
 	}
 	return newWithWriter(w, o, writerType)
 }
@@ -189,11 +189,11 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		c.Tags = append(c.Tags, entityTag)
 	}
 
-	if o.MaxBytePerPayload == 0 {
-		o.MaxBytePerPayload = OptimalUDPPayloadSize
+	if o.MaxBytesPerPayload == 0 {
+		o.MaxBytesPerPayload = OptimalUDPPayloadSize
 	}
 
-	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytePerPayload, o.MaxMessagesPerPayload)
+	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
 	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
 	c.flushTime = o.BufferFlushInterval
