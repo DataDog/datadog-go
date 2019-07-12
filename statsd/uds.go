@@ -23,8 +23,8 @@ type udsWriter struct {
 	sync.RWMutex // used to lock conn / writer can replace it
 }
 
-// New returns a pointer to a new udsWriter given a socket file path as addr.
-func newUdsWriter(addr string) (*udsWriter, error) {
+// newUDSWriter returns a pointer to a new udsWriter given a socket file path as addr.
+func newUDSWriter(addr string) (*udsWriter, error) {
 	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
 	if err != nil {
 		return nil, err
