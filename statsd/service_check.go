@@ -19,7 +19,7 @@ const (
 	Unknown ServiceCheckStatus = 3
 )
 
-// An ServiceCheck is an object that contains status of DataDog service check.
+// A ServiceCheck is an object that contains status of DataDog service check.
 type ServiceCheck struct {
 	// Name of the service check.  Required.
 	Name string
@@ -36,7 +36,7 @@ type ServiceCheck struct {
 	Tags []string
 }
 
-// NewServiceCheck creates a new serviceCheck with the given name and status.  Error checking
+// NewServiceCheck creates a new serviceCheck with the given name and status. Error checking
 // against these values is done at send-time, or upon running sc.Check.
 func NewServiceCheck(name string, status ServiceCheckStatus) *ServiceCheck {
 	return &ServiceCheck{
@@ -45,7 +45,7 @@ func NewServiceCheck(name string, status ServiceCheckStatus) *ServiceCheck {
 	}
 }
 
-// Check verifies that an event is valid.
+// Check verifies that a service check is valid.
 func (sc ServiceCheck) Check() error {
 	if len(sc.Name) == 0 {
 		return fmt.Errorf("statsd.ServiceCheck name is required")
@@ -56,9 +56,9 @@ func (sc ServiceCheck) Check() error {
 	return nil
 }
 
-// Encode returns the dogstatsd wire protocol representation for an serviceCheck.
+// Encode returns the dogstatsd wire protocol representation for a service check.
 // Tags may be passed which will be added to the encoded output but not to
-// the Event's list of tags, eg. for default tags.
+// the Service Check's list of tags, eg. for default tags.
 func (sc ServiceCheck) Encode(tags ...string) (string, error) {
 	err := sc.Check()
 	if err != nil {

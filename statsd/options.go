@@ -10,8 +10,6 @@ var (
 	DefaultNamespace = ""
 	// DefaultTags is the default value for the Tags option
 	DefaultTags = []string{}
-	// DefaultBuffered is the default value for the Buffered option
-	DefaultBuffered = false
 	// DefaultMaxBytesPerPayload is the default value for the MaxBytesPerPayload option
 	DefaultMaxBytesPerPayload = 0
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
@@ -22,8 +20,6 @@ var (
 	DefaultBufferFlushInterval = 100 * time.Millisecond
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
 	DefaultSenderQueueSize = 2048
-	// DefaultAsyncUDS is the default value for the AsyncUDS option
-	DefaultAsyncUDS = false
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
 )
@@ -37,10 +33,8 @@ type Options struct {
 	// MaxBytesPerPayload is the maximum number of bytes a single payload will contain.
 	// The magic value 0 will set the option to the optimal size for the transport
 	// protocol used when creating the client: 1432 for UDP and 8192 for UDS.
-	// Note that this option only takes effect when the client is buffered.
 	MaxBytesPerPayload int
 	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
-	// Note that this option only takes effect when the client is buffered.
 	MaxMessagesPerPayload int
 	// BufferPoolSize is the size of the pool of buffers in number of buffers.
 	BufferPoolSize int

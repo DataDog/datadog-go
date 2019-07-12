@@ -149,7 +149,7 @@ func New(addr string, options ...Option) (*Client, error) {
 		writerType = "udp"
 	} else {
 		optimalPayloadSize = DefaultMaxAgentPayloadSize
-		w, err = newUdsWriter(addr[len(UnixAddressPrefix)-1:])
+		w, err = newUDSWriter(addr[len(UnixAddressPrefix)-1:])
 		writerType = "uds"
 	}
 	if err != nil {
@@ -264,8 +264,8 @@ func (c *Client) telemetryCount(name string, value int64, tags []string, rate fl
 }
 
 // Flush forces a flush of all the queued dogstatsd payloads
-// This method is blocking and will not return untill everything is sent
-// trough the network
+// This method is blocking and will not return until everything is sent
+// through the network
 func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
@@ -278,7 +278,7 @@ func (c *Client) Flush() error {
 }
 
 // flush the current buffer. Lock must be held by caller.
-// flushed buffer is sent as
+// flushed buffer writen to the network asynchronously.
 func (c *Client) flushLocked() {
 	if len(c.buffer.bytes()) > 0 {
 		c.sender.send(c.buffer)
