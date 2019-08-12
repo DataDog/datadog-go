@@ -424,8 +424,6 @@ func (c *Client) Close() error {
 	case c.stop <- struct{}{}:
 	default:
 	}
-	if err := c.Flush(); err != nil {
-		return err
-	}
+	c.Flush()
 	return c.sender.close()
 }
