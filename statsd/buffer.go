@@ -6,6 +6,8 @@ func (e bufferFullError) Error() string { return string(e) }
 
 const errBufferFull = bufferFullError("statsd buffer is full")
 
+// statsdBuffer is a buffer containing statsd messages
+// this struct methods are NOT safe for concurent use
 type statsdBuffer struct {
 	buffer       []byte
 	maxSize      int
