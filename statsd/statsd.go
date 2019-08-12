@@ -228,7 +228,7 @@ func (c *Client) watch() {
 		select {
 		case <-ticker.C:
 			c.Lock()
-			c.flushLocked()
+			c.flushUnsafe()
 			c.Unlock()
 		case <-c.stop:
 			ticker.Stop()
@@ -272,14 +272,14 @@ func (c *Client) Flush() error {
 	}
 	c.Lock()
 	defer c.Unlock()
-	c.flushLocked()
+	c.flushUnsafe()
 	c.sender.flush()
 	return nil
 }
 
 // flush the current buffer. Lock must be held by caller.
 // flushed buffer writen to the network asynchronously.
-func (c *Client) flushLocked() {
+func (c *Client) flushUnsafe() {
 	if len(c.buffer.bytes()) > 0 {
 		c.sender.send(c.buffer)
 		c.buffer = c.bufferPool.borrowBuffer()
@@ -307,7 +307,7 @@ func (c *Client) namespace() string {
 	return ""
 }
 
-func (c *Client) writeMetric(m metric) error {
+func (c *Client) writeMetricUnsafe(m metric) error {
 	switch m.metricType {
 	case gauge:
 		return c.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
@@ -339,9 +339,9 @@ func (c *Client) addMetric(m metric) error {
 	}
 	c.Lock()
 	var err error
-	if err = c.writeMetric(m); err == errBufferFull {
-		c.flushLocked()
-		err = c.writeMetric(m)
+	if err = c.writeMetricUnsafe(m); err == errBufferFull {
+		c.flushUnsafe()
+		err = c.writeMetricUnsafe(m)
 	}
 	c.Unlock()
 	return err
