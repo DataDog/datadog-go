@@ -6,6 +6,8 @@ func (e bufferFullError) Error() string { return string(e) }
 
 const errBufferFull = bufferFullError("statsd buffer is full")
 
+const metricOverhead = 512
+
 // statsdBuffer is a buffer containing statsd messages
 // this struct methods are NOT safe for concurent use
 type statsdBuffer struct {
@@ -17,7 +19,7 @@ type statsdBuffer struct {
 
 func newStatsdBuffer(maxSize, maxElements int) *statsdBuffer {
 	return &statsdBuffer{
-		buffer:      make([]byte, 0, maxSize*2), // pre-allocate twice the needed size to avoid having Go re-allocate on it's own if an element does not fit
+		buffer:      make([]byte, 0, maxSize+metricOverhead), // pre-allocate the needed size + metricOverhead to avoid having Go re-allocate on it's own if an element does not fit
 		maxSize:     maxSize,
 		maxElements: maxElements,
 	}
