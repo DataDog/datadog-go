@@ -48,6 +48,12 @@ any number greater than that will see frames being cut out.
 */
 const MaxUDPPayloadSize = 65467
 
+// DefaultUDPBufferPoolSize is the default size of the buffer pool for UDP clients.
+const DefaultUDPBufferPoolSize = 2048
+
+// DefaultUDSBufferPoolSize is the default size of the buffer pool for UDS clients.
+const DefaultUDSBufferPoolSize = 512
+
 /*
 DefaultMaxAgentPayloadSize is the default maximum payload size the agent
 can receive. This can be adjusted by changing dogstatsd_buffer_size in the
@@ -144,11 +150,13 @@ func New(addr string, options ...Option) (*Client, error) {
 
 	var writerType string
 	optimalPayloadSize := OptimalUDPPayloadSize
+	defaultBufferPoolSize := DefaultUDPBufferPoolSize
 	if !strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err = newUDPWriter(addr)
 		writerType = "udp"
 	} else {
 		optimalPayloadSize = DefaultMaxAgentPayloadSize
+		defaultBufferPoolSize = DefaultUDSBufferPoolSize
 		w, err = newUDSWriter(addr[len(UnixAddressPrefix)-1:])
 		writerType = "uds"
 	}
@@ -158,6 +166,12 @@ func New(addr string, options ...Option) (*Client, error) {
 
 	if o.MaxBytesPerPayload == 0 {
 		o.MaxBytesPerPayload = optimalPayloadSize
+	}
+	if o.BufferPoolSize == 0 {
+		o.BufferPoolSize = defaultBufferPoolSize
+	}
+	if o.SenderQueueSize == 0 {
+		o.SenderQueueSize = defaultBufferPoolSize
 	}
 	return newWithWriter(w, o, writerType)
 }

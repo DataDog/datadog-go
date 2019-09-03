@@ -15,11 +15,11 @@ var (
 	// DefaultMaxMessagesPerPayload is the default value for the MaxMessagesPerPayload option
 	DefaultMaxMessagesPerPayload = math.MaxInt32
 	// DefaultBufferPoolSize is the default value for the DefaultBufferPoolSize option
-	DefaultBufferPoolSize = 2048
+	DefaultBufferPoolSize = 0
 	// DefaultBufferFlushInterval is the default value for the BufferFlushInterval option
 	DefaultBufferFlushInterval = 100 * time.Millisecond
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
-	DefaultSenderQueueSize = 2048
+	DefaultSenderQueueSize = 0
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
 )
@@ -38,10 +38,14 @@ type Options struct {
 	// This option can be set to `1` to create an unbuffered client.
 	MaxMessagesPerPayload int
 	// BufferPoolSize is the size of the pool of buffers in number of buffers.
+	// The magic value 0 will set the option to the optimal size for the transport
+	// protocol used when creating the client: 2048 for UDP and 512 for UDS.
 	BufferPoolSize int
 	// BufferFlushInterval is the interval after which the current buffer will get flushed.
 	BufferFlushInterval time.Duration
 	// SenderQueueSize is the size of the sender queue in number of buffers.
+	// The magic value 0 will set the option to the optimal size for the transport
+	// protocol used when creating the client: 2048 for UDP and 512 for UDS.
 	SenderQueueSize int
 	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
 	WriteTimeoutUDS time.Duration
