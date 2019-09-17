@@ -155,8 +155,10 @@ func New(addr string, options ...Option) (*Client, error) {
 		w, err = newUDPWriter(addr)
 		writerType = "udp"
 	} else {
-		optimalPayloadSize = DefaultMaxAgentPayloadSize
-		defaultBufferPoolSize = DefaultUDSBufferPoolSize
+		// FIXME: The agent has a performance pitfall preventing us from using better defaults here.
+		// Once it's fixed, use `DefaultMaxAgentPayloadSize` and `DefaultUDSBufferPoolSize` instead.
+		optimalPayloadSize = OptimalUDPPayloadSize
+		defaultBufferPoolSize = DefaultUDPBufferPoolSize
 		w, err = newUDSWriter(addr[len(UnixAddressPrefix)-1:])
 		writerType = "uds"
 	}
