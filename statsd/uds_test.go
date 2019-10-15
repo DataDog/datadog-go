@@ -9,8 +9,35 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stretchr/testify/suite"
 )
+
+var dogstatsdTests = []struct {
+	GlobalNamespace string
+	GlobalTags      []string
+	Method          string
+	Metric          string
+	Value           interface{}
+	Tags            []string
+	Rate            float64
+	Expected        string
+}{
+	{"", nil, "Gauge", "test.gauge", 1.0, nil, 1.0, "test.gauge:1|g"},
+	{"", nil, "Gauge", "test.gauge", 1.0, nil, 0.999999, "test.gauge:1|g|@0.999999"},
+	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 1.0, "test.gauge:1|g|#tagA"},
+	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA", "tagB"}, 1.0, "test.gauge:1|g|#tagA,tagB"},
+	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 0.999999, "test.gauge:1|g|@0.999999|#tagA"},
+	{"", nil, "Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA"},
+	{"", nil, "Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA"},
+	{"", nil, "Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.3|h|#tagA"},
+	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.3|d|#tagA"},
+	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA"},
+	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
+	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
+	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
+}
 
 type testUnixgramServer struct {
 	tmpDir string
@@ -53,12 +80,6 @@ func (ts *testUnixgramServer) AddrString() string {
 type UdsTestSuite struct {
 	suite.Suite
 	options []Option
-}
-
-func TestUdsAsync(t *testing.T) {
-	suite.Run(t, &UdsTestSuite{
-		options: []Option{WithAsyncUDS()},
-	})
 }
 
 func TestUdsBlocking(t *testing.T) {
@@ -104,7 +125,7 @@ func (suite *UdsTestSuite) TestClientUDSConcurrent() {
 	server := newTestUnixgramServer(suite.T())
 	defer server.Cleanup()
 
-	client, err := New(server.AddrString())
+	client, err := New(server.AddrString(), WithMaxMessagesPerPayload(1))
 	if err != nil {
 		suite.T().Fatal(err)
 	}
@@ -119,11 +140,11 @@ func (suite *UdsTestSuite) TestClientUDSConcurrent() {
 		}()
 	}
 
-	expected := "test.gauge:1.000000|g"
+	expected := "test.gauge:1|g"
 	var msgs []string
 	for {
 		bytes := make([]byte, 1024)
-		server.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		server.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
 		n, err := server.Read(bytes)
 		if err, ok := err.(net.Error); ok && err.Timeout() {
 			break
@@ -154,5 +175,5 @@ func (suite *UdsTestSuite) TestClientUDSClose() {
 		suite.T().Fatal(err)
 	}
 
-	assertNotPanics(suite.T(), func() { client.Close() })
+	assert.NotPanics(suite.T(), func() { client.Close() })
 }

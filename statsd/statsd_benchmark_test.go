@@ -1,115 +1,104 @@
-// +build go1.7
-
-package statsd
+package statsd_test
 
 import (
-	"fmt"
-	"strconv"
+	"log"
+	"net"
+	"os"
 	"testing"
+
+	"github.com/DataDog/datadog-go/statsd"
 )
 
-var statBytes []byte
-var stat string
-
-// Results:
-// BenchmarkStatBuildGauge_Sprintf-8       	     500	  45699958 ns/op
-// BenchmarkStatBuildGauge_Concat-8        	    1000	  23452863 ns/op
-// BenchmarkStatBuildGauge_BytesAppend-8   	    1000	  21705121 ns/op
-func BenchmarkStatBuildGauge_Sprintf(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		for x := 0; x < 100000; x++ {
-			stat = fmt.Sprintf("%f|g", 3.14159)
-		}
+func setupUDSClientServer(b *testing.B) (*statsd.Client, net.Listener) {
+	sockAddr := "/tmp/test.sock"
+	if err := os.RemoveAll(sockAddr); err != nil {
+		log.Fatal(err)
 	}
-}
-
-func BenchmarkStatBuildGauge_Concat(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		for x := 0; x < 100000; x++ {
-			stat = strconv.FormatFloat(3.14159, 'f', -1, 64) + "|g"
-		}
+	conn, err := net.Listen("unix", sockAddr)
+	if err != nil {
+		log.Fatal("listen error:", err)
 	}
-}
-
-func BenchmarkStatBuildGauge_BytesAppend(b *testing.B) {
-	suffix := []byte("|g")
-
-	for n := 0; n < b.N; n++ {
-		for x := 0; x < 100000; x++ {
-			statBytes = []byte{}
-			statBytes = append(strconv.AppendFloat(statBytes, 3.14159, 'f', -1, 64), suffix...)
-		}
-	}
-}
-
-func BenchmarkStatBuildCount_Sprintf(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		for x := 0; x < 100000; x++ {
-			stat = fmt.Sprintf("%d|c", 314)
-		}
-	}
-}
-
-func BenchmarkStatBuildCount_Concat(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		for x := 0; x < 100000; x++ {
-			stat = strconv.FormatInt(314, 10) + "|c"
-		}
-	}
-}
-
-func BenchmarkStatBuildCount_BytesAppend(b *testing.B) {
-	suffix := []byte("|c")
-
-	for n := 0; n < b.N; n++ {
-		for x := 0; x < 100000; x++ {
-			statBytes = []byte{}
-			statBytes = append(strconv.AppendInt(statBytes, 314, 10), suffix...)
-		}
-	}
-}
-
-var FormatSink []byte
-
-func BenchmarkClientFormat(b *testing.B) {
-	var tests = []struct {
-		globalNamespace string
-		globalTags      []string
-		name            string
-		value           interface{}
-		suffix          []byte
-		tags            []string
-	}{
-		{"", nil, "test.gauge", 1.0, gaugeSuffix, nil},
-		{"", nil, "test.gauge", 1.0, gaugeSuffix, nil},
-		{"", nil, "test.gauge", 1.0, gaugeSuffix, []string{"tagA"}},
-		{"", nil, "test.gauge", 1.0, gaugeSuffix, []string{"tagA", "tagB"}},
-		{"", nil, "test.gauge", 1.0, gaugeSuffix, []string{"tagA"}},
-		{"", nil, "test.count", int64(1), countSuffix, []string{"tagA"}},
-		{"", nil, "test.count", int64(-1), countSuffix, []string{"tagA"}},
-		{"", nil, "test.histogram", 2.3, histogramSuffix, []string{"tagA"}},
-		{"", nil, "test.distribution", 2.3, distributionSuffix, []string{"tagA"}},
-		{"", nil, "test.set", "uuid", setSuffix, []string{"tagA"}},
-		{"flubber.", nil, "test.set", "uuid", setSuffix, []string{"tagA"}},
-		{"", []string{"tagC"}, "test.set", "uuid", setSuffix, []string{"tagA"}},
-		{"", nil, "test.count", int64(1), countSuffix, []string{"hello\nworld"}},
-	}
-
-	b.ReportAllocs()
-
-	for i, tt := range tests {
-		b.Run(strconv.Itoa(i), func(b *testing.B) {
-			c := &Client{
-				Namespace: tt.globalNamespace,
-				Tags:      tt.globalTags,
+	go func() {
+		for {
+			_, err := conn.Accept()
+			if err != nil {
+				return
 			}
-
-			b.ReportAllocs()
-			b.ResetTimer()
-
-			for n := 0; n < b.N; n++ {
-				FormatSink = c.format(tt.name, tt.value, tt.suffix, tt.tags, 1.0)
-			}
-		})
+		}
+	}()
+	client, err := statsd.New("unix://"+sockAddr, statsd.WithMaxMessagesPerPayload(1024))
+	if err != nil {
+		b.Error(err)
 	}
+	return client, conn
 }
+
+func setupUDPClientServer(b *testing.B) (*statsd.Client, *net.UDPConn) {
+	addr, err := net.ResolveUDPAddr("udp", ":0")
+	if err != nil {
+		b.Error(err)
+	}
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		b.Error(err)
+	}
+	client, err := statsd.New(conn.LocalAddr().String(), statsd.WithMaxMessagesPerPayload(1024))
+	if err != nil {
+		b.Error(err)
+	}
+	return client, conn
+}
+
+func benchmarkStatsd(b *testing.B, maxProc int, transport string) {
+	var client *statsd.Client
+	if transport == "udp" {
+		var conn *net.UDPConn
+		client, conn = setupUDPClientServer(b)
+		defer conn.Close()
+	} else {
+		var conn net.Listener
+		client, conn = setupUDSClientServer(b)
+		defer conn.Close()
+	}
+
+	b.SetParallelism(maxProc)
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			client.Gauge("test.metric", 1, []string{"tag:tag"}, 1)
+		}
+	})
+	client.Flush()
+
+	b.StopTimer()
+	client.Close()
+}
+
+func BenchmarkStatsdUDP1(b *testing.B) { benchmarkStatsd(b, 1, "udp") }
+
+func BenchmarkStatsdUDP10(b *testing.B) { benchmarkStatsd(b, 10, "udp") }
+
+func BenchmarkStatsdUDP100(b *testing.B) { benchmarkStatsd(b, 100, "udp") }
+
+func BenchmarkStatsdUDP1000(b *testing.B) { benchmarkStatsd(b, 1000, "udp") }
+
+func BenchmarkStatsdUDP10000(b *testing.B) { benchmarkStatsd(b, 10000, "udp") }
+
+func BenchmarkStatsdUDP100000(b *testing.B) { benchmarkStatsd(b, 100000, "udp") }
+
+func BenchmarkStatsdUDP200000(b *testing.B) { benchmarkStatsd(b, 200000, "udp") }
+
+func BenchmarkStatsdUDS1(b *testing.B) { benchmarkStatsd(b, 1, "uds") }
+
+func BenchmarkStatsdUDS10(b *testing.B) { benchmarkStatsd(b, 10, "uds") }
+
+func BenchmarkStatsdUDS100(b *testing.B) { benchmarkStatsd(b, 100, "uds") }
+
+func BenchmarkStatsdUDS1000(b *testing.B) { benchmarkStatsd(b, 1000, "uds") }
+
+func BenchmarkStatsdUDS10000(b *testing.B) { benchmarkStatsd(b, 10000, "uds") }
+
+func BenchmarkStatsdUDS100000(b *testing.B) { benchmarkStatsd(b, 100000, "uds") }
+
+func BenchmarkStatsdUDS200000(b *testing.B) { benchmarkStatsd(b, 200000, "uds") }

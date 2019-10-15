@@ -29,7 +29,7 @@ if err != nil {
 
 You can find a list of all the available options [here](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option).
 
-After the client is created, you can start sending metrics: 
+After the client is created, you can start sending metrics:
 
 ```go
 client.Gauge("kafka.health", 1, []string{"env:production", "partition:1", "partition:2"}, 1)
@@ -79,27 +79,12 @@ We recommend enabling the "asynchronous" mode.
 
 ## Performance / Metric drops
 
-If you plan on sending metrics at a significant rate using this client, depending on your use case, you might need to configure the client and the datadog agent (dogstatsd server) to improve the performance and/or avoid dropping metrics.
-
-### Buffering Client
-
-DogStatsD accepts packets with multiple statsd messages in them. Using the `statsd.Buffered()` option will buffer up commands and send them when the buffer is reached or after 100msec.
-
-Ex:
-```go
-client, err := statsd.New("127.0.0.1:8125",
-    statsd.Buffered(), // enable buffering
-    statsd.WithMaxMessagesPerPayload(16), // sets the maximum number of messages in a single datagram
-)
-```
-
 ### Tweaking kernel options
 
-In very high throughput environments it is possible to improve performance further by changing the values of some kernel options.
+In very high throughput environments it is possible to improve performance by changing the values of some kernel options.
 
 #### Unix Domain Sockets
 
-If you're still seeing datagram drops after enabling and configuring the buffering options, the following kernel options can help:
 - `sysctl -w net.unix.max_dgram_qlen=X` - Set datagram queue size to X (default value is usually 10).
 - `sysctl -w net.core.wmem_max=X` - Set the max size of the send buffer for all the host sockets.
 
