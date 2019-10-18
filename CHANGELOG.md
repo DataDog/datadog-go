@@ -6,6 +6,7 @@
 
 * [FEATURE] Add a way to configure the maximum size of a single payload (was always 1432, the optimal size for local UDP). See [#91][].
 * [IMPROVEMENT] Various performance improvements. See [#91][].
+* [OTHER] The client now pre-allocates 4MB of memory to queue up metrics. This can be controlled using the [WithBufferPoolSize](https://godoc.org/github.com/DataDog/datadog-go/statsd#WithBufferPoolSize) option.
 
 ### Breaking changes
 
