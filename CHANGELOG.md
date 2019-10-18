@@ -16,6 +16,11 @@
 - The `Buffered` option has been removed as the client can only be buffered. If for some reason you need to have only one dogstatsd message per payload you can still use the `WithMaxMessagesPerPayload` option set to 1.
 - The `AsyncUDS` option has been removed as the networking layer is now running in a separate Goroutine.
 
+# 2.3.0 / 2019-10-15
+
+### Notes
+
+ * [IMPROVEMENT] Use an error constant for "nil client" errors. See [#90][]. Thanks [@asf-stripe][].
 
 # 2.2.0 / 2019-04-11
 
@@ -112,6 +117,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#82]: https://github.com/DataDog/datadog-go/issues/82
 [#84]: https://github.com/DataDog/datadog-go/issues/84
 [#85]: https://github.com/DataDog/datadog-go/issues/85
+[#90]: https://github.com/DataDog/datadog-go/issues/90
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -136,3 +142,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@vcabbage]: https://github.com/vcabbage
 [@victortrac]: https://github.com/victortrac
 [@w-vi]: https://github.com/w-vi
+[@asf-stripe]: https://github.com/asf-stripe
