@@ -184,6 +184,10 @@ type Client struct {
 	sync.Mutex
 }
 
+// Verify that Client implements the ClientInterface.
+// https://golang.org/doc/faq#guarantee_satisfies_interface
+var _ ClientInterface = &Client{}
+
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
 // "unix:///path/to/socket".
 func New(addr string, options ...Option) (*Client, error) {

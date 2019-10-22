@@ -57,3 +57,7 @@ func (n *NoOpClient) ServiceCheck(sc *ServiceCheck) error {
 func (n *NoOpClient) SimpleServiceCheck(name string, status ServiceCheckStatus) error {
 	return nil
 }
+
+// Verify that NoOpClient implements the ClientInterface.
+// https://golang.org/doc/faq#guarantee_satisfies_interface
+var _ ClientInterface = &NoOpClient{}
