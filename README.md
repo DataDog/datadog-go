@@ -65,18 +65,6 @@ Details about the advantages of using UDS over UDP are available in our [docs](h
 
 You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
 
-
-### Blocking vs Asynchronous behavior
-
-When transporting DogStatsD datagram over UDS, two modes are available, "blocking" and "asynchronous".
-
-"blocking" allows for error checking but does not guarantee that calls to the library will return immediately. For example `client.Gauge(...)` might take an arbitrary amount of time to complete depending on server performance and load. If used in a hot path of your application, this behavior might significantly impact its performance.
-
-"asynchronous" does not allow for error checking but guarantees that calls are instantaneous (<1ms). This is similar to UDP behavior.
-
-Currently, in 2.x, "blocking" is the default behavior to ensure backward compatibility. To use the "asynchronous" behavior, use the `statsd.WithAsyncUDS()` option.
-We recommend enabling the "asynchronous" mode.
-
 ## Performance / Metric drops
 
 ### Tweaking kernel options

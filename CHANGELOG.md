@@ -1,5 +1,21 @@
 ## Changes
 
+# 3.0.0 / 2019-10-18
+
+### Notes
+
+* [FEATURE] Add a way to configure the maximum size of a single payload (was always 1432, the optimal size for local UDP). See [#91][].
+* [IMPROVEMENT] Various performance improvements. See [#91][].
+* [OTHER] The client now pre-allocates 4MB of memory to queue up metrics. This can be controlled using the [WithBufferPoolSize](https://godoc.org/github.com/DataDog/datadog-go/statsd#WithBufferPoolSize) option.
+
+### Breaking changes
+
+- Sending a metric over UDS won't return an error if we fail to forward the datagram to the agent. We took this decision for two main reasons:
+  - This made the UDS client blocking by default which is not desirable
+  - This design was flawed if you used a buffer as only the call that actually sent the buffer would return an error
+- The `Buffered` option has been removed as the client can only be buffered. If for some reason you need to have only one dogstatsd message per payload you can still use the `WithMaxMessagesPerPayload` option set to 1.
+- The `AsyncUDS` option has been removed as the networking layer is now running in a separate Goroutine.
+
 # 2.3.0 / 2019-10-15
 
 ### Notes
