@@ -3,61 +3,26 @@ package statsd
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNoOpClient(t *testing.T) {
+	a := assert.New(t)
 	c := NoOpClient{}
 	tags := []string{"a:b"}
 
-	if c.Gauge("asd", 123.4, tags, 56.0) != nil {
-		t.Error("Gauge output not nil")
-	}
-
-	if c.Count("asd", 1234, tags, 56.0) != nil {
-		t.Error("Count output not nil")
-	}
-
-	if c.Histogram("asd", 12.34, tags, 56.0) != nil {
-		t.Error("Histogram output not nil")
-	}
-
-	if c.Distribution("asd", 1.234, tags, 56.0) != nil {
-		t.Error("Distribution output not nil")
-	}
-
-	if c.Decr("asd", tags, 56.0) != nil {
-		t.Error("Decr output not nil")
-	}
-
-	if c.Incr("asd", tags, 56.0) != nil {
-		t.Error("Incr output not nil")
-	}
-
-	if c.Set("asd", "asd", tags, 56.0) != nil {
-		t.Error("Set output not nil")
-	}
-
-	if c.Timing("asd", time.Second, tags, 56.0) != nil {
-		t.Error("Timing output not nil")
-	}
-
-	if c.TimeInMilliseconds("asd", 1234.5, tags, 56.0) != nil {
-		t.Error("TimeInMilliseconds output not nil")
-	}
-
-	if c.Event(nil) != nil {
-		t.Error("Event output not nil")
-	}
-
-	if c.SimpleEvent("asd", "zxc") != nil {
-		t.Error("SimpleEvent output not nil")
-	}
-
-	if c.ServiceCheck(nil) != nil {
-		t.Error("ServiceCheck output not nil")
-	}
-
-	if c.SimpleServiceCheck("asd", Ok) != nil {
-		t.Error("SimpleServiceCheck output not nil")
-	}
+	a.Nil(c.Gauge("asd", 123.4, tags, 56.0))
+	a.Nil(c.Count("asd", 1234, tags, 56.0))
+	a.Nil(c.Histogram("asd", 12.34, tags, 56.0))
+	a.Nil(c.Distribution("asd", 1.234, tags, 56.0))
+	a.Nil(c.Decr("asd", tags, 56.0))
+	a.Nil(c.Incr("asd", tags, 56.0))
+	a.Nil(c.Set("asd", "asd", tags, 56.0))
+	a.Nil(c.Timing("asd", time.Second, tags, 56.0))
+	a.Nil(c.TimeInMilliseconds("asd", 1234.5, tags, 56.0))
+	a.Nil(c.Event(nil))
+	a.Nil(c.SimpleEvent("asd", "zxc"))
+	a.Nil(c.ServiceCheck(nil))
+	a.Nil(c.SimpleServiceCheck("asd", Ok))
 }
