@@ -343,7 +343,7 @@ func (c *Client) Flush() error {
 }
 
 // flush the current buffer. Lock must be held by caller.
-// flushed buffer writen to the network asynchronously.
+// flushed buffer written to the network asynchronously.
 func (c *Client) flushUnsafe() {
 	if len(c.buffer.bytes()) > 0 {
 		c.sender.send(c.buffer)

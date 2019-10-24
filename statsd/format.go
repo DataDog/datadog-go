@@ -69,9 +69,9 @@ func appendTags(buffer []byte, globalTags []string, tags []string) []byte {
 	return buffer
 }
 
-func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64, percision int) []byte {
+func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64, precision int) []byte {
 	buffer = appendHeader(buffer, namespace, name)
-	buffer = strconv.AppendFloat(buffer, value, 'f', percision, 64)
+	buffer = strconv.AppendFloat(buffer, value, 'f', precision, 64)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
 	buffer = appendRate(buffer, rate)
