@@ -1,5 +1,11 @@
 ## Changes
 
+# 3.1.0 / 2019-10-24
+
+### Notes
+
+* [FEATURE] Add a noop client. See [#92][]. Thanks [@goodspark][].
+
 # 3.0.0 / 2019-10-18
 
 ### Notes
@@ -118,6 +124,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#84]: https://github.com/DataDog/datadog-go/issues/84
 [#85]: https://github.com/DataDog/datadog-go/issues/85
 [#90]: https://github.com/DataDog/datadog-go/issues/90
+[#91]: https://github.com/DataDog/datadog-go/issues/91
+[#92]: https://github.com/DataDog/datadog-go/issues/92
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -143,3 +151,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@victortrac]: https://github.com/victortrac
 [@w-vi]: https://github.com/w-vi
 [@asf-stripe]: https://github.com/asf-stripe
+[@goodspark]: https://github.com/goodspark
