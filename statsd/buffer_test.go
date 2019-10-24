@@ -83,5 +83,6 @@ func TestBufferSeparator(t *testing.T) {
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag\nnamespace.metric:1|g|#tag:tag", string(buffer.bytes()))
 }
