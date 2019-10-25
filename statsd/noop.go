@@ -71,6 +71,21 @@ func (n *NoOpClient) SimpleServiceCheck(name string, status ServiceCheckStatus) 
 	return nil
 }
 
+// Close does nothing and returns nil
+func (n *NoOpClient) Close() error {
+	return nil
+}
+
+// Flush does nothing and returns nil
+func (n *NoOpClient) Flush() error {
+	return nil
+}
+
+// SetWriteTimeout does nothing and returns nil
+func (n *NoOpClient) SetWriteTimeout(d time.Duration) error {
+	return nil
+}
+
 // Verify that NoOpClient implements the ClientInterface.
 // https://golang.org/doc/faq#guarantee_satisfies_interface
 var _ ClientInterface = &NoOpClient{}

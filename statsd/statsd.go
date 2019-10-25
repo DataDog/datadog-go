@@ -163,6 +163,15 @@ type ClientInterface interface {
 
 	// SimpleServiceCheck sends an serviceCheck with the provided name and status.
 	SimpleServiceCheck(name string, status ServiceCheckStatus) error
+
+	// Close the client connection.
+	Close() error
+
+	// Flush forces a flush of all the queued dogstatsd payloads.
+	Flush() error
+
+	// SetWriteTimeout allows the user to set a custom write timeout.
+	SetWriteTimeout(d time.Duration) error
 }
 
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
