@@ -1,5 +1,11 @@
 ## Changes
 
+# 3.2.0 / 2019-10-28
+
+### Notes
+
+* [IMPROVEMENT] Add all `Client` public methods to the `ClientInterface` and `NoOpClient`. See [#100][]. Thanks [@skaji][].
+
 # 3.1.0 / 2019-10-24
 
 ### Notes
@@ -126,6 +132,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#90]: https://github.com/DataDog/datadog-go/issues/90
 [#91]: https://github.com/DataDog/datadog-go/issues/91
 [#92]: https://github.com/DataDog/datadog-go/issues/92
+[#100]: https://github.com/DataDog/datadog-go/issues/100
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -152,3 +159,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@w-vi]: https://github.com/w-vi
 [@asf-stripe]: https://github.com/asf-stripe
 [@goodspark]: https://github.com/goodspark
+[@skaji]: https://github.com/skaji
