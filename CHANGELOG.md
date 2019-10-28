@@ -4,7 +4,7 @@
 
 ### Notes
 
-* [FEATURE] Add all `Client` public methods to the `ClientInterface` and `NoOpClient`. See [#100][]. Thanks [@skaji][].
+* [IMPROVEMENT] Add all `Client` public methods to the `ClientInterface` and `NoOpClient`. See [#100][]. Thanks [@skaji][].
 
 # 3.1.0 / 2019-10-24
 
