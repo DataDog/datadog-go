@@ -39,7 +39,7 @@ func main() {
 }
 ```
 
-Find a list of all the available options for your DogStatsD Client in the [Datadog-go godoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option).
+Find a list of all the available options for your DogStatsD Client in the [Datadog-go godoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option) or in [Datadog public DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?tab=go#client-instantiation-parameters).
 
 ### Supported environment variables
 
@@ -62,7 +62,7 @@ The version 6 (and above) of the Agent accepts packets through a Unix Socket dat
 
 ## Usage
 
-For usage of DogStatsD metrics, the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/).
+For usage of DogStatsD metrics, events, and Service Checks the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/?tab=go).
 
 ### Metrics
 
