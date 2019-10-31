@@ -61,6 +61,9 @@ env:
 The version 6 (and above) of the Agent accepts packets through a Unix Socket datagram connection. Details about the advantages of using UDS over UDP are available in our [docs](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/). You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
 
 ## Usage
+
+For usage of DogStatsD metrics, the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/).
+
 ### Metrics
 
 After the client is created, you can start sending custom metrics to Datadog. See the dedicated [Metric Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go) to see how to submit all supported metric types to Datadog with working code examples:
