@@ -8,9 +8,9 @@
 
 Go 1.7+ is officially supported. Older versions might work but are not tested.
 
-The following documentations are available:
+The following documentation is available:
 
-* [Godoc documentation for Datadog Go](http://godoc.org/github.com/DataDog/datadog-go/statsd)
+* [GoDoc documentation for Datadog Go](http://godoc.org/github.com/DataDog/datadog-go/statsd)
 * [Official Datadog DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?tab=go).
 
 ## Installation
@@ -43,8 +43,8 @@ Find a list of all the available options for your DogStatsD Client in the [Datad
 
 ### Supported environment variables
 
-* The client can use the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build the target address if the `addr` parameter is empty.
-* If the `DD_ENTITY_ID` environment variable is found, its value will be injected as a global `dd.internal.entity_id` tag. This tag will be used by the Datadog Agent to insert container tags to the metrics. You should only `append` to the `c.Tags` slice to avoid overwriting this global tag.
+* If the `addr` parameter is empty, the client uses the `DD_AGENT_HOST` and (optionally) the `DD_DOGSTATSD_PORT` environment variables to build a target address.
+* If the `DD_ENTITY_ID` environment variable is found, its value is injected as a global `dd.internal.entity_id` tag. The Datadog Agent uses this tag to insert container tags into the metrics. To avoid overwriting this global tag, only `append` to the `c.Tags` slice.
 
 To enable origin detection and set the `DD_ENTITY_ID` environment variable, add the following lines to your application manifest:
 
@@ -58,11 +58,11 @@ env:
 
 ### Unix Domain Sockets Client
 
-The version 6 (and above) of the Agent accepts packets through a Unix Socket datagram connection. Details about the advantages of using UDS over UDP are available in our [docs](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/). You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
+Agent v6+ accepts packets through a Unix Socket datagram connection. Details about the advantages of using UDS over UDP are available in the [DogStatsD Unix Socket documentation](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/). You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
 
 ## Usage
 
-For usage of DogStatsD metrics, events, and Service Checks the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/?tab=go).
+In order to use DogStatsD metrics, events, and Service Checks, the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/?tab=go).
 
 ### Metrics
 
@@ -74,11 +74,11 @@ After the client is created, you can start sending custom metrics to Datadog. Se
 * [Submit a HISTOGRAM metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#histogram)
 * [Submit a DISTRIBUTION metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#distribution)
 
-Some options are suppported when submitting metrics, like [applying a Sample Rate to your metrics](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-submission-options) or [Tagging your metrics with your custom Tags](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-tagging). Find all the available functions to report metrics [in the Datadog-go Client godoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
+Some options are suppported when submitting metrics, like [applying a sample rate to your metrics](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-submission-options) or [tagging your metrics with your custom tags](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-tagging). Find all the available functions to report metrics [in the Datadog Go client GoDoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
 
 ### Events
 
-After the client is created, you can start sending events to your Datadog Event Stream. See the dedicated [Event Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/events/dogstatsd/?tab=go) to see how to submit an event to Datadog Event Stream.
+After the client is created, you can start sending events to your Datadog Event Stream. See the dedicated [Event Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/events/dogstatsd/?tab=go) to see how to submit an event to your Datadog Event Stream.
 
 ### Service Checks
 
