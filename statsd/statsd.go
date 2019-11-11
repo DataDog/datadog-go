@@ -29,6 +29,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -188,10 +189,18 @@ type Client struct {
 	flushTime     time.Duration
 	bufferPool    *bufferPool
 	buffer        *statsdBuffer
+	metrics       ClientMetrics
 	telemetryTags []string
 	stop          chan struct{}
 	wg            sync.WaitGroup
 	sync.Mutex
+}
+
+// ClientMetrics contains metrics about the client
+type ClientMetrics struct {
+	TotalMetrics       uint64
+	TotalEvents        uint64
+	TotalServiceChecks uint64
 }
 
 // Verify that Client implements the ClientInterface.
@@ -332,15 +341,19 @@ func (c *Client) telemetry() {
 	for {
 		select {
 		case <-ticker.C:
-			metrics := c.sender.flushMetrics()
-			c.telemetryCount("datadog.dogstatsd.client.packets_sent", int64(metrics.TotalSentPayloads), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(metrics.TotalSentBytes), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(metrics.TotalDroppedPayloads), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(metrics.TotalDroppedBytes), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(metrics.TotalDroppedPayloadsQueueFull), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(metrics.TotalDroppedBytesQueueFull), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(metrics.TotalDroppedPayloadsWriter), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(metrics.TotalDroppedBytesWriter), c.telemetryTags, 1)
+			clientMetrics := c.flushMetrics()
+			c.telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks), c.telemetryTags, 1)
+			senderMetrics := c.sender.flushMetrics()
+			c.telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(senderMetrics.TotalSentBytes), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(senderMetrics.TotalDroppedPayloads), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(senderMetrics.TotalDroppedBytes), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(senderMetrics.TotalDroppedPayloadsQueueFull), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter), c.telemetryTags, 1)
+			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter), c.telemetryTags, 1)
 		case <-c.stop:
 			ticker.Stop()
 			return
@@ -376,6 +389,14 @@ func (c *Client) flushUnsafe() {
 	}
 }
 
+func (c *Client) flushMetrics() ClientMetrics {
+	return ClientMetrics{
+		TotalMetrics:       atomic.SwapUint64(&c.metrics.TotalMetrics, 0),
+		TotalEvents:        atomic.SwapUint64(&c.metrics.TotalEvents, 0),
+		TotalServiceChecks: atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
+	}
+}
+
 func (c *Client) shouldSample(rate float64) bool {
 	if rate < 1 && rand.Float64() > rate {
 		return true
@@ -400,20 +421,28 @@ func (c *Client) namespace() string {
 func (c *Client) writeMetricUnsafe(m metric) error {
 	switch m.metricType {
 	case gauge:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case count:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate)
 	case histogram:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeHistogram(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case distribution:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeDistribution(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case set:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeSet(m.namespace, m.globalTags, m.name, m.svalue, m.tags, m.rate)
 	case timing:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case event:
+		atomic.AddUint64(&c.metrics.TotalEvents, 1)
 		return c.buffer.writeEvent(*m.evalue, m.globalTags)
 	case serviceCheck:
+		atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
 		return c.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
 	default:
 		return nil
