@@ -489,23 +489,12 @@ func (c *Client) SimpleServiceCheck(name string, status ServiceCheckStatus) erro
 	return c.ServiceCheck(sc)
 }
 
-func (c *Client) shutdown() {
-	c.Lock()
-	defer c.Unlock()
-	select {
-	case <-c.stop:
-		return
-	default:
-	}
-	close(c.stop)
-}
-
 // Close the client connection.
 func (c *Client) Close() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	c.shutdown()
+	close(c.stop)
 	c.Flush()
 	return c.sender.close()
 }
