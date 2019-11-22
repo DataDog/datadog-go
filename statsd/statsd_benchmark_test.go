@@ -1,9 +1,11 @@
 package statsd_test
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"sync/atomic"
 	"testing"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -49,7 +51,7 @@ func setupUDPClientServer(b *testing.B) (*statsd.Client, *net.UDPConn) {
 	return client, conn
 }
 
-func benchmarkStatsd(b *testing.B, maxProc int, transport string) {
+func benchmarkStatsd(b *testing.B, transport string) {
 	var client *statsd.Client
 	if transport == "udp" {
 		var conn *net.UDPConn
@@ -61,12 +63,14 @@ func benchmarkStatsd(b *testing.B, maxProc int, transport string) {
 		defer conn.Close()
 	}
 
-	b.SetParallelism(maxProc)
+	n := int32(0)
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
+		testNumber := atomic.AddInt32(&n, 1)
+		name := fmt.Sprintf("test.metric%d", testNumber)
 		for pb.Next() {
-			client.Gauge("test.metric", 1, []string{"tag:tag"}, 1)
+			client.Gauge(name, 1, []string{"tag:tag"}, 1)
 		}
 	})
 	client.Flush()
@@ -75,30 +79,6 @@ func benchmarkStatsd(b *testing.B, maxProc int, transport string) {
 	client.Close()
 }
 
-func BenchmarkStatsdUDP1(b *testing.B) { benchmarkStatsd(b, 1, "udp") }
+func BenchmarkStatsdUDP(b *testing.B) { benchmarkStatsd(b, "udp") }
 
-func BenchmarkStatsdUDP10(b *testing.B) { benchmarkStatsd(b, 10, "udp") }
-
-func BenchmarkStatsdUDP100(b *testing.B) { benchmarkStatsd(b, 100, "udp") }
-
-func BenchmarkStatsdUDP1000(b *testing.B) { benchmarkStatsd(b, 1000, "udp") }
-
-func BenchmarkStatsdUDP10000(b *testing.B) { benchmarkStatsd(b, 10000, "udp") }
-
-func BenchmarkStatsdUDP100000(b *testing.B) { benchmarkStatsd(b, 100000, "udp") }
-
-func BenchmarkStatsdUDP200000(b *testing.B) { benchmarkStatsd(b, 200000, "udp") }
-
-func BenchmarkStatsdUDS1(b *testing.B) { benchmarkStatsd(b, 1, "uds") }
-
-func BenchmarkStatsdUDS10(b *testing.B) { benchmarkStatsd(b, 10, "uds") }
-
-func BenchmarkStatsdUDS100(b *testing.B) { benchmarkStatsd(b, 100, "uds") }
-
-func BenchmarkStatsdUDS1000(b *testing.B) { benchmarkStatsd(b, 1000, "uds") }
-
-func BenchmarkStatsdUDS10000(b *testing.B) { benchmarkStatsd(b, 10000, "uds") }
-
-func BenchmarkStatsdUDS100000(b *testing.B) { benchmarkStatsd(b, 100000, "uds") }
-
-func BenchmarkStatsdUDS200000(b *testing.B) { benchmarkStatsd(b, 200000, "uds") }
+func BenchmarkStatsdUDS(b *testing.B) { benchmarkStatsd(b, "uds") }
