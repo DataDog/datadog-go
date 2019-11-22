@@ -18,6 +18,8 @@ var (
 	DefaultBufferPoolSize = 0
 	// DefaultBufferFlushInterval is the default value for the BufferFlushInterval option
 	DefaultBufferFlushInterval = 100 * time.Millisecond
+	// DefaultBufferShardCount is the default value for the BufferShardCount option
+	DefaultBufferShardCount = 32
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
 	DefaultSenderQueueSize = 0
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
@@ -45,6 +47,10 @@ type Options struct {
 	BufferPoolSize int
 	// BufferFlushInterval is the interval after which the current buffer will get flushed.
 	BufferFlushInterval time.Duration
+	// BufferShardCount is the number of buffer "shards" that will be used.
+	// Those shards allows the use of multiple buffers at the same time to reduce
+	// lock contention.
+	BufferShardCount int
 	// SenderQueueSize is the size of the sender queue in number of buffers.
 	// The magic value 0 will set the option to the optimal size for the transport
 	// protocol used when creating the client: 2048 for UDP and 512 for UDS.
@@ -64,6 +70,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
 		BufferPoolSize:        DefaultBufferPoolSize,
 		BufferFlushInterval:   DefaultBufferFlushInterval,
+		BufferShardCount:      DefaultBufferShardCount,
 		SenderQueueSize:       DefaultSenderQueueSize,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
 		Telemetry:             DefaultTelemetry,
@@ -126,6 +133,14 @@ func WithBufferPoolSize(bufferPoolSize int) Option {
 func WithBufferFlushInterval(bufferFlushInterval time.Duration) Option {
 	return func(o *Options) error {
 		o.BufferFlushInterval = bufferFlushInterval
+		return nil
+	}
+}
+
+// WithBufferShardCount sets the BufferShardCount option.
+func WithBufferShardCount(bufferShardCount int) Option {
+	return func(o *Options) error {
+		o.BufferShardCount = bufferShardCount
 		return nil
 	}
 }
