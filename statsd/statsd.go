@@ -25,7 +25,6 @@ package statsd
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -207,8 +206,8 @@ type Client struct {
 	telemetryTags []string
 	stop          chan struct{}
 	wg            sync.WaitGroup
-	sync.Mutex
-	closerLock sync.Mutex
+	bufferShards  []*worker
+	closerLock    sync.Mutex
 }
 
 // ClientMetrics contains metrics about the client
@@ -301,6 +300,9 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
 	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
+	for i := 0; i < o.BufferShardCount; i++ {
+		c.bufferShards = append(c.bufferShards, newWorker(c.bufferPool, c.sender))
+	}
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
 	c.wg.Add(1)
@@ -341,9 +343,9 @@ func (c *Client) watch() {
 	for {
 		select {
 		case <-ticker.C:
-			c.Lock()
-			c.flushUnsafe()
-			c.Unlock()
+			for _, w := range c.bufferShards {
+				w.flush()
+			}
 		case <-c.stop:
 			ticker.Stop()
 			return
@@ -399,20 +401,11 @@ func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	c.Lock()
-	defer c.Unlock()
-	c.flushUnsafe()
+	for _, w := range c.bufferShards {
+		w.flush()
+	}
 	c.sender.flush()
 	return nil
-}
-
-// flush the current buffer. Lock must be held by caller.
-// flushed buffer written to the network asynchronously.
-func (c *Client) flushUnsafe() {
-	if len(c.buffer.bytes()) > 0 {
-		c.sender.send(c.buffer)
-		c.buffer = c.bufferPool.borrowBuffer()
-	}
 }
 
 func (c *Client) flushTelemetryMetrics() ClientMetrics {
@@ -421,13 +414,6 @@ func (c *Client) flushTelemetryMetrics() ClientMetrics {
 		TotalEvents:        atomic.SwapUint64(&c.metrics.TotalEvents, 0),
 		TotalServiceChecks: atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
 	}
-}
-
-func (c *Client) shouldSample(rate float64) bool {
-	if rate < 1 && rand.Float64() > rate {
-		return true
-	}
-	return false
 }
 
 func (c *Client) globalTags() []string {
@@ -444,52 +430,19 @@ func (c *Client) namespace() string {
 	return ""
 }
 
-func (c *Client) writeMetricUnsafe(m metric) error {
-	switch m.metricType {
-	case gauge:
+func (c *Client) addMetric(m metric) error {
+	if c != nil {
 		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-		return c.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
-	case count:
-		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-		return c.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate)
-	case histogram:
-		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-		return c.buffer.writeHistogram(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
-	case distribution:
-		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-		return c.buffer.writeDistribution(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
-	case set:
-		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-		return c.buffer.writeSet(m.namespace, m.globalTags, m.name, m.svalue, m.tags, m.rate)
-	case timing:
-		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-		return c.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
-	case event:
-		atomic.AddUint64(&c.metrics.TotalEvents, 1)
-		return c.buffer.writeEvent(*m.evalue, m.globalTags)
-	case serviceCheck:
-		atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
-		return c.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
-	default:
-		return nil
 	}
+	return c.send(m)
 }
 
-func (c *Client) addMetric(m metric) error {
+func (c *Client) send(m metric) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	if c.shouldSample(m.rate) {
-		return nil
-	}
-	c.Lock()
-	var err error
-	if err = c.writeMetricUnsafe(m); err == errBufferFull {
-		c.flushUnsafe()
-		err = c.writeMetricUnsafe(m)
-	}
-	c.Unlock()
-	return err
+	h := hashString32(m.name)
+	return c.bufferShards[h%uint32(len(c.bufferShards))].processMetric(m)
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -540,7 +493,10 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 
 // Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
-	return c.addMetric(metric{globalTags: c.globalTags(), metricType: event, evalue: e, rate: 1})
+	if c != nil {
+		atomic.AddUint64(&c.metrics.TotalEvents, 1)
+	}
+	return c.send(metric{globalTags: c.globalTags(), metricType: event, evalue: e, rate: 1})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -551,7 +507,10 @@ func (c *Client) SimpleEvent(title, text string) error {
 
 // ServiceCheck sends the provided ServiceCheck.
 func (c *Client) ServiceCheck(sc *ServiceCheck) error {
-	return c.addMetric(metric{globalTags: c.globalTags(), metricType: serviceCheck, scvalue: sc, rate: 1})
+	if c != nil {
+		atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
+	}
+	return c.send(metric{globalTags: c.globalTags(), metricType: serviceCheck, scvalue: sc, rate: 1})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -582,10 +541,7 @@ func (c *Client) Close() error {
 	c.wg.Wait()
 
 	// Finally flush any remaining metrics that may have come in at the last moment
-	c.Lock()
-	defer c.Unlock()
+	c.Flush()
 
-	c.flushUnsafe()
-	c.sender.flush()
 	return c.sender.close()
 }

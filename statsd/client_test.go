@@ -145,16 +145,16 @@ func TestBufferedClient(t *testing.T) {
 
 	dur, _ := time.ParseDuration("123us")
 
-	client.Incr("ic", nil, 1)
-	client.Decr("dc", nil, 1)
-	client.Count("cc", 1, nil, 1)
-	client.Gauge("gg", 10, nil, 1)
-	client.Histogram("hh", 1, nil, 1)
-	client.Distribution("dd", 1, nil, 1)
-	client.Timing("tt", dur, nil, 1)
-	client.Set("ss", "ss", nil, 1)
+	client.Incr("ab", nil, 1)
+	client.Decr("ab", nil, 1)
+	client.Count("ab", 1, nil, 1)
+	client.Gauge("ab", 10, nil, 1)
+	client.Histogram("ab", 1, nil, 1)
+	client.Distribution("ab", 1, nil, 1)
+	client.Timing("ab", dur, nil, 1)
+	client.Set("ab", "ss", nil, 1)
 
-	client.Set("ss", "xx", nil, 1)
+	client.Set("ab", "xx", nil, 1)
 	client.Flush()
 	if err != nil {
 		t.Errorf("Error sending: %s", err)
@@ -169,15 +169,15 @@ func TestBufferedClient(t *testing.T) {
 	}
 
 	expected := []string{
-		`foo.ic:1|c|#dd:2`,
-		`foo.dc:-1|c|#dd:2`,
-		`foo.cc:1|c|#dd:2`,
-		`foo.gg:10|g|#dd:2`,
-		`foo.hh:1|h|#dd:2`,
-		`foo.dd:1|d|#dd:2`,
-		`foo.tt:0.123000|ms|#dd:2`,
-		`foo.ss:ss|s|#dd:2`,
-		`foo.ss:xx|s|#dd:2`,
+		`foo.ab:1|c|#dd:2`,
+		`foo.ab:-1|c|#dd:2`,
+		`foo.ab:1|c|#dd:2`,
+		`foo.ab:10|g|#dd:2`,
+		`foo.ab:1|h|#dd:2`,
+		`foo.ab:1|d|#dd:2`,
+		`foo.ab:0.123000|ms|#dd:2`,
+		`foo.ab:ss|s|#dd:2`,
+		`foo.ab:xx|s|#dd:2`,
 	}
 
 	for i, res := range strings.Split(result, "\n") {
