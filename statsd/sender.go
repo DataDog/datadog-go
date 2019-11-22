@@ -87,6 +87,7 @@ func (s *sender) flushMetrics() SenderMetrics {
 }
 
 func (s *sender) sendLoop() {
+	defer close(s.stop)
 	for {
 		select {
 		case buffer := <-s.queue:
@@ -111,6 +112,7 @@ func (s *sender) flush() {
 func (s *sender) close() error {
 	s.flush()
 	err := s.transport.Close()
-	close(s.stop)
+	s.stop <- struct{}{}
+	<-s.stop
 	return err
 }
