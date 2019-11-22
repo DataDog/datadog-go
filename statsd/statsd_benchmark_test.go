@@ -1,9 +1,11 @@
 package statsd_test
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"sync/atomic"
 	"testing"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -61,12 +63,16 @@ func benchmarkStatsd(b *testing.B, maxProc int, transport string) {
 		defer conn.Close()
 	}
 
+	n := int32(0)
+
 	b.SetParallelism(maxProc)
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
+		testNumber := atomic.AddInt32(&n, 1)
+		name := fmt.Sprintf("test.metric%d", testNumber)
 		for pb.Next() {
-			client.Gauge("test.metric", 1, []string{"tag:tag"}, 1)
+			client.Gauge(name, 1, []string{"tag:tag"}, 1)
 		}
 	})
 	client.Flush()
