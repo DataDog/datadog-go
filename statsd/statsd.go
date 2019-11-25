@@ -497,29 +497,21 @@ func (c *Client) SimpleServiceCheck(name string, status ServiceCheckStatus) erro
 	return c.ServiceCheck(sc)
 }
 
-// shutdown shuts down the goroutines associated with the client and waits for them.
-// It returns true if shutdown was performed, and false if the client was already shut down.
-func (c *Client) shutdown() bool {
-	c.Lock()
-	defer c.Unlock()
-	select {
-	case <-c.stop:
-		return false
-	default:
-	}
-	close(c.stop)
-	c.wg.Wait()
-	return true
-}
-
 // Close the client connection.
 func (c *Client) Close() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	if c.shutdown() {
-		c.Flush()
-		return c.sender.close()
+	c.Lock()
+	select {
+	case <-c.stop:
+		c.Unlock()
+		return nil
+	default:
 	}
-	return nil
+	c.Unlock()
+	close(c.stop)
+	c.wg.Wait()
+	c.Flush()
+	return c.sender.close()
 }

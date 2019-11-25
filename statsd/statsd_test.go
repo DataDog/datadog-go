@@ -434,3 +434,12 @@ func TestEntityID(t *testing.T) {
 		t.Errorf("Expecting empty default tags, got %v", client.Tags)
 	}
 }
+
+func TestClosePanic(t *testing.T) {
+	c, err := statsd.New("localhost:8125")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Close()
+	c.Close()
+}
