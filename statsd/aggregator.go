@@ -141,8 +141,10 @@ func (a *aggregator) flush() {
 			name:       m.name,
 			tags:       m.tags,
 			metricType: m.metricType,
+			rate:       1,
 		})
 	}
+	a.worker.flush()
 }
 
 func canAggregate(sample metric) bool {

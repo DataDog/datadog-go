@@ -64,6 +64,12 @@ func (w *worker) writeMetricUnsafe(m metric) error {
 	}
 }
 
+func (w *worker) flush() {
+	w.Lock()
+	w.flushUnsafe()
+	w.Unlock()
+}
+
 // flush the current buffer. Lock must be held by caller.
 // flushed buffer written to the network asynchronously.
 func (w *worker) flushUnsafe() {
