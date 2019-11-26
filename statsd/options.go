@@ -24,6 +24,10 @@ var (
 	DefaultSenderQueueSize = 0
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
+	// DefaultPreAggregate is the default value for the PreAggregate option
+	DefaultPreAggregate = false
+	// DefaultPreAggregateFlushInterval is the default value for the PreAggregateFlushInterval option
+	DefaultPreAggregateFlushInterval = 200 * time.Millisecond
 )
 
 // Options contains the configuration options for a client.
@@ -55,19 +59,26 @@ type Options struct {
 	SenderQueueSize int
 	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
 	WriteTimeoutUDS time.Duration
+	// PreAggregate enables pre-aggregation for supported metric types.
+	PreAggregate bool
+	// PreAggregateFlushInterval is the interval after which the pre-aggregation flushes it's
+	// aggregated metrics to the agent.
+	PreAggregateFlushInterval time.Duration
 }
 
 func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
-		Namespace:             DefaultNamespace,
-		Tags:                  DefaultTags,
-		MaxBytesPerPayload:    DefaultMaxBytesPerPayload,
-		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
-		BufferPoolSize:        DefaultBufferPoolSize,
-		BufferFlushInterval:   DefaultBufferFlushInterval,
-		BufferShardCount:      DefaultBufferShardCount,
-		SenderQueueSize:       DefaultSenderQueueSize,
-		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
+		Namespace:                 DefaultNamespace,
+		Tags:                      DefaultTags,
+		MaxBytesPerPayload:        DefaultMaxBytesPerPayload,
+		MaxMessagesPerPayload:     DefaultMaxMessagesPerPayload,
+		BufferPoolSize:            DefaultBufferPoolSize,
+		BufferFlushInterval:       DefaultBufferFlushInterval,
+		BufferShardCount:          DefaultBufferShardCount,
+		SenderQueueSize:           DefaultSenderQueueSize,
+		WriteTimeoutUDS:           DefaultWriteTimeoutUDS,
+		PreAggregate:              DefaultPreAggregate,
+		PreAggregateFlushInterval: DefaultPreAggregateFlushInterval,
 	}
 
 	for _, option := range options {
@@ -151,6 +162,22 @@ func WithSenderQueueSize(senderQueueSize int) Option {
 func WithWriteTimeoutUDS(writeTimeoutUDS time.Duration) Option {
 	return func(o *Options) error {
 		o.WriteTimeoutUDS = writeTimeoutUDS
+		return nil
+	}
+}
+
+// WithPreAggregate sets the PreAggregate option.
+func WithPreAggregate() Option {
+	return func(o *Options) error {
+		o.PreAggregate = true
+		return nil
+	}
+}
+
+// WithPreAggregateFlushInterval sets the PreAggregateFlushInterval option.
+func WithPreAggregateFlushInterval(preAggregateFlushInterval time.Duration) Option {
+	return func(o *Options) error {
+		o.PreAggregateFlushInterval = preAggregateFlushInterval
 		return nil
 	}
 }

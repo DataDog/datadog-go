@@ -20,6 +20,8 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.BufferShardCount, DefaultBufferShardCount)
 	assert.Equal(t, options.SenderQueueSize, DefaultSenderQueueSize)
 	assert.Equal(t, options.WriteTimeoutUDS, DefaultWriteTimeoutUDS)
+	assert.Equal(t, options.PreAggregate, DefaultPreAggregate)
+	assert.Equal(t, options.PreAggregateFlushInterval, DefaultPreAggregateFlushInterval)
 }
 
 func TestOptions(t *testing.T) {
@@ -32,6 +34,8 @@ func TestOptions(t *testing.T) {
 	testBufferShardCount := 28
 	testSenderQueueSize := 64
 	testWriteTimeoutUDS := 1 * time.Minute
+	testPreAggregate := true
+	testPreAggregateFlushInterval := 256 * time.Second
 
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
@@ -43,6 +47,8 @@ func TestOptions(t *testing.T) {
 		WithBufferShardCount(testBufferShardCount),
 		WithSenderQueueSize(testSenderQueueSize),
 		WithWriteTimeoutUDS(testWriteTimeoutUDS),
+		WithPreAggregate(),
+		WithPreAggregateFlushInterval(testPreAggregateFlushInterval),
 	})
 
 	assert.NoError(t, err)
@@ -55,4 +61,6 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.BufferShardCount, testBufferShardCount)
 	assert.Equal(t, options.SenderQueueSize, testSenderQueueSize)
 	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
+	assert.Equal(t, options.PreAggregate, testPreAggregate)
+	assert.Equal(t, options.PreAggregateFlushInterval, testPreAggregateFlushInterval)
 }

@@ -183,13 +183,15 @@ type Client struct {
 	// Tags are global tags to be added to every statsd call
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
-	SkipErrors    bool
-	flushTime     time.Duration
-	bufferPool    *bufferPool
-	buffer        *statsdBuffer
-	telemetryTags []string
-	stop          chan struct{}
-	bufferShards  []*worker
+	SkipErrors       bool
+	flushTime        time.Duration
+	bufferPool       *bufferPool
+	buffer           *statsdBuffer
+	telemetryTags    []string
+	stop             chan struct{}
+	bufferShards     []*worker
+	preAggregate     bool
+	aggregatorShards []*aggregator
 	sync.Mutex
 }
 
@@ -272,6 +274,14 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
 	for i := 0; i < o.BufferShardCount; i++ {
 		c.bufferShards = append(c.bufferShards, newWorker(c.bufferPool, c.sender))
+	}
+	if o.PreAggregate {
+		c.preAggregate = true
+		// TODO: replace by an option specific to the aggregator
+		aggregatorWorker := newWorker(c.bufferPool, c.sender)
+		for i := 0; i < o.BufferShardCount; i++ {
+			c.aggregatorShards = append(c.aggregatorShards, newAggregator(aggregatorWorker, o.PreAggregateFlushInterval))
+		}
 	}
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
@@ -377,6 +387,9 @@ func (c *Client) addMetric(m metric) error {
 		return ErrNoClient
 	}
 	h := hashString32(m.name)
+	if c.preAggregate && canAggregate(m) {
+		return c.aggregatorShards[h%uint32(len(c.aggregatorShards))].addSample(m)
+	}
 	return c.bufferShards[h%uint32(len(c.bufferShards))].processMetric(m)
 }
 

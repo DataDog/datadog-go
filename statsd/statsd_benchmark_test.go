@@ -28,7 +28,7 @@ func setupUDSClientServer(b *testing.B) (*statsd.Client, net.Listener) {
 			}
 		}
 	}()
-	client, err := statsd.New("unix://"+sockAddr, statsd.WithMaxMessagesPerPayload(1024))
+	client, err := statsd.New("unix://"+sockAddr, statsd.WithMaxMessagesPerPayload(1024), statsd.WithPreAggregate())
 	if err != nil {
 		b.Error(err)
 	}
@@ -44,7 +44,7 @@ func setupUDPClientServer(b *testing.B) (*statsd.Client, *net.UDPConn) {
 	if err != nil {
 		b.Error(err)
 	}
-	client, err := statsd.New(conn.LocalAddr().String(), statsd.WithMaxMessagesPerPayload(1024))
+	client, err := statsd.New(conn.LocalAddr().String(), statsd.WithMaxMessagesPerPayload(1024), statsd.WithPreAggregate())
 	if err != nil {
 		b.Error(err)
 	}
