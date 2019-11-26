@@ -503,15 +503,15 @@ func (c *Client) Close() error {
 		return ErrNoClient
 	}
 	c.Lock()
+	defer c.Unlock()
 	select {
 	case <-c.stop:
-		c.Unlock()
 		return nil
 	default:
 	}
-	c.Unlock()
 	close(c.stop)
 	c.wg.Wait()
-	c.Flush()
+	c.flushUnsafe()
+	c.sender.flush()
 	return c.sender.close()
 }
