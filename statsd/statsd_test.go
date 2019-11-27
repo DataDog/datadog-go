@@ -21,28 +21,24 @@ const (
 )
 
 var dogstatsdTests = []struct {
-	GlobalNamespace string
-	GlobalTags      []string
-	Method          string
-	Metric          string
-	Value           interface{}
-	Tags            []string
-	Rate            float64
-	Expected        string
+	Method   string
+	Metric   string
+	Value    interface{}
+	Tags     []string
+	Rate     float64
+	Expected string
 }{
-	{"", nil, "Gauge", "test.gauge", 1.0, nil, 1.0, "test.gauge:1|g"},
-	{"", nil, "Gauge", "test.gauge", 1.0, nil, 0.999999, "test.gauge:1|g|@0.999999"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 1.0, "test.gauge:1|g|#tagA"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA", "tagB"}, 1.0, "test.gauge:1|g|#tagA,tagB"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 0.999999, "test.gauge:1|g|@0.999999|#tagA"},
-	{"", nil, "Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA"},
-	{"", nil, "Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA"},
-	{"", nil, "Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.3|h|#tagA"},
-	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.3|d|#tagA"},
-	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA"},
-	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
-	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
-	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
+	{"Gauge", "test.gauge", 1.0, nil, 1.0, "test.gauge:1|g"},
+	{"Gauge", "test.gauge", 1.0, nil, 0.999999, "test.gauge:1|g|@0.999999"},
+	{"Gauge", "test.gauge", 1.0, []string{"tagA"}, 1.0, "test.gauge:1|g|#tagA"},
+	{"Gauge", "test.gauge", 1.0, []string{"tagA", "tagB"}, 1.0, "test.gauge:1|g|#tagA,tagB"},
+	{"Gauge", "test.gauge", 1.0, []string{"tagA"}, 0.999999, "test.gauge:1|g|@0.999999|#tagA"},
+	{"Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA"},
+	{"Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA"},
+	{"Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.3|h|#tagA"},
+	{"Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.3|d|#tagA"},
+	{"Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA"},
+	{"Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
 }
 
 func assertNotPanics(t *testing.T, f func()) {
@@ -99,8 +95,6 @@ func TestClientWithConn(t *testing.T) {
 
 func clientTest(t *testing.T, server io.Reader, client *statsd.Client) {
 	for _, tt := range dogstatsdTests {
-		client.Namespace = tt.GlobalNamespace
-		client.Tags = tt.GlobalTags
 		method := reflect.ValueOf(client).MethodByName(tt.Method)
 		e := method.Call([]reflect.Value{
 			reflect.ValueOf(tt.Metric),
@@ -138,13 +132,10 @@ func TestBufferedClient(t *testing.T) {
 	defer server.Close()
 
 	bufferLength := 9
-	client, err := statsd.NewBuffered(addr, bufferLength)
+	client, err := statsd.New(addr, statsd.WithMaxMessagesPerPayload(bufferLength), statsd.WithNamespace("foo."), statsd.WithTags([]string{"dd:2"}))
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	client.Namespace = "foo."
-	client.Tags = []string{"dd:2"}
 
 	dur, _ := time.ParseDuration("123us")
 
@@ -390,47 +381,5 @@ func TestServiceChecks(t *testing.T) {
 	}
 	if len(sc.Tags) != 0 {
 		t.Errorf("Modified serviceCheck in place illegally.")
-	}
-}
-
-func TestEntityID(t *testing.T) {
-	initialValue, initiallySet := os.LookupEnv(entityIDEnvName)
-	if initiallySet {
-		defer os.Setenv(entityIDEnvName, initialValue)
-	} else {
-		defer os.Unsetenv(entityIDEnvName)
-	}
-
-	// Set to a valid value
-	os.Setenv(entityIDEnvName, "testing")
-	client, err := statsd.New("localhost:8125")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(client.Tags) != 1 {
-		t.Errorf("Expecting one tag, got %d", len(client.Tags))
-	}
-	if client.Tags[0] != "dd.internal.entity_id:testing" {
-		t.Errorf("Bad tag value, got %s", client.Tags[0])
-	}
-
-	// Set to empty string
-	os.Setenv(entityIDEnvName, "")
-	client, err = statsd.New("localhost:8125")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(client.Tags) != 0 {
-		t.Errorf("Expecting empty default tags, got %v", client.Tags)
-	}
-
-	// Unset
-	os.Unsetenv(entityIDEnvName)
-	client, err = statsd.New("localhost:8125")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(client.Tags) != 0 {
-		t.Errorf("Expecting empty default tags, got %v", client.Tags)
 	}
 }

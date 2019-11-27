@@ -98,16 +98,15 @@ const (
 
 type metric struct {
 	metricType metricType
-	namespace  string
-	globalTags []string
 	name       string
-	fvalue     float64
-	ivalue     int64
-	svalue     string
-	evalue     *Event
-	scvalue    *ServiceCheck
 	tags       []string
 	rate       float64
+
+	fvalue  float64
+	ivalue  int64
+	svalue  string
+	evalue  *Event
+	scvalue *ServiceCheck
 }
 
 type noClientErr string
@@ -178,13 +177,9 @@ type ClientInterface interface {
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
 	// Sender handles the underlying networking protocol
-	sender *sender
-	// Namespace to prepend to all statsd calls
-	Namespace string
-	// Tags are global tags to be added to every statsd call
-	Tags []string
-	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
-	SkipErrors    bool
+	sender        *sender
+	namespace     string
+	tags          []string
 	flushTime     time.Duration
 	bufferPool    *bufferPool
 	buffer        *statsdBuffer
@@ -251,8 +246,8 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	w.SetWriteTimeout(o.WriteTimeoutUDS)
 
 	c := Client{
-		Namespace:     o.Namespace,
-		Tags:          o.Tags,
+		namespace:     o.Namespace,
+		tags:          o.Tags,
 		telemetryTags: []string{clientTelemetryTag, "transport:" + writerName},
 	}
 
@@ -260,7 +255,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	entityID := os.Getenv(entityIDEnvName)
 	if entityID != "" {
 		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
-		c.Tags = append(c.Tags, entityTag)
+		c.tags = append(c.tags, entityTag)
 	}
 
 	if o.MaxBytesPerPayload == 0 {
@@ -367,38 +362,24 @@ func (c *Client) shouldSample(rate float64) bool {
 	return false
 }
 
-func (c *Client) globalTags() []string {
-	if c != nil {
-		return c.Tags
-	}
-	return nil
-}
-
-func (c *Client) namespace() string {
-	if c != nil {
-		return c.Namespace
-	}
-	return ""
-}
-
 func (c *Client) writeMetricUnsafe(m metric) error {
 	switch m.metricType {
 	case gauge:
-		return c.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeGauge(c.namespace, c.tags, m.name, m.fvalue, m.tags, m.rate)
 	case count:
-		return c.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate)
+		return c.buffer.writeCount(c.namespace, c.tags, m.name, m.ivalue, m.tags, m.rate)
 	case histogram:
-		return c.buffer.writeHistogram(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeHistogram(c.namespace, c.tags, m.name, m.fvalue, m.tags, m.rate)
 	case distribution:
-		return c.buffer.writeDistribution(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeDistribution(c.namespace, c.tags, m.name, m.fvalue, m.tags, m.rate)
 	case set:
-		return c.buffer.writeSet(m.namespace, m.globalTags, m.name, m.svalue, m.tags, m.rate)
+		return c.buffer.writeSet(c.namespace, c.tags, m.name, m.svalue, m.tags, m.rate)
 	case timing:
-		return c.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
+		return c.buffer.writeTiming(c.namespace, c.tags, m.name, m.fvalue, m.tags, m.rate)
 	case event:
-		return c.buffer.writeEvent(*m.evalue, m.globalTags)
+		return c.buffer.writeEvent(*m.evalue, c.tags)
 	case serviceCheck:
-		return c.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
+		return c.buffer.writeServiceCheck(*m.scvalue, c.tags)
 	default:
 		return nil
 	}
@@ -423,22 +404,22 @@ func (c *Client) addMetric(m metric) error {
 
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
 func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Decr is just Count of -1
@@ -453,7 +434,7 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: set, name: name, svalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -464,12 +445,12 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.addMetric(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
-	return c.addMetric(metric{globalTags: c.globalTags(), metricType: event, evalue: e, rate: 1})
+	return c.addMetric(metric{metricType: event, evalue: e, rate: 1})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -480,7 +461,7 @@ func (c *Client) SimpleEvent(title, text string) error {
 
 // ServiceCheck sends the provided ServiceCheck.
 func (c *Client) ServiceCheck(sc *ServiceCheck) error {
-	return c.addMetric(metric{globalTags: c.globalTags(), metricType: serviceCheck, scvalue: sc, rate: 1})
+	return c.addMetric(metric{metricType: serviceCheck, scvalue: sc, rate: 1})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
