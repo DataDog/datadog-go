@@ -71,8 +71,9 @@ func benchmarkStatsd(b *testing.B, maxProc int, transport string) {
 	b.RunParallel(func(pb *testing.PB) {
 		testNumber := atomic.AddInt32(&n, 1)
 		name := fmt.Sprintf("test.metric%d", testNumber)
+		tags := []string{"tag:tag"}
 		for pb.Next() {
-			client.Gauge(name, 1, []string{"tag:tag"}, 1)
+			client.Gauge(name, 1, tags, 1)
 		}
 	})
 	client.Flush()
