@@ -3,7 +3,6 @@ package statsd
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -18,7 +17,6 @@ type contextKey [2]uint64
 
 type aggregator struct {
 	keyBuffer   *bytes.Buffer
-	tmpTags     []string
 	metrics     map[contextKey]*aggregatedMetric
 	worker      *worker
 	flushTicker *time.Ticker
@@ -61,46 +59,21 @@ func (a *aggregator) computeKey(name string, tags []string) contextKey {
 
 func (a *aggregator) addSample(sample metric) error {
 	a.Lock()
-	// move the tags to a place we can sort them (needed to compute the hash)
-	a.tmpTags = a.tmpTags[:0]
-	for i := 0; i < len(sample.tags); i++ {
-		a.tmpTags = append(a.tmpTags, sample.tags[i])
-	}
-	a.tmpTags = sortUniqTags(a.tmpTags)
-
 	// compute the hash
-	key := a.computeKey(sample.name, a.tmpTags)
+	key := a.computeKey(sample.name, sample.tags)
 	aggregate, exists := a.metrics[key]
 	if !exists {
 		aggregate = &aggregatedMetric{
 			name:       sample.name,
-			tags:       make([]string, len(a.tmpTags)),
+			tags:       make([]string, len(sample.tags)),
 			metricType: sample.metricType,
 		}
-		copy(aggregate.tags, a.tmpTags)
+		copy(aggregate.tags, sample.tags)
 		a.metrics[key] = aggregate
 	}
 	err := aggregate.addSample(sample)
 	a.Unlock()
 	return err
-}
-
-func sortUniqTags(tags []string) []string {
-	if len(tags) < 2 {
-		return tags
-	}
-	// sort the tags
-	sort.Strings(tags)
-	// remove duplicates
-	j := 0
-	for i := 1; i < len(tags); i++ {
-		if tags[j] == tags[i] {
-			continue
-		}
-		j++
-		tags[j] = tags[i]
-	}
-	return tags[:j+1]
 }
 
 func (am *aggregatedMetric) addSample(sample metric) error {

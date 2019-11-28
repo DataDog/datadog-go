@@ -36,7 +36,7 @@ func TestAggregatorUdpateGauge(t *testing.T) {
 	a := newAggregator(nil, time.Hour*24)
 	metric1 := metric{
 		name:       "metric.test",
-		tags:       []string{"test:1", "test:2"},
+		tags:       []string{"test:2", "test:1"},
 		metricType: gauge,
 		fvalue:     1,
 	}
@@ -67,7 +67,7 @@ func TestAggregatorUdpateCount(t *testing.T) {
 	a := newAggregator(nil, time.Hour*24)
 	metric1 := metric{
 		name:       "metric.test.count",
-		tags:       []string{"test:1", "test:2"},
+		tags:       []string{"test:2", "test:1"},
 		metricType: count,
 		ivalue:     1,
 	}
@@ -92,28 +92,4 @@ func TestAggregatorUdpateCount(t *testing.T) {
 	assert.Equal(t, metric1.name, metrics[0].name)
 	assert.ElementsMatch(t, metric1.tags, metrics[0].tags)
 	assert.Equal(t, int64(11), metrics[0].ivalue)
-}
-
-func TestAggregatorDedupeTags(t *testing.T) {
-	a := newAggregator(nil, time.Hour*24)
-	metric1 := metric{
-		name:       "metric.test",
-		tags:       []string{"test:1", "test:2"},
-		metricType: gauge,
-		fvalue:     1,
-	}
-	a.addSample(metric1)
-	metric2 := metric{
-		name:       "metric.test",
-		tags:       []string{"test:2", "test:1", "test:1"},
-		metricType: gauge,
-		fvalue:     2,
-	}
-	a.addSample(metric2)
-
-	metrics := getAggregatedMetrics(a)
-	assert.Len(t, metrics, 1)
-	assert.Equal(t, metric2.name, metrics[0].name)
-	assert.ElementsMatch(t, []string{"test:2", "test:1"}, metrics[0].tags)
-	assert.Equal(t, metric2.fvalue, metrics[0].fvalue)
 }
