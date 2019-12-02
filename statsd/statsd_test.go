@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-go/statsd"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // Client-side entity ID injection for container tagging
@@ -437,9 +439,7 @@ func TestEntityID(t *testing.T) {
 
 func TestClosePanic(t *testing.T) {
 	c, err := statsd.New("localhost:8125")
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	c.Close()
 	c.Close()
 }
