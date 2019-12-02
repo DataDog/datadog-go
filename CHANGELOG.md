@@ -1,5 +1,11 @@
 ## Changes
 
+# 3.3.0 / 2019-12-02
+
+### Notes
+
+* [BUGFIX] Close the stop channel when closing a statsd client to avoid leaking. See [#107][].
+
 # 3.2.0 / 2019-10-28
 
 ### Notes
@@ -133,6 +139,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#91]: https://github.com/DataDog/datadog-go/issues/91
 [#92]: https://github.com/DataDog/datadog-go/issues/92
 [#100]: https://github.com/DataDog/datadog-go/issues/100
+[#107]: https://github.com/DataDog/datadog-go/issues/107
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
