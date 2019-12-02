@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
 
@@ -449,12 +450,16 @@ func TestCloseRace(t *testing.T) {
 		c, err := statsd.New("localhost:8125")
 		assert.NoError(t, err)
 		start := make(chan struct{})
+		var wg sync.WaitGroup
 		for j := 0; j < 100; j++ {
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				<-start
 				c.Close()
 			}()
 		}
 		close(start)
+		wg.Wait()
 	}
 }
