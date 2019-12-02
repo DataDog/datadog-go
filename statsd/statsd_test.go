@@ -10,8 +10,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // Client-side entity ID injection for container tagging
@@ -432,5 +435,31 @@ func TestEntityID(t *testing.T) {
 	}
 	if len(client.Tags) != 0 {
 		t.Errorf("Expecting empty default tags, got %v", client.Tags)
+	}
+}
+
+func TestClosePanic(t *testing.T) {
+	c, err := statsd.New("localhost:8125")
+	assert.NoError(t, err)
+	c.Close()
+	c.Close()
+}
+
+func TestCloseRace(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		c, err := statsd.New("localhost:8125")
+		assert.NoError(t, err)
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for j := 0; j < 100; j++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				c.Close()
+			}()
+		}
+		close(start)
+		wg.Wait()
 	}
 }

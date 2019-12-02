@@ -190,6 +190,7 @@ type Client struct {
 	buffer        *statsdBuffer
 	telemetryTags []string
 	stop          chan struct{}
+	wg            sync.WaitGroup
 	sync.Mutex
 }
 
@@ -272,9 +273,16 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
-	go c.watch()
-	go c.telemetry()
-
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.watch()
+	}()
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.telemetry()
+	}()
 	return &c, nil
 }
 
@@ -494,10 +502,16 @@ func (c *Client) Close() error {
 	if c == nil {
 		return ErrNoClient
 	}
+	c.Lock()
+	defer c.Unlock()
 	select {
-	case c.stop <- struct{}{}:
+	case <-c.stop:
+		return nil
 	default:
 	}
-	c.Flush()
+	close(c.stop)
+	c.wg.Wait()
+	c.flushUnsafe()
+	c.sender.flush()
 	return c.sender.close()
 }
