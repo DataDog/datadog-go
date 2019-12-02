@@ -443,3 +443,18 @@ func TestClosePanic(t *testing.T) {
 	c.Close()
 	c.Close()
 }
+
+func TestCloseRace(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		c, err := statsd.New("localhost:8125")
+		assert.NoError(t, err)
+		start := make(chan struct{})
+		for j := 0; j < 100; j++ {
+			go func() {
+				<-start
+				c.Close()
+			}()
+		}
+		close(start)
+	}
+}
