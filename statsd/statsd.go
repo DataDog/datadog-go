@@ -267,6 +267,12 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	if o.MaxBytesPerPayload == 0 {
 		o.MaxBytesPerPayload = OptimalUDPPayloadSize
 	}
+	if o.BufferPoolSize == 0 {
+		o.BufferPoolSize = DefaultUDPBufferPoolSize
+	}
+	if o.SenderQueueSize == 0 {
+		o.SenderQueueSize = DefaultUDPBufferPoolSize
+	}
 
 	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
