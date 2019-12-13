@@ -177,3 +177,14 @@ func (suite *UdsTestSuite) TestClientUDSClose() {
 
 	assert.NotPanics(suite.T(), func() { client.Close() })
 }
+
+func TestConnectionNotUnset(t *testing.T) {
+	ts := newTestUnixgramServer(t)
+	defer ts.Cleanup()
+
+	writer, err := newUDSWriter(ts.LocalAddr().String())
+	assert.NoError(t, err)
+
+	_, err = writer.Write([]byte("test.gauge:1|g"))
+	assert.NotNil(t, writer.conn)
+}
