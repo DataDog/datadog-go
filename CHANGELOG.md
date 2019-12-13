@@ -1,5 +1,13 @@
 ## Changes
 
+# 3.3.1 / 2019-12-02
+
+### Notes
+
+* [BUGFIX] Fix unix domain socket path extraction. See [#113][].
+* [BUGFIX] Fix an issue with custom writers leading to metric drops. See [#106][].
+* [BUGFIX] Fix an error check in uds.Write leading to unneeded re-connections. See [#115][].
+
 # 3.3.0 / 2019-12-02
 
 ### Notes
