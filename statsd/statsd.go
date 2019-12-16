@@ -287,7 +287,9 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		c.telemetry()
+		if o.Telemetry {
+			c.telemetry()
+		}
 	}()
 	return &c, nil
 }

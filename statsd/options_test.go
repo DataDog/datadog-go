@@ -19,6 +19,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.BufferFlushInterval, DefaultBufferFlushInterval)
 	assert.Equal(t, options.SenderQueueSize, DefaultSenderQueueSize)
 	assert.Equal(t, options.WriteTimeoutUDS, DefaultWriteTimeoutUDS)
+	assert.Equal(t, options.Telemetry, DefaultTelemetry)
 }
 
 func TestOptions(t *testing.T) {
@@ -40,6 +41,7 @@ func TestOptions(t *testing.T) {
 		WithBufferFlushInterval(testBufferFlushInterval),
 		WithSenderQueueSize(testSenderQueueSize),
 		WithWriteTimeoutUDS(testWriteTimeoutUDS),
+		WithoutTelemetry(),
 	})
 
 	assert.NoError(t, err)
@@ -51,4 +53,5 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.BufferFlushInterval, testBufferFlushInterval)
 	assert.Equal(t, options.SenderQueueSize, testSenderQueueSize)
 	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
+	assert.Equal(t, options.Telemetry, false)
 }
