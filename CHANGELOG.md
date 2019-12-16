@@ -147,7 +147,10 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#91]: https://github.com/DataDog/datadog-go/issues/91
 [#92]: https://github.com/DataDog/datadog-go/issues/92
 [#100]: https://github.com/DataDog/datadog-go/issues/100
+[#106]: https://github.com/DataDog/datadog-go/issues/106
 [#107]: https://github.com/DataDog/datadog-go/issues/107
+[#113]: https://github.com/DataDog/datadog-go/issues/113
+[#115]: https://github.com/DataDog/datadog-go/issues/115
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
