@@ -102,7 +102,7 @@ The following metrics are available:
 
 Note: When using UDP datagrams may be dropped during transport. Those drops will not show up here as the client has no way to know
 
-This can be disabled using the `WithoutTelemetry` option.
+Those metrics will not be counted as custom and will not be billed. This feature can be disabled using the `WithoutTelemetry` option.
 
 ### Tweaking kernel options
 
