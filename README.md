@@ -86,6 +86,24 @@ After the client is created, you can start sending Service Checks to Datadog. Se
 
 ## Performance / Metric drops
 
+### Monitoring this client
+
+This client automatically injects telemetry about itself in the dogstatsd stream.
+The following metrics are available:
+
+- `datadog.dogstatsd.client.packets_sent` (count): total number of datagrams successfully sent
+- `datadog.dogstatsd.client.bytes_sent` (count): total number of bytes successfully sent
+- `datadog.dogstatsd.client.packets_dropped` (count): total number of datagrams dropped
+- `datadog.dogstatsd.client.bytes_dropped` (count): total number of bytes dropped
+- `datadog.dogstatsd.client.packets_dropped_queue` (count): total number of datagrams dropped because the client queue was full
+- `datadog.dogstatsd.client.bytes_dropped_queue` (count): total number of bytes dropped because the client queue was full
+- `datadog.dogstatsd.client.packets_dropped_writer` (count): total number of datagrams dropped because of an error while writing to the transport
+- `datadog.dogstatsd.client.bytes_dropped_writer` (count): total number of byte dropped because of an error while writing to the transport
+
+Note: When using UDP datagrams may be dropped during transport. Those drops will not show up here as the client has no way to know
+
+This can be disabled using the `WithoutTelemetry` option.
+
 ### Tweaking kernel options
 
 In very high throughput environments it is possible to improve performance by changing the values of some kernel options.
