@@ -51,7 +51,7 @@ type Options struct {
 	SenderQueueSize int
 	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
 	WriteTimeoutUDS time.Duration
-	// Telemetry is a set en metrics automatically injected by the client in the
+	// Telemetry is a set of metrics automatically injected by the client in the
 	// dogstatsd stream to be able to monitor the client itself.
 	Telemetry bool
 }
