@@ -100,7 +100,7 @@ The following metrics are available:
 - `datadog.dogstatsd.client.packets_dropped_writer` (count): total number of datagrams dropped because of an error while writing to the transport
 - `datadog.dogstatsd.client.bytes_dropped_writer` (count): total number of bytes dropped because of an error while writing to the transport
 
-Note: When using UDP datagrams may be dropped during transport. Those drops will not show up here as the client has no way to know
+Note: When using UDP, datagrams may be dropped during transport. Those drops will not show up here as the client has no way to know.
 
 Those metrics will not be counted as custom and will not be billed. This feature can be disabled using the `WithoutTelemetry` option.
 
