@@ -91,16 +91,16 @@ After the client is created, you can start sending Service Checks to Datadog. Se
 This client automatically injects telemetry about itself in the DogStatsD stream.
 The following metrics are available:
 
-| Metric name                                     | Type  | Description                                                                          | 
-|-------------------------------------------------|-------|--------------------------------------------------------------------------------------| 
-| datadog.dogstatsd.client.packets_sent           | count | total number of datagrams successfully sent                                          | 
-| datadog.dogstatsd.client.bytes_sent             | count | total number of bytes successfully sent                                              | 
-| datadog.dogstatsd.client.packets_dropped        | count | total number of datagrams dropped                                                    | 
-| datadog.dogstatsd.client.bytes_dropped          | count | total number of bytes dropped                                                        | 
-| datadog.dogstatsd.client.packets_dropped_queue  | count | total number of datagrams dropped because the client queue was full                  | 
-| datadog.dogstatsd.client.bytes_dropped_queue    | count | total number of bytes dropped because the client queue was full                      | 
-| datadog.dogstatsd.client.packets_dropped_writer | count | total number of datagrams dropped because of an error while writing to the transport | 
-| datadog.dogstatsd.client.bytes_dropped_writer   | count | total number of bytes dropped because of an error while writing to the transport     | 
+| Metric name                                       | Type  | Description                                                                           |
+|---------------------------------------------------|-------|---------------------------------------------------------------------------------------|
+| `datadog.dogstatsd.client.packets_sent`           | count | Total number of datagrams successfully sent.                                          |
+| `datadog.dogstatsd.client.bytes_sent`             | count | Total number of bytes successfully sent.                                              |
+| `datadog.dogstatsd.client.packets_dropped`        | count | Total number of datagrams dropped.                                                    |
+| `datadog.dogstatsd.client.bytes_dropped`          | count | Total number of bytes dropped.                                                        |
+| `datadog.dogstatsd.client.packets_dropped_queue`  | count | Total number of datagrams dropped because the client queue was full.                  |
+| `datadog.dogstatsd.client.bytes_dropped_queue`    | count | Total number of bytes dropped because the client queue was full.                      |
+| `datadog.dogstatsd.client.packets_dropped_writer` | count | Total number of datagrams dropped because of an error while writing to the transport. |
+| `datadog.dogstatsd.client.bytes_dropped_writer`   | count | Total number of bytes dropped because of an error while writing to the transport.     |
 
 
 Note: When using UDP, datagrams may be dropped during transport. Those drops will not show up here as the client has no way to know.
