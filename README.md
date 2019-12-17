@@ -88,7 +88,7 @@ After the client is created, you can start sending Service Checks to Datadog. Se
 
 ### Monitoring this client
 
-This client automatically injects telemetry about itself in the dogstatsd stream.
+This client automatically injects telemetry about itself in the DogStatsD stream.
 The following metrics are available:
 
 - `datadog.dogstatsd.client.packets_sent` (count): total number of datagrams successfully sent
