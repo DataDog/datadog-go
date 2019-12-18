@@ -1,5 +1,13 @@
 ## Changes
 
+# 3.3.1 / 2019-12-13
+
+### Notes
+
+* [BUGFIX] Fix Unix domain socket path extraction. See [#113][].
+* [BUGFIX] Fix an issue with custom writers leading to metric drops. See [#106][].
+* [BUGFIX] Fix an error check in uds.Write leading to unneeded re-connections. See [#115][].
+
 # 3.3.0 / 2019-12-02
 
 ### Notes
@@ -139,7 +147,10 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#91]: https://github.com/DataDog/datadog-go/issues/91
 [#92]: https://github.com/DataDog/datadog-go/issues/92
 [#100]: https://github.com/DataDog/datadog-go/issues/100
+[#106]: https://github.com/DataDog/datadog-go/issues/106
 [#107]: https://github.com/DataDog/datadog-go/issues/107
+[#113]: https://github.com/DataDog/datadog-go/issues/113
+[#115]: https://github.com/DataDog/datadog-go/issues/115
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
