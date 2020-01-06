@@ -1,5 +1,7 @@
 ## Changes
 
+[//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
+
 # 3.3.1 / 2019-12-13
 
 ### Notes

@@ -73,6 +73,11 @@ clientTelemetryTag is a tag identifying this specific client.
 var clientTelemetryTag = "client:go"
 
 /*
+clientVersionTelemetryTag is a tag identifying this specific client version.
+*/
+var clientVersionTelemetryTag = "client_version:3.3.1"
+
+/*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
 traffic instead of UDP.
 */
@@ -263,7 +268,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	c := Client{
 		Namespace:     o.Namespace,
 		Tags:          o.Tags,
-		telemetryTags: []string{clientTelemetryTag, "transport:" + writerName},
+		telemetryTags: []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:" + writerName},
 	}
 
 	// Inject DD_ENTITY_ID as a constant tag if found
