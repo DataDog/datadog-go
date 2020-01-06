@@ -22,6 +22,8 @@ var (
 	DefaultSenderQueueSize = 0
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
+	// DefaultTelemetry is the default value for the Telemetry option
+	DefaultTelemetry = true
 )
 
 // Options contains the configuration options for a client.
@@ -49,6 +51,9 @@ type Options struct {
 	SenderQueueSize int
 	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
 	WriteTimeoutUDS time.Duration
+	// Telemetry is a set of metrics automatically injected by the client in the
+	// dogstatsd stream to be able to monitor the client itself.
+	Telemetry bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -61,6 +66,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		BufferFlushInterval:   DefaultBufferFlushInterval,
 		SenderQueueSize:       DefaultSenderQueueSize,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
+		Telemetry:             DefaultTelemetry,
 	}
 
 	for _, option := range options {
@@ -136,6 +142,14 @@ func WithSenderQueueSize(senderQueueSize int) Option {
 func WithWriteTimeoutUDS(writeTimeoutUDS time.Duration) Option {
 	return func(o *Options) error {
 		o.WriteTimeoutUDS = writeTimeoutUDS
+		return nil
+	}
+}
+
+// WithoutTelemetry disables the telemetry
+func WithoutTelemetry() Option {
+	return func(o *Options) error {
+		o.Telemetry = false
 		return nil
 	}
 }
