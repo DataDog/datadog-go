@@ -2,6 +2,14 @@
 
 [//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
 
+# 3.4.0 / 2020-01-15
+
+### Notes
+
+* [IMPROVEMENT] Improve tags for the telemetry. See [#118][].
+* [IMPROVEMENT] Add option to disable the telemetry. See [#117][].
+* [IMPROVEMENT] Add metrics, event and service check count to the telemetry. See [#118][].
+
 # 3.3.1 / 2019-12-13
 
 ### Notes
@@ -152,6 +160,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#106]: https://github.com/DataDog/datadog-go/issues/106
 [#107]: https://github.com/DataDog/datadog-go/issues/107
 [#113]: https://github.com/DataDog/datadog-go/issues/113
+[#117]: https://github.com/DataDog/datadog-go/issues/117
+[#118]: https://github.com/DataDog/datadog-go/issues/118
 [#115]: https://github.com/DataDog/datadog-go/issues/115
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
