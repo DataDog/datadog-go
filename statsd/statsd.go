@@ -199,6 +199,7 @@ type Client struct {
 	stop          chan struct{}
 	wg            sync.WaitGroup
 	sync.Mutex
+	closerLock sync.Mutex
 }
 
 // ClientMetrics contains metrics about the client
@@ -544,15 +545,26 @@ func (c *Client) Close() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	c.Lock()
-	defer c.Unlock()
+
+	// Acquire closer lock to ensure only one thread can close the stop channel
+	c.closerLock.Lock()
+	defer c.closerLock.Unlock()
+
+	// Notify all other threads that they should stop
 	select {
 	case <-c.stop:
 		return nil
 	default:
 	}
 	close(c.stop)
+
+	// Wait for the threads to stop
 	c.wg.Wait()
+
+	// Finally flush any remaining metrics that may have come in at the last moment
+	c.Lock()
+	defer c.Unlock()
+
 	c.flushUnsafe()
 	c.sender.flush()
 	return c.sender.close()
