@@ -106,7 +106,7 @@ In very high throughput environments it is possible to improve performance by ch
 
 Run the tests with:
 
-    $ go test
+    $ go test ./...
 
 ## License
 
