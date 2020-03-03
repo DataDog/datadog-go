@@ -186,5 +186,6 @@ func TestConnectionNotUnset(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = writer.Write([]byte("test.gauge:1|g"))
+	assert.NoError(t, err)
 	assert.NotNil(t, writer.conn)
 }
