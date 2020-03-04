@@ -110,6 +110,13 @@ const (
 	serviceCheck
 )
 
+type ReceivingMode int
+
+const (
+	MutexMode ReceivingMode = iota
+	ChannelMode
+)
+
 type metric struct {
 	metricType metricType
 	namespace  string
@@ -208,13 +215,15 @@ type Client struct {
 	wg            sync.WaitGroup
 	bufferShards  []*worker
 	closerLock    sync.Mutex
+	receiveMode   ReceivingMode
 }
 
 // ClientMetrics contains metrics about the client
 type ClientMetrics struct {
-	TotalMetrics       uint64
-	TotalEvents        uint64
-	TotalServiceChecks uint64
+	TotalMetrics          uint64
+	TotalEvents           uint64
+	TotalServiceChecks    uint64
+	TotalDroppedOnReceive uint64
 }
 
 // Verify that Client implements the ClientInterface.
@@ -297,11 +306,16 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		o.SenderQueueSize = DefaultUDPBufferPoolSize
 	}
 
+	c.receiveMode = o.ReceiveMode
 	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.buffer = c.bufferPool.borrowBuffer()
 	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
 	for i := 0; i < o.BufferShardCount; i++ {
-		c.bufferShards = append(c.bufferShards, newWorker(c.bufferPool, c.sender))
+		w := newWorker(c.bufferPool, c.sender)
+		c.bufferShards = append(c.bufferShards, w)
+		if c.receiveMode == ChannelMode {
+			w.startReceivingMetric(o.ChannelModeBufferSize) // TODO make it configurable
+		}
 	}
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
@@ -377,10 +391,11 @@ func (c *Client) flushTelemetry() []metric {
 		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: c.telemetryTags, rate: 1})
 	}
 
-	clientMetrics := c.flushTelemetryMetrics()
+	clientMetrics := c.FlushTelemetryMetrics()
 	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics))
 	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents))
 	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks))
+	telemetryCount("datadog.dogstatsd.client.metric_dropped_on_receive", int64(clientMetrics.TotalDroppedOnReceive))
 
 	senderMetrics := c.sender.flushTelemetryMetrics()
 	telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads))
@@ -408,11 +423,12 @@ func (c *Client) Flush() error {
 	return nil
 }
 
-func (c *Client) flushTelemetryMetrics() ClientMetrics {
+func (c *Client) FlushTelemetryMetrics() ClientMetrics {
 	return ClientMetrics{
-		TotalMetrics:       atomic.SwapUint64(&c.metrics.TotalMetrics, 0),
-		TotalEvents:        atomic.SwapUint64(&c.metrics.TotalEvents, 0),
-		TotalServiceChecks: atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
+		TotalMetrics:          atomic.SwapUint64(&c.metrics.TotalMetrics, 0),
+		TotalEvents:           atomic.SwapUint64(&c.metrics.TotalEvents, 0),
+		TotalServiceChecks:    atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
+		TotalDroppedOnReceive: atomic.SwapUint64(&c.metrics.TotalDroppedOnReceive, 0),
 	}
 }
 
@@ -441,8 +457,19 @@ func (c *Client) send(m metric) error {
 	if c == nil {
 		return ErrNoClient
 	}
+
 	h := hashString32(m.name)
-	return c.bufferShards[h%uint32(len(c.bufferShards))].processMetric(m)
+	worker := c.bufferShards[h%uint32(len(c.bufferShards))]
+
+	if c.receiveMode == ChannelMode {
+		select {
+		case worker.inputMetrics <- m:
+		default:
+			atomic.AddUint64(&c.metrics.TotalDroppedOnReceive, 1)
+		}
+		return nil
+	}
+	return worker.processMetric(m)
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -536,6 +563,12 @@ func (c *Client) Close() error {
 	default:
 	}
 	close(c.stop)
+
+	if c.receiveMode == ChannelMode {
+		for _, w := range c.bufferShards {
+			w.stopReceivingMetric()
+		}
+	}
 
 	// Wait for the threads to stop
 	c.wg.Wait()

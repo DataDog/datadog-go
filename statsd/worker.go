@@ -10,6 +10,9 @@ type worker struct {
 	buffer *statsdBuffer
 	sender *sender
 	sync.Mutex
+
+	inputMetrics chan metric
+	stop         chan struct{}
 }
 
 func newWorker(pool *bufferPool, sender *sender) *worker {
@@ -17,6 +20,27 @@ func newWorker(pool *bufferPool, sender *sender) *worker {
 		pool:   pool,
 		sender: sender,
 		buffer: pool.borrowBuffer(),
+		stop:   make(chan struct{}),
+	}
+}
+
+func (w *worker) startReceivingMetric(bufferSize int) {
+	w.inputMetrics = make(chan metric, bufferSize)
+	go w.pullMetric()
+}
+
+func (w *worker) stopReceivingMetric() {
+	w.stop <- struct{}{}
+}
+
+func (w *worker) pullMetric() {
+	for {
+		select {
+		case m := <-w.inputMetrics:
+			w.processMetric(m)
+		case <-w.stop:
+			return
+		}
 	}
 }
 

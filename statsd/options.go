@@ -26,6 +26,10 @@ var (
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
 	// DefaultTelemetry is the default value for the Telemetry option
 	DefaultTelemetry = true
+	// DefaultReceivingingMode is the default behavior when sending metrics
+	DefaultReceivingMode = MutexMode
+	// DefaultChannelModeBufferSize is the default size of the channel holding incoming metrics
+	DefaultChannelModeBufferSize = 4096
 )
 
 // Options contains the configuration options for a client.
@@ -60,6 +64,28 @@ type Options struct {
 	// Telemetry is a set of metrics automatically injected by the client in the
 	// dogstatsd stream to be able to monitor the client itself.
 	Telemetry bool
+	// ReceiveMode determins the behavior of the client when receiving to many
+	// metrics. The client will either drop the metrics if its buffers are
+	// full (ChannelMode mode) or block the caller until the metric can be
+	// handled (MutexMode mode). By default the client will MutexMode. This
+	// option should be set to ChannelMode only when use under very high
+	// load.
+	//
+	// MutexMode uses a mutex internally which is much faster than
+	// channel but causes some lock contention when used with a high number
+	// of threads. Mutex are sharded based on the metrics name which
+	// limit mutex contention when goroutines send different metrics.
+	//
+	// ChannelMode: uses channel (of ChannelModeBufferSize size) to send
+	// metrics and drop metrics if the channel is full. Sending metrics in
+	// this mode is slower that MutexMode (because of the channel), but
+	// will not block the application. This mode is made for application
+	// using many goroutines, sending the same metrics at a very high
+	// volume. The goal is to not slow down the application at the cost of
+	// dropping metrics and having a lower max throughput.
+	ReceiveMode ReceivingMode
+	// ChannelModeBufferSize is the size of the channel holding incoming metrics
+	ChannelModeBufferSize int
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -74,6 +100,8 @@ func resolveOptions(options []Option) (*Options, error) {
 		SenderQueueSize:       DefaultSenderQueueSize,
 		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
 		Telemetry:             DefaultTelemetry,
+		ReceiveMode:           DefaultReceivingMode,
+		ChannelModeBufferSize: DefaultChannelModeBufferSize,
 	}
 
 	for _, option := range options {
@@ -165,6 +193,30 @@ func WithWriteTimeoutUDS(writeTimeoutUDS time.Duration) Option {
 func WithoutTelemetry() Option {
 	return func(o *Options) error {
 		o.Telemetry = false
+		return nil
+	}
+}
+
+// WithChannelMode will use channel to receive metrics
+func WithChannelMode() Option {
+	return func(o *Options) error {
+		o.ReceiveMode = ChannelMode
+		return nil
+	}
+}
+
+// WithMutexModeMode will use mutext to receive metrics
+func WithMutexMode() Option {
+	return func(o *Options) error {
+		o.ReceiveMode = MutexMode
+		return nil
+	}
+}
+
+// WithChannelModeBufferSize the channel buffer size when using "drop mode"
+func WithChannelModeBufferSize(bufferSize int) Option {
+	return func(o *Options) error {
+		o.ChannelModeBufferSize = bufferSize
 		return nil
 	}
 }

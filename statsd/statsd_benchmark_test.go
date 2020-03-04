@@ -2,6 +2,7 @@ package statsd_test
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -11,7 +12,7 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 )
 
-func setupUDSClientServer(b *testing.B) (*statsd.Client, net.Listener) {
+func setupUDSClientServer(b *testing.B, options []statsd.Option) (*statsd.Client, net.Listener) {
 	sockAddr := "/tmp/test.sock"
 	if err := os.RemoveAll(sockAddr); err != nil {
 		log.Fatal(err)
@@ -28,14 +29,14 @@ func setupUDSClientServer(b *testing.B) (*statsd.Client, net.Listener) {
 			}
 		}
 	}()
-	client, err := statsd.New("unix://"+sockAddr, statsd.WithMaxMessagesPerPayload(1024))
+	client, err := statsd.New("unix://"+sockAddr, options...)
 	if err != nil {
 		b.Error(err)
 	}
 	return client, conn
 }
 
-func setupUDPClientServer(b *testing.B) (*statsd.Client, *net.UDPConn) {
+func setupUDPClientServer(b *testing.B, options []statsd.Option) (*statsd.Client, *net.UDPConn) {
 	addr, err := net.ResolveUDPAddr("udp", ":0")
 	if err != nil {
 		b.Error(err)
@@ -44,24 +45,31 @@ func setupUDPClientServer(b *testing.B) (*statsd.Client, *net.UDPConn) {
 	if err != nil {
 		b.Error(err)
 	}
-	client, err := statsd.New(conn.LocalAddr().String(), statsd.WithMaxMessagesPerPayload(1024))
+
+	client, err := statsd.New(conn.LocalAddr().String(), options...)
 	if err != nil {
 		b.Error(err)
 	}
 	return client, conn
 }
 
-func benchmarkStatsd(b *testing.B, transport string) {
-	var client *statsd.Client
-	if transport == "udp" {
-		var conn *net.UDPConn
-		client, conn = setupUDPClientServer(b)
-		defer conn.Close()
+func setupClient(b *testing.B, transport string, sendingMode statsd.ReceivingMode) (*statsd.Client, io.Closer) {
+	options := []statsd.Option{statsd.WithMaxMessagesPerPayload(1024), statsd.WithoutTelemetry()}
+	if sendingMode == statsd.MutexMode {
+		options = append(options, statsd.WithMutexMode())
 	} else {
-		var conn net.Listener
-		client, conn = setupUDSClientServer(b)
-		defer conn.Close()
+		options = append(options, statsd.WithChannelMode())
 	}
+
+	if transport == "udp" {
+		return setupUDPClientServer(b, options)
+	}
+	return setupUDSClientServer(b, options)
+}
+
+func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, sendingMode statsd.ReceivingMode) {
+	client, conn := setupClient(b, transport, sendingMode)
+	defer conn.Close()
 
 	n := int32(0)
 	b.ResetTimer()
@@ -74,11 +82,58 @@ func benchmarkStatsd(b *testing.B, transport string) {
 		}
 	})
 	client.Flush()
+	t := client.FlushTelemetryMetrics()
+	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
 
 	b.StopTimer()
 	client.Close()
 }
 
-func BenchmarkStatsdUDP(b *testing.B) { benchmarkStatsd(b, "udp") }
+func benchmarkStatsdSameMetrics(b *testing.B, transport string, sendingMode statsd.ReceivingMode) {
+	client, conn := setupClient(b, transport, sendingMode)
+	defer conn.Close()
 
-func BenchmarkStatsdUDS(b *testing.B) { benchmarkStatsd(b, "uds") }
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			client.Gauge("test.metric", 1, []string{"tag:tag"}, 1)
+		}
+	})
+	client.Flush()
+	t := client.FlushTelemetryMetrics()
+	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
+
+	b.StopTimer()
+	client.Close()
+}
+
+// UDP
+func BenchmarkStatsdUDPSameMetricMutext(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, "udp", statsd.MutexMode)
+}
+func BenchmarkStatsdUDPSameMetricChannel(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, "udp", statsd.ChannelMode)
+}
+
+func BenchmarkStatsdUDPDifferentMetricMutext(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, "udp", statsd.MutexMode)
+}
+func BenchmarkStatsdUDPDifferentMetricChannel(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, "udp", statsd.ChannelMode)
+}
+
+// UDS
+func BenchmarkStatsdUDSSameMetricMutext(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, "uds", statsd.MutexMode)
+}
+func BenchmarkStatsdUDSSameMetricChannel(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, "uds", statsd.ChannelMode)
+}
+
+func BenchmarkStatsdUDPSifferentMetricMutext(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, "uds", statsd.MutexMode)
+}
+func BenchmarkStatsdUDSDifferentMetricChannel(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, "uds", statsd.ChannelMode)
+}

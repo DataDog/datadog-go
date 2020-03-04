@@ -56,17 +56,18 @@ func TestTelemetry(t *testing.T) {
 	metrics := client.flushTelemetry()
 
 	expectedMetricsName := map[string]int64{
-		"datadog.dogstatsd.client.metrics":                9,
-		"datadog.dogstatsd.client.events":                 1,
-		"datadog.dogstatsd.client.service_checks":         1,
-		"datadog.dogstatsd.client.packets_sent":           0,
-		"datadog.dogstatsd.client.bytes_sent":             0,
-		"datadog.dogstatsd.client.packets_dropped":        0,
-		"datadog.dogstatsd.client.bytes_dropped":          0,
-		"datadog.dogstatsd.client.packets_dropped_queue":  0,
-		"datadog.dogstatsd.client.bytes_dropped_queue":    0,
-		"datadog.dogstatsd.client.packets_dropped_writer": 0,
-		"datadog.dogstatsd.client.bytes_dropped_writer":   0,
+		"datadog.dogstatsd.client.metrics":                   9,
+		"datadog.dogstatsd.client.events":                    1,
+		"datadog.dogstatsd.client.service_checks":            1,
+		"datadog.dogstatsd.client.metric_dropped_on_receive": 0,
+		"datadog.dogstatsd.client.packets_sent":              0,
+		"datadog.dogstatsd.client.bytes_sent":                0,
+		"datadog.dogstatsd.client.packets_dropped":           0,
+		"datadog.dogstatsd.client.bytes_dropped":             0,
+		"datadog.dogstatsd.client.packets_dropped_queue":     0,
+		"datadog.dogstatsd.client.bytes_dropped_queue":       0,
+		"datadog.dogstatsd.client.packets_dropped_writer":    0,
+		"datadog.dogstatsd.client.bytes_dropped_writer":      0,
 	}
 
 	telemetryTags := []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:udp"}
