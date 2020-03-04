@@ -32,7 +32,7 @@ import (
 )
 
 func main() {
-    statsd, err: = statsd.New("127.0.0.1:8125")
+    statsd, err := statsd.New("127.0.0.1:8125")
     if err != nil {
         log.Fatal(err)
     }
