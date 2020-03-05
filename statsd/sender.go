@@ -73,7 +73,7 @@ func (s *sender) write(buffer *statsdBuffer) {
 	s.pool.returnBuffer(buffer)
 }
 
-func (s *sender) flushMetrics() SenderMetrics {
+func (s *sender) flushTelemetryMetrics() SenderMetrics {
 	return SenderMetrics{
 		TotalSentBytes:                atomic.SwapUint64(&s.metrics.TotalSentBytes, 0),
 		TotalSentPayloads:             atomic.SwapUint64(&s.metrics.TotalSentPayloads, 0),

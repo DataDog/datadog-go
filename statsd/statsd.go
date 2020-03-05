@@ -356,19 +356,9 @@ func (c *Client) telemetry() {
 	for {
 		select {
 		case <-ticker.C:
-			clientMetrics := c.flushMetrics()
-			c.telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks), c.telemetryTags, 1)
-			senderMetrics := c.sender.flushMetrics()
-			c.telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(senderMetrics.TotalSentBytes), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(senderMetrics.TotalDroppedPayloads), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(senderMetrics.TotalDroppedBytes), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(senderMetrics.TotalDroppedPayloadsQueueFull), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter), c.telemetryTags, 1)
-			c.telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter), c.telemetryTags, 1)
+			for _, m := range c.flushTelemetry() {
+				c.addMetric(m)
+			}
 		case <-c.stop:
 			ticker.Stop()
 			return
@@ -376,9 +366,30 @@ func (c *Client) telemetry() {
 	}
 }
 
-// same as Count but without global namespace / tags
-func (c *Client) telemetryCount(name string, value int64, tags []string, rate float64) {
-	c.addMetric(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
+// flushTelemetry returns Telemetry metrics to be flushed. It's its own function to ease testing.
+func (c *Client) flushTelemetry() []metric {
+	m := []metric{}
+
+	// same as Count but without global namespace / tags
+	telemetryCount := func(name string, value int64) {
+		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: c.telemetryTags, rate: 1})
+	}
+
+	clientMetrics := c.flushTelemetryMetrics()
+	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics))
+	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents))
+	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks))
+
+	senderMetrics := c.sender.flushTelemetryMetrics()
+	telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads))
+	telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(senderMetrics.TotalSentBytes))
+	telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(senderMetrics.TotalDroppedPayloads))
+	telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(senderMetrics.TotalDroppedBytes))
+	telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(senderMetrics.TotalDroppedPayloadsQueueFull))
+	telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull))
+	telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter))
+	telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter))
+	return m
 }
 
 // Flush forces a flush of all the queued dogstatsd payloads
@@ -404,7 +415,7 @@ func (c *Client) flushUnsafe() {
 	}
 }
 
-func (c *Client) flushMetrics() ClientMetrics {
+func (c *Client) flushTelemetryMetrics() ClientMetrics {
 	return ClientMetrics{
 		TotalMetrics:       atomic.SwapUint64(&c.metrics.TotalMetrics, 0),
 		TotalEvents:        atomic.SwapUint64(&c.metrics.TotalEvents, 0),
