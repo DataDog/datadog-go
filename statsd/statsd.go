@@ -92,7 +92,8 @@ const (
 type metricType int
 
 const (
-	gauge metricType = iota
+	gaugeDelta metricType = iota // FIXME Do test
+	gauge      metricType = iota
 	count
 	histogram
 	distribution
@@ -425,6 +426,10 @@ func (c *Client) namespace() string {
 
 func (c *Client) writeMetricUnsafe(m metric) error {
 	switch m.metricType {
+	// FIXME Do test
+	case gaugeDelta:
+		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+		return c.buffer.writeGaugeDelta(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case gauge:
 		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
 		return c.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
@@ -469,6 +474,11 @@ func (c *Client) addMetric(m metric) error {
 	}
 	c.Unlock()
 	return err
+}
+
+// Gauge Delta measures the value of a metric at a particular time. FIXME do test
+func (c *Client) GaugeDelta(name string, value float64, tags []string, rate float64) error {
+	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: gaugeDelta, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Gauge measures the value of a metric at a particular time.

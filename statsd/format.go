@@ -69,6 +69,22 @@ func appendTags(buffer []byte, globalTags []string, tags []string) []byte {
 	return buffer
 }
 
+//FIXME : Do test
+func appendFloatDeltaMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64, precision int) []byte {
+	buffer = appendHeader(buffer, namespace, name)
+	operator := "+"
+	if value <= 0 {
+		operator = "-"
+	}
+	buffer = append(buffer, operator...)
+	buffer = strconv.AppendFloat(buffer, value, 'f', precision, 64)
+	buffer = append(buffer, '|')
+	buffer = append(buffer, typeSymbol...)
+	buffer = appendRate(buffer, rate)
+	buffer = appendTags(buffer, globalTags, tags)
+	return buffer
+}
+
 func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64, precision int) []byte {
 	buffer = appendHeader(buffer, namespace, name)
 	buffer = strconv.AppendFloat(buffer, value, 'f', precision, 64)
@@ -97,6 +113,11 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
 	return buffer
+}
+
+// FIXME
+func appendGaugeDelta(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
+	return appendFloatDeltaMetric(buffer, gaugeSymbol, namespace, globalTags, name, value, tags, rate, -1)
 }
 
 func appendGauge(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {

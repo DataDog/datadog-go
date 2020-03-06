@@ -25,6 +25,17 @@ func newStatsdBuffer(maxSize, maxElements int) *statsdBuffer {
 	}
 }
 
+//FIXME Do test
+func (b *statsdBuffer) writeGaugeDelta(namespace string, globalTags []string, name string, value float64, tags []string, rate float64) error {
+	if b.elementCount >= b.maxElements {
+		return errBufferFull
+	}
+	originalBuffer := b.buffer
+	b.writeSeparator()
+	b.buffer = appendGaugeDelta(b.buffer, namespace, globalTags, name, value, tags, rate)
+	return b.validateNewElement(originalBuffer)
+}
+
 func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name string, value float64, tags []string, rate float64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
