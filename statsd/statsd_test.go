@@ -1,7 +1,6 @@
 package statsd
 
 import (
-	"io"
 	"sync"
 	"testing"
 	"time"
@@ -9,12 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type statsdWriterWrapper struct {
-	io.WriteCloser
-}
+type statsdWriterWrapper struct{}
 
 func (statsdWriterWrapper) SetWriteTimeout(time.Duration) error {
 	return nil
+}
+
+func (statsdWriterWrapper) Close() error {
+	return nil
+}
+
+func (statsdWriterWrapper) Write(p []byte) (n int, err error) {
+	return 0, nil
 }
 
 func TestCustomWriterBufferConfiguration(t *testing.T) {
@@ -22,6 +27,7 @@ func TestCustomWriterBufferConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Close()
 
 	assert.Equal(t, OptimalUDPPayloadSize, client.bufferPool.bufferMaxSize)
 	assert.Equal(t, DefaultUDPBufferPoolSize, cap(client.bufferPool.pool))
