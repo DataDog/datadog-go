@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -14,12 +15,6 @@ import (
 
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/stretchr/testify/assert"
-)
-
-// Client-side entity ID injection for container tagging
-const (
-	entityIDEnvName = "DD_ENTITY_ID"
-	entityIDTagName = "dd.internal.entity_id"
 )
 
 var dogstatsdTests = []struct {
@@ -395,6 +390,8 @@ func TestServiceChecks(t *testing.T) {
 	}
 }
 
+const entityIDEnvName = "DD_ENTITY_ID"
+
 func TestEntityID(t *testing.T) {
 	initialValue, initiallySet := os.LookupEnv(entityIDEnvName)
 	if initiallySet {
@@ -434,6 +431,98 @@ func TestEntityID(t *testing.T) {
 	}
 	if len(client.Tags) != 0 {
 		t.Errorf("Expecting empty default tags, got %v", client.Tags)
+	}
+}
+
+var (
+	ddEnvName     = "DD_ENV"
+	ddServiceName = "DD_SERVICE"
+	ddVersionName = "DD_VERSION"
+)
+
+func TestDDEnvServiceVersionSet(t *testing.T) {
+	for _, tt := range []struct {
+		DDEnv     string
+		DDService string
+		DDVersion string
+		Expected  []string
+	}{
+		{"", "", "", []string{}},
+		{"prod", "", "", []string{"env:prod"}},
+		{"prod", "dog", "", []string{"env:prod", "service:dog"}},
+		{"prod", "dog", "abc123", []string{"env:prod", "service:dog", "version:abc123"}},
+	} {
+		for _, t := range []string{ddEnvName, ddServiceName, ddVersionName} {
+			initialValue, initiallySet := os.LookupEnv(t)
+			if initiallySet {
+				defer os.Setenv(t, initialValue)
+			} else {
+				defer os.Unsetenv(t)
+			}
+		}
+		os.Setenv(ddEnvName, tt.DDEnv)
+		os.Setenv(ddServiceName, tt.DDService)
+		os.Setenv(ddVersionName, tt.DDVersion)
+		client, err := statsd.New("localhost:8125")
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Keep the ordering of global tags consistent.
+		sort.Strings(client.Tags)
+		assert.Equal(t, tt.Expected, client.Tags)
+	}
+}
+
+func TestDDEnvServiceVersionTagsEmitted(t *testing.T) {
+	for _, t := range []string{ddEnvName, ddServiceName, ddVersionName} {
+		initialValue, initiallySet := os.LookupEnv(t)
+		if initiallySet {
+			defer os.Setenv(t, initialValue)
+		} else {
+			defer os.Unsetenv(t)
+		}
+	}
+	os.Setenv(ddEnvName, "prod")
+	os.Setenv(ddServiceName, "dog")
+	os.Setenv(ddVersionName, "abc123")
+	addr := "localhost:1201"
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	for _, tt := range []struct {
+		Tags       []string
+		GlobalTags []string
+		Expected   string
+	}{
+		{nil, nil, "test.count:100|c|#env:prod,service:dog,version:abc123"},
+		{[]string{"env:staging", "service:cat", "custom_tag"}, nil, "test.count:100|c|#env:prod,service:dog,version:abc123,env:staging,service:cat,custom_tag"},
+		{nil, []string{"version:def456", "custom_tag_two"}, "test.count:100|c|#custom_tag_two,env:prod,service:dog,version:abc123,version:def456"},
+		{[]string{"env:staging", "service:cat", "custom_tag"}, []string{"version:def456", "custom_tag_two"}, "test.count:100|c|#custom_tag_two,env:prod,service:dog,version:abc123,version:def456,env:staging,service:cat,custom_tag"},
+	} {
+		client, err := statsd.New(addr, statsd.WithTags(tt.GlobalTags))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Keep the ordering of global tags consistent.
+		sort.Strings(client.Tags)
+		client.Count("test.count", 100, tt.Tags, 1.0)
+		err = client.Flush()
+		if err != nil {
+			t.Errorf("Error sending: %s", err)
+		}
+		buffer := make([]byte, 1024)
+		n, err := io.ReadAtLeast(server, buffer, 1)
+		result := string(buffer[:n])
+		if result != tt.Expected {
+			t.Errorf("Flushed metric incorrect; expected %s but got %s", tt.Expected, result)
+		}
 	}
 }
 

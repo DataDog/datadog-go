@@ -56,6 +56,8 @@ env:
         fieldPath: metadata.uid
 ```
 
+* `DD_ENV`, `DD_SERVICE`, and `DD_VERSION` can be used by the statsd client to set `{env, service, version}` as global tags for all data emitted.
+
 ### Unix Domain Sockets Client
 
 Agent v6+ accepts packets through a Unix Socket datagram connection. Details about the advantages of using UDS over UDP are available in the [DogStatsD Unix Socket documentation](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/). You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.

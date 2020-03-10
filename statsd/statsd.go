@@ -83,11 +83,27 @@ traffic instead of UDP.
 */
 const UnixAddressPrefix = "unix://"
 
-// Client-side entity ID injection for container tagging
+/*
+Client-side entity ID injection for container tagging.
+*/
 const (
 	entityIDEnvName = "DD_ENTITY_ID"
 	entityIDTagName = "dd.internal.entity_id"
 )
+
+/*
+ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
+to a specific tag name.
+*/
+var ddEnvTagsMapping = map[string]string{
+	entityIDEnvName: entityIDTagName,
+	// The name of the env in which the service runs.
+	"DD_ENV": "env",
+	// The name of the running service.
+	"DD_SERVICE": "service",
+	// The current version of the running service.
+	"DD_VERSION": "version",
+}
 
 type metricType int
 
@@ -272,11 +288,11 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		telemetryTags: []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:" + writerName},
 	}
 
-	// Inject DD_ENTITY_ID as a constant tag if found
-	entityID := os.Getenv(entityIDEnvName)
-	if entityID != "" {
-		entityTag := fmt.Sprintf("%s:%s", entityIDTagName, entityID)
-		c.Tags = append(c.Tags, entityTag)
+	// Inject values of DD_* environment variables as global tags.
+	for envName, tagName := range ddEnvTagsMapping {
+		if value := os.Getenv(envName); value != "" {
+			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", tagName, value))
+		}
 	}
 
 	if o.MaxBytesPerPayload == 0 {
