@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
 
+# 3.4.1 / 2020-03-10
+
+### Notes
+
+* [BUGFIX] Fix possible deadlock when closing the client. See [#135][]. Thanks to [danp60][].
+
 # 3.4.0 / 2020-01-15
 
 ### Notes
@@ -163,6 +169,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#117]: https://github.com/DataDog/datadog-go/issues/117
 [#118]: https://github.com/DataDog/datadog-go/issues/118
 [#115]: https://github.com/DataDog/datadog-go/issues/115
+[#135]: https://github.com/DataDog/datadog-go/issues/135
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -190,3 +197,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@asf-stripe]: https://github.com/asf-stripe
 [@goodspark]: https://github.com/goodspark
 [@skaji]: https://github.com/skaji
+[@danp60]: https://github.com/danp60
