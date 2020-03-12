@@ -84,19 +84,12 @@ traffic instead of UDP.
 const UnixAddressPrefix = "unix://"
 
 /*
-Client-side entity ID injection for container tagging.
-*/
-const (
-	entityIDEnvName = "DD_ENTITY_ID"
-	entityIDTagName = "dd.internal.entity_id"
-)
-
-/*
 ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
 to a specific tag name.
 */
 var ddEnvTagsMapping = map[string]string{
-	entityIDEnvName: entityIDTagName,
+	// Client-side entity ID injection for container tagging.
+	"DD_ENTITY_ID": "dd.internal.entity_id",
 	// The name of the env in which the service runs.
 	"DD_ENV": "env",
 	// The name of the running service.

@@ -390,9 +390,8 @@ func TestServiceChecks(t *testing.T) {
 	}
 }
 
-const entityIDEnvName = "DD_ENTITY_ID"
-
 func TestEntityID(t *testing.T) {
+	entityIDEnvName := "DD_ENTITY_ID"
 	initialValue, initiallySet := os.LookupEnv(entityIDEnvName)
 	if initiallySet {
 		defer os.Setenv(entityIDEnvName, initialValue)
