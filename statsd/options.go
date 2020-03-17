@@ -30,6 +30,10 @@ var (
 	DefaultReceivingMode = MutexMode
 	// DefaultChannelModeBufferSize is the default size of the channel holding incoming metrics
 	DefaultChannelModeBufferSize = 4096
+	// DefaultAggregationFlushInterval is the default interval for the aggregator to flush metrics.
+	DefaultAggregationFlushInterval = 3 * time.Second
+	// DefaultAggregation
+	DefaultAggregation = false
 )
 
 // Options contains the configuration options for a client.
@@ -86,22 +90,28 @@ type Options struct {
 	ReceiveMode ReceivingMode
 	// ChannelModeBufferSize is the size of the channel holding incoming metrics
 	ChannelModeBufferSize int
+	// AggregationFlushInterval is the interval for the aggregator to flush metrics
+	AggregationFlushInterval time.Duration
+	// [beta] Aggregation enables/disables client side aggregation
+	Aggregation bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
-		Namespace:             DefaultNamespace,
-		Tags:                  DefaultTags,
-		MaxBytesPerPayload:    DefaultMaxBytesPerPayload,
-		MaxMessagesPerPayload: DefaultMaxMessagesPerPayload,
-		BufferPoolSize:        DefaultBufferPoolSize,
-		BufferFlushInterval:   DefaultBufferFlushInterval,
-		BufferShardCount:      DefaultBufferShardCount,
-		SenderQueueSize:       DefaultSenderQueueSize,
-		WriteTimeoutUDS:       DefaultWriteTimeoutUDS,
-		Telemetry:             DefaultTelemetry,
-		ReceiveMode:           DefaultReceivingMode,
-		ChannelModeBufferSize: DefaultChannelModeBufferSize,
+		Namespace:                DefaultNamespace,
+		Tags:                     DefaultTags,
+		MaxBytesPerPayload:       DefaultMaxBytesPerPayload,
+		MaxMessagesPerPayload:    DefaultMaxMessagesPerPayload,
+		BufferPoolSize:           DefaultBufferPoolSize,
+		BufferFlushInterval:      DefaultBufferFlushInterval,
+		BufferShardCount:         DefaultBufferShardCount,
+		SenderQueueSize:          DefaultSenderQueueSize,
+		WriteTimeoutUDS:          DefaultWriteTimeoutUDS,
+		Telemetry:                DefaultTelemetry,
+		ReceiveMode:              DefaultReceivingMode,
+		ChannelModeBufferSize:    DefaultChannelModeBufferSize,
+		AggregationFlushInterval: DefaultAggregationFlushInterval,
+		Aggregation:              DefaultAggregation,
 	}
 
 	for _, option := range options {
@@ -217,6 +227,30 @@ func WithMutexMode() Option {
 func WithChannelModeBufferSize(bufferSize int) Option {
 	return func(o *Options) error {
 		o.ChannelModeBufferSize = bufferSize
+		return nil
+	}
+}
+
+// WithoutAggregationInterval set the aggregation interval
+func WithoutAggregationInterval(interval time.Duration) Option {
+	return func(o *Options) error {
+		o.AggregationFlushInterval = interval
+		return nil
+	}
+}
+
+// WithClientSideAggregation enables client side aggregation. Client side aggregation is a beta feature.
+func WithClientSideAggregation() Option {
+	return func(o *Options) error {
+		o.Aggregation = true
+		return nil
+	}
+}
+
+// WithoutClientSideAggregation disables client side aggregation.
+func WithoutClientSideAggregation() Option {
+	return func(o *Options) error {
+		o.Aggregation = false
 		return nil
 	}
 }

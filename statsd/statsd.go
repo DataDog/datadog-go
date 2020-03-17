@@ -216,6 +216,7 @@ type Client struct {
 	bufferShards  []*worker
 	closerLock    sync.Mutex
 	receiveMode   ReceivingMode
+	agg           *aggregator
 }
 
 // ClientMetrics contains metrics about the client
@@ -287,6 +288,10 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		Namespace:     o.Namespace,
 		Tags:          o.Tags,
 		telemetryTags: []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:" + writerName},
+	}
+	if o.Aggregation {
+		c.agg = newAggregator(&c)
+		c.agg.start(o.AggregationFlushInterval)
 	}
 
 	// Inject values of DD_* environment variables as global tags.
@@ -373,7 +378,7 @@ func (c *Client) telemetry() {
 		select {
 		case <-ticker.C:
 			for _, m := range c.flushTelemetry() {
-				c.addMetric(m)
+				c.send(m)
 			}
 		case <-c.stop:
 			ticker.Stop()
@@ -432,31 +437,13 @@ func (c *Client) FlushTelemetryMetrics() ClientMetrics {
 	}
 }
 
-func (c *Client) globalTags() []string {
-	if c != nil {
-		return c.Tags
-	}
-	return nil
-}
-
-func (c *Client) namespace() string {
-	if c != nil {
-		return c.Namespace
-	}
-	return ""
-}
-
-func (c *Client) addMetric(m metric) error {
-	if c != nil {
-		atomic.AddUint64(&c.metrics.TotalMetrics, 1)
-	}
-	return c.send(m)
-}
-
 func (c *Client) send(m metric) error {
 	if c == nil {
 		return ErrNoClient
 	}
+
+	m.globalTags = c.Tags
+	m.namespace = c.Namespace
 
 	h := hashString32(m.name)
 	worker := c.bufferShards[h%uint32(len(c.bufferShards))]
@@ -474,22 +461,44 @@ func (c *Client) send(m metric) error {
 
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
+	if c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	if c.agg != nil {
+		return c.agg.gauge(name, value, tags, rate)
+	}
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
+	if c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	if c.agg != nil {
+		return c.agg.count(name, value, tags, rate)
+	}
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
 func (c *Client) Histogram(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
+	if c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
 func (c *Client) Distribution(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
+	if c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Decr is just Count of -1
@@ -504,7 +513,14 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 
 // Set counts the number of unique elements in a group.
 func (c *Client) Set(name string, value string, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: set, name: name, svalue: value, tags: tags, rate: rate})
+	if c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	if c.agg != nil {
+		return c.agg.set(name, value, tags, rate)
+	}
+	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -515,15 +531,20 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
 func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
-	return c.addMetric(metric{namespace: c.namespace(), globalTags: c.globalTags(), metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
+	if c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
 // Event sends the provided Event.
 func (c *Client) Event(e *Event) error {
-	if c != nil {
-		atomic.AddUint64(&c.metrics.TotalEvents, 1)
+	if c == nil {
+		return ErrNoClient
 	}
-	return c.send(metric{globalTags: c.globalTags(), metricType: event, evalue: e, rate: 1})
+	atomic.AddUint64(&c.metrics.TotalEvents, 1)
+	return c.send(metric{metricType: event, evalue: e, rate: 1})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -534,10 +555,11 @@ func (c *Client) SimpleEvent(title, text string) error {
 
 // ServiceCheck sends the provided ServiceCheck.
 func (c *Client) ServiceCheck(sc *ServiceCheck) error {
-	if c != nil {
-		atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
+	if c == nil {
+		return ErrNoClient
 	}
-	return c.send(metric{globalTags: c.globalTags(), metricType: serviceCheck, scvalue: sc, rate: 1})
+	atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
+	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -574,6 +596,9 @@ func (c *Client) Close() error {
 	c.wg.Wait()
 
 	// Finally flush any remaining metrics that may have come in at the last moment
+	if c.agg != nil {
+		c.agg.stop()
+	}
 	c.Flush()
 
 	return c.sender.close()
