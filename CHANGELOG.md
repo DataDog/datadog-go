@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
 
+# 3.5.0 / 2020-03-17
+
+### Notes
+
+* [IMPROVEMENT] Add support for `DD_ENV`, `DD_SERVICE`, and `DD_VERSION` to set global tags for `env`, `service` and `version`/ See [137][]
+
 # 3.4.1 / 2020-03-10
 
 ### Notes
@@ -170,6 +176,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#118]: https://github.com/DataDog/datadog-go/issues/118
 [#115]: https://github.com/DataDog/datadog-go/issues/115
 [#135]: https://github.com/DataDog/datadog-go/issues/135
+[#137]: https://github.com/DataDog/datadog-go/issues/137
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
