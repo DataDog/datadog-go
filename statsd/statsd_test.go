@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -37,13 +38,7 @@ func TestCustomWriterBufferConfiguration(t *testing.T) {
 	assert.Equal(t, DefaultUDPBufferPoolSize, cap(client.sender.queue))
 }
 
-func TestTelemetry(t *testing.T) {
-	// disabling autoflush of the telemetry
-	client, err := New("localhost:8125", WithoutTelemetry())
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func testTelemetry(t *testing.T, client *Client, expectedTelemetryTags []string) {
 	client.Gauge("Gauge", 21, nil, 1)
 	client.Count("Count", 21, nil, 1)
 	client.Histogram("Histogram", 21, nil, 1)
@@ -73,8 +68,6 @@ func TestTelemetry(t *testing.T) {
 		"datadog.dogstatsd.client.bytes_dropped_writer":      0,
 	}
 
-	telemetryTags := []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:udp"}
-
 	assert.Equal(t, len(expectedMetricsName), len(metrics))
 	for _, m := range metrics {
 		expectedValue, found := expectedMetricsName[m.name]
@@ -84,9 +77,34 @@ func TestTelemetry(t *testing.T) {
 
 		assert.Equal(t, expectedValue, m.ivalue, fmt.Sprintf("wrong ivalue for '%s'", m.name))
 		assert.Equal(t, count, m.metricType, fmt.Sprintf("wrong metricTypefor '%s'", m.name))
-		assert.Equal(t, telemetryTags, m.tags, fmt.Sprintf("wrong tags for '%s'", m.name))
+		assert.Equal(t, expectedTelemetryTags, m.tags, fmt.Sprintf("wrong tags for '%s'", m.name))
 		assert.Equal(t, float64(1), m.rate, fmt.Sprintf("wrong rate for '%s'", m.name))
 	}
+}
+
+func TestTelemetry(t *testing.T) {
+	// disabling autoflush of the telemetry
+	client, err := New("localhost:8125", WithoutTelemetry())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedTelemetryTags := []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:udp"}
+	testTelemetry(t, client, expectedTelemetryTags)
+}
+
+func TestTelemetryWithGlobalTags(t *testing.T) {
+	// disabling autoflush of the telemetry
+	os.Setenv("DD_ENV", "test")
+	defer os.Unsetenv("DD_ENV")
+
+	client, err := New("localhost:8125", WithoutTelemetry(), WithTags([]string{"tag1", "tag2"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedTelemetryTags := []string{"tag1", "tag2", "env:test", clientTelemetryTag, clientVersionTelemetryTag, "client_transport:udp"}
+	testTelemetry(t, client, expectedTelemetryTags)
 }
 
 func getTestServer(t *testing.T, addr string) *net.UDPConn {

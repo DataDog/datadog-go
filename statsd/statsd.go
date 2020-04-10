@@ -301,9 +301,8 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	w.SetWriteTimeout(o.WriteTimeoutUDS)
 
 	c := Client{
-		Namespace:     o.Namespace,
-		Tags:          o.Tags,
-		telemetryTags: []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:" + writerName},
+		Namespace: o.Namespace,
+		Tags:      o.Tags,
 	}
 	if o.Aggregation {
 		c.agg = newAggregator(&c)
@@ -316,6 +315,8 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", tagName, value))
 		}
 	}
+
+	c.telemetryTags = append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+writerName)
 
 	if o.MaxBytesPerPayload == 0 {
 		o.MaxBytesPerPayload = OptimalUDPPayloadSize
@@ -407,7 +408,7 @@ func (c *Client) telemetry() {
 func (c *Client) flushTelemetry() []metric {
 	m := []metric{}
 
-	// same as Count but without global namespace / tags
+	// same as Count but without global namespace
 	telemetryCount := func(name string, value int64) {
 		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: c.telemetryTags, rate: 1})
 	}
