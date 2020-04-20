@@ -32,6 +32,8 @@ type sender struct {
 	pool      *bufferPool
 	queue     chan *statsdBuffer
 	metrics   SenderMetrics
+	flushC    chan struct{}
+	flushedC  chan struct{}
 	stop      chan struct{}
 }
 
@@ -41,6 +43,8 @@ func newSender(transport statsdWriter, queueSize int, pool *bufferPool) *sender 
 		pool:      pool,
 		queue:     make(chan *statsdBuffer, queueSize),
 		stop:      make(chan struct{}),
+		flushC:    make(chan struct{}),
+		flushedC:  make(chan struct{}),
 	}
 
 	go sender.sendLoop()
@@ -92,13 +96,16 @@ func (s *sender) sendLoop() {
 		select {
 		case buffer := <-s.queue:
 			s.write(buffer)
+		case <-s.flushC:
+			s.flushQueue()
+			s.flushedC <- struct{}{}
 		case <-s.stop:
 			return
 		}
 	}
 }
 
-func (s *sender) flush() {
+func (s *sender) flushQueue() {
 	for {
 		select {
 		case buffer := <-s.queue:
@@ -109,10 +116,17 @@ func (s *sender) flush() {
 	}
 }
 
+func (s *sender) flush() {
+	s.flushC <- struct{}{}
+	<-s.flushedC
+}
+
 func (s *sender) close() error {
 	s.flush()
 	err := s.transport.Close()
 	s.stop <- struct{}{}
 	<-s.stop
+	close(s.flushC)
+	close(s.flushedC)
 	return err
 }
