@@ -2,10 +2,13 @@ package statsd
 
 import (
 	"fmt"
+	"io"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type statsdWriterWrapper struct{}
@@ -84,4 +87,51 @@ func TestTelemetry(t *testing.T) {
 		assert.Equal(t, telemetryTags, m.tags, fmt.Sprintf("wrong tags for '%s'", m.name))
 		assert.Equal(t, float64(1), m.rate, fmt.Sprintf("wrong rate for '%s'", m.name))
 	}
+}
+
+func getTestServer(t *testing.T, addr string) *net.UDPConn {
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		require.Failf(t, "could not resolve udp '%s': %s", addr, err.Error())
+	}
+
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		require.Failf(t, "Could not listen to UDP addr: %s", err.Error())
+	}
+	return server
+}
+
+func TestFlushOnClose(t *testing.T) {
+	buffer := make([]byte, 4096)
+	addr := "localhost:1201"
+	server := getTestServer(t, addr)
+	defer server.Close()
+
+	client, err := New(addr)
+	if err != nil {
+		t.Fatalf("failed to create client: %s", err)
+	}
+
+	client.Count("name", 1, []string{"tag"}, 1)
+
+	if err := client.Close(); err != nil {
+		t.Fatalf("failed to close client: %s", err)
+	}
+
+	readDone := make(chan struct{})
+	n := 0
+	go func() {
+		n, _ = io.ReadAtLeast(server, buffer, 1)
+		close(readDone)
+	}()
+
+	select {
+	case <-readDone:
+	case <-time.After(2 * time.Second):
+		require.Fail(t, "No data was flush on Close")
+	}
+
+	result := string(buffer[:n])
+	assert.Equal(t, "name:1|c|#tag", result)
 }
