@@ -110,9 +110,8 @@ func (s *sender) flush() {
 }
 
 func (s *sender) close() error {
-	s.flush()
-	err := s.transport.Close()
 	s.stop <- struct{}{}
 	<-s.stop
-	return err
+	s.flush()
+	return s.transport.Close()
 }
