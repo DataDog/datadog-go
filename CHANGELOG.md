@@ -15,13 +15,13 @@
 
 ### Notes
 
-* [IMPROVEMENT] Add support for `DD_ENV`, `DD_SERVICE`, and `DD_VERSION` to set global tags for `env`, `service` and `version`/ See [137][]
+* [IMPROVEMENT] Add support for `DD_ENV`, `DD_SERVICE`, and `DD_VERSION` to set global tags for `env`, `service` and `version`/ See [#137][]
 
 # 3.4.1 / 2020-03-10
 
 ### Notes
 
-* [BUGFIX] Fix possible deadlock when closing the client. See [#135][]. Thanks to [danp60][].
+* [BUGFIX] Fix possible deadlock when closing the client. See [#135][]. Thanks to [@danp60][].
 
 # 3.4.0 / 2020-01-15
 
