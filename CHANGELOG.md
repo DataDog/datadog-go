@@ -2,6 +2,15 @@
 
 [//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
 
+# 3.6.0 / 2020-04-21
+
+### Notes
+
+* [IMPROVEMENT] Reduce lock contention by sharding worker by metric name. See [#108][].
+* [FEATURE] Adding a "channel mode" to send metrics to the client, disable by default. See [#134][].
+* [BUGFIX] Fix metrics not being flushed when the client is closed. See [#144][].
+* [BETA] Adding client side aggregation for Gauge, Count and Set. See [#139][].
+
 # 3.5.0 / 2020-03-17
 
 ### Notes
@@ -177,6 +186,10 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#115]: https://github.com/DataDog/datadog-go/issues/115
 [#135]: https://github.com/DataDog/datadog-go/issues/135
 [#137]: https://github.com/DataDog/datadog-go/issues/137
+[#108]: https://github.com/DataDog/datadog-go/pull/108
+[#134]: https://github.com/DataDog/datadog-go/pull/134
+[#139]: https://github.com/DataDog/datadog-go/pull/139
+[#144]: https://github.com/DataDog/datadog-go/pull/144
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis

@@ -74,7 +74,7 @@ var clientTelemetryTag = "client:go"
 /*
 clientVersionTelemetryTag is a tag identifying this specific client version.
 */
-var clientVersionTelemetryTag = "client_version:3.5.0"
+var clientVersionTelemetryTag = "client_version:3.6.0"
 
 /*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
