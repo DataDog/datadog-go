@@ -59,3 +59,14 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
 	assert.Equal(t, options.Telemetry, false)
 }
+
+func TestOptionsNamespaceWithoutDot(t *testing.T) {
+	testNamespace := "datadog"
+
+	options, err := resolveOptions([]Option{
+		WithNamespace(testNamespace),
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, options.Namespace, testNamespace+".")
+}
