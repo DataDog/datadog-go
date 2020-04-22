@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"math"
+	"strings"
 	"time"
 )
 
@@ -130,7 +131,11 @@ type Option func(*Options) error
 // WithNamespace sets the Namespace option.
 func WithNamespace(namespace string) Option {
 	return func(o *Options) error {
-		o.Namespace = namespace
+		if strings.HasSuffix(namespace, ".") {
+			o.Namespace = namespace
+		} else {
+			o.Namespace = namespace + "."
+		}
 		return nil
 	}
 }
