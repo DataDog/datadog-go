@@ -135,3 +135,29 @@ func TestFlushOnClose(t *testing.T) {
 	result := string(buffer[:n])
 	assert.Equal(t, "name:1|c|#tag", result)
 }
+
+func TestCloneWithExtraOptions(t *testing.T) {
+	addr := "localhost:1201"
+
+	client, err := New(addr, WithTags([]string{"tag1", "tag2"}))
+	if err != nil {
+		t.Fatalf("failed to create client: %s", err)
+	}
+
+	assert.Equal(t, client.Tags, []string{"tag1", "tag2"})
+	assert.Equal(t, client.Namespace, "")
+	assert.Equal(t, client.receiveMode, MutexMode)
+	assert.Equal(t, client.addrOption, addr)
+	assert.Len(t, client.options, 1)
+
+	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"), WithChannelMode())
+	if err != nil {
+		t.Fatalf("failed to clone client: %s", err)
+	}
+
+	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
+	assert.Equal(t, cloneClient.Namespace, "test")
+	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
+	assert.Equal(t, cloneClient.addrOption, addr)
+	assert.Len(t, cloneClient.options, 3)
+}
