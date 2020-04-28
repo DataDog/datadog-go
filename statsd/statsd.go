@@ -217,6 +217,8 @@ type Client struct {
 	closerLock    sync.Mutex
 	receiveMode   ReceivingMode
 	agg           *aggregator
+	options       []Option
+	addrOption    string
 }
 
 // ClientMetrics contains metrics about the client
@@ -267,7 +269,12 @@ func New(addr string, options ...Option) (*Client, error) {
 	if o.SenderQueueSize == 0 {
 		o.SenderQueueSize = defaultBufferPoolSize
 	}
-	return newWithWriter(w, o, writerType)
+	client, err := newWithWriter(w, o, writerType)
+	if err == nil {
+		client.options = append(client.options, options...)
+		client.addrOption = addr
+	}
+	return client, err
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
@@ -278,6 +285,15 @@ func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
 		return nil, err
 	}
 	return newWithWriter(w, o, "custom")
+}
+
+// CloneWithExtraOptions create a new Client with extra options
+func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
+	if c.addrOption == "" {
+		return nil, fmt.Errorf("can't clone client with no addrOption")
+	}
+	opt := append(c.options, options...)
+	return New(c.addrOption, opt...)
 }
 
 func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, error) {
