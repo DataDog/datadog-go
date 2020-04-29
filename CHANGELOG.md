@@ -2,6 +2,14 @@
 
 [//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
 
+# 3.7.0 / 2020-04-29
+
+### Notes
+
+* [FEATURE] Add new function to clone a Client, so library can inherit and extend options from the main application. See [#147][].
+* [IMPROVEMENT] Auto append a '.' when needed to namespace. See [#145][]. Thanks to [@kamatama41][]
+* [IMPROVEMENT] Add the client global tags to the telemetry tags. See [#143][]. Thanks to [@chrisleavoy][]
+
 # 3.6.0 / 2020-04-21
 
 ### Notes
@@ -189,7 +197,10 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#108]: https://github.com/DataDog/datadog-go/pull/108
 [#134]: https://github.com/DataDog/datadog-go/pull/134
 [#139]: https://github.com/DataDog/datadog-go/pull/139
+[#143]: https://github.com/DataDog/datadog-go/pull/143
 [#144]: https://github.com/DataDog/datadog-go/pull/144
+[#145]: https://github.com/DataDog/datadog-go/pull/145
+[#147]: https://github.com/DataDog/datadog-go/pull/147
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -218,3 +229,5 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@goodspark]: https://github.com/goodspark
 [@skaji]: https://github.com/skaji
 [@danp60]: https://github.com/danp60
+[@kamatama41]: https://github.com/kamatama41
+[@chrisleavoy]: https://github.com/chrisleavoy
