@@ -76,6 +76,8 @@ After the client is created, you can start sending custom metrics to Datadog. Se
 * [Submit a HISTOGRAM metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#histogram)
 * [Submit a DISTRIBUTION metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#distribution)
 
+Metric names must only contain ASCII alphanumerics, underscores, and periods. The client will not replace nor check for invalid characters.
+
 Some options are suppported when submitting metrics, like [applying a sample rate to your metrics](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-submission-options) or [tagging your metrics with your custom tags](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-tagging). Find all the available functions to report metrics [in the Datadog Go client GoDoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
 
 ### Events
