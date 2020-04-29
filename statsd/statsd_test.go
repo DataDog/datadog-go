@@ -156,7 +156,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	}
 
 	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, cloneClient.Namespace, "test")
+	assert.Equal(t, cloneClient.Namespace, "test.")
 	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
 	assert.Equal(t, cloneClient.addrOption, addr)
 	assert.Len(t, cloneClient.options, 3)
