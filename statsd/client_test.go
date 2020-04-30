@@ -246,6 +246,10 @@ func TestNilError(t *testing.T) {
 		func() error { return c.SimpleEvent("", "") },
 		func() error { return c.ServiceCheck(statsd.NewServiceCheck("", statsd.Ok)) },
 		func() error { return c.SimpleServiceCheck("", statsd.Ok) },
+		func() error {
+			_, err := statsd.CloneWithExtraOptions(nil, statsd.WithChannelMode())
+			return err
+		},
 	}
 	for i, f := range tests {
 		var err error

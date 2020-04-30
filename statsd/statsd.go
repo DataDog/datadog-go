@@ -289,6 +289,10 @@ func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
 
 // CloneWithExtraOptions create a new Client with extra options
 func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
+	if c == nil {
+		return nil, ErrNoClient
+	}
+
 	if c.addrOption == "" {
 		return nil, fmt.Errorf("can't clone client with no addrOption")
 	}
