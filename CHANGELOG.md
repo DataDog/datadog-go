@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
 
+# 3.7.1 / 2020-05-01
+
+### Notes
+
+* [BUGFIX] Fix panic when calling CloneWithExtraOptions with a nil client. See [#148][].
+
 # 3.7.0 / 2020-04-29
 
 ### Notes
@@ -201,6 +207,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#144]: https://github.com/DataDog/datadog-go/pull/144
 [#145]: https://github.com/DataDog/datadog-go/pull/145
 [#147]: https://github.com/DataDog/datadog-go/pull/147
+[#148]: https://github.com/DataDog/datadog-go/pull/148
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
