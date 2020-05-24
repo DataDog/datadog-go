@@ -166,6 +166,9 @@ type ClientInterface interface {
 	// Set counts the number of unique elements in a group.
 	Set(name string, value string, tags []string, rate float64) error
 
+	// Time measures and sends timing information
+	Time(name string, tags []string, rate float64, fn func()) error
+
 	// Timing sends timing information, it is an alias for TimeInMilliseconds
 	Timing(name string, value time.Duration, tags []string, rate float64) error
 
@@ -542,6 +545,14 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 		return c.agg.set(name, value, tags, rate)
 	}
 	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
+}
+
+// Time measures and sends timing information
+func (c *Client) Time(name string, tags []string, rate float64, fn func()) error {
+	start := time.Now()
+	fn()
+	duration := time.Since(start)
+	return c.Timing(name, duration, tags, rate)
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds

@@ -19,6 +19,7 @@ func TestNoOpClient(t *testing.T) {
 	a.Nil(c.Decr("asd", tags, 56.0))
 	a.Nil(c.Incr("asd", tags, 56.0))
 	a.Nil(c.Set("asd", "asd", tags, 56.0))
+	a.Nil(c.Time("asd", tags, 56.0, func() {}))
 	a.Nil(c.Timing("asd", time.Second, tags, 56.0))
 	a.Nil(c.TimeInMilliseconds("asd", 1234.5, tags, 56.0))
 	a.Nil(c.Event(nil))
