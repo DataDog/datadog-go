@@ -218,23 +218,23 @@ func aligned8Byte(fields []fieldOffset, out io.Writer) bool {
 func TestMain(m *testing.M) {
 	fields := []fieldOffset{
 		{
-			Name: "Client.metrics",
+			Name:   "Client.metrics",
 			Offset: unsafe.Offsetof(Client{}.metrics),
 		},
 		{
-			Name: "ClientMetrics.TotalMetrics",
+			Name:   "ClientMetrics.TotalMetrics",
 			Offset: unsafe.Offsetof(ClientMetrics{}.TotalMetrics),
 		},
 		{
-			Name: "ClientMetrics.TotalEvents",
+			Name:   "ClientMetrics.TotalEvents",
 			Offset: unsafe.Offsetof(ClientMetrics{}.TotalEvents),
 		},
 		{
-			Name: "ClientMetrics.TotalServiceChecks",
+			Name:   "ClientMetrics.TotalServiceChecks",
 			Offset: unsafe.Offsetof(ClientMetrics{}.TotalServiceChecks),
 		},
 		{
-			Name: "ClientMetrics.TotalDroppedOnReceive",
+			Name:   "ClientMetrics.TotalDroppedOnReceive",
 			Offset: unsafe.Offsetof(ClientMetrics{}.TotalDroppedOnReceive),
 		},
 	}

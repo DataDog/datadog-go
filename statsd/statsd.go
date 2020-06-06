@@ -199,7 +199,7 @@ type ClientInterface interface {
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
 	// metrics needs to be the first field to ensure 64-bit alignment of atomics
-	metrics       ClientMetrics
+	metrics ClientMetrics
 	// Sender handles the underlying networking protocol
 	sender *sender
 	// Namespace to prepend to all statsd calls
