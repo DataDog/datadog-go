@@ -20,4 +20,3 @@ Example Usage:
 statsd is based on go-statsd-client.
 */
 package datadog_go
-
