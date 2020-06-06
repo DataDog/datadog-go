@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -178,4 +179,67 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
 	assert.Equal(t, cloneClient.addrOption, addr)
 	assert.Len(t, cloneClient.options, 3)
+}
+
+// fieldOffset is a preprocessor representation of a struct field alignment.
+type fieldOffset struct {
+	// Name of the field.
+	Name string
+
+	// Offset of the field in bytes.
+	//
+	// To compute this at compile time use unsafe.Offsetof.
+	Offset uintptr
+}
+
+// aligned8Byte returns true if all fields are aligned modulo 8-bytes.
+//
+// Error messaging is printed for any files determined to be misaligned.
+func aligned8Byte(fields []fieldOffset, out io.Writer) bool {
+	misaligned := make([]fieldOffset, 0)
+	for _, f := range fields {
+		if f.Offset%8 != 0 {
+			misaligned = append(misaligned, f)
+		}
+	}
+
+	if len(misaligned) == 0 {
+		return true
+	}
+
+	fmt.Fprintln(out, "struct fields not aligned for 64-bit atomic operations:")
+	for _, f := range misaligned {
+		fmt.Fprintf(out, "  %s: %d-byte offset\n", f.Name, f.Offset)
+	}
+
+	return false
+}
+
+func TestMain(m *testing.M) {
+	fields := []fieldOffset{
+		{
+			Name: "Client.metrics",
+			Offset: unsafe.Offsetof(Client{}.metrics),
+		},
+		{
+			Name: "ClientMetrics.TotalMetrics",
+			Offset: unsafe.Offsetof(ClientMetrics{}.TotalMetrics),
+		},
+		{
+			Name: "ClientMetrics.TotalEvents",
+			Offset: unsafe.Offsetof(ClientMetrics{}.TotalEvents),
+		},
+		{
+			Name: "ClientMetrics.TotalServiceChecks",
+			Offset: unsafe.Offsetof(ClientMetrics{}.TotalServiceChecks),
+		},
+		{
+			Name: "ClientMetrics.TotalDroppedOnReceive",
+			Offset: unsafe.Offsetof(ClientMetrics{}.TotalDroppedOnReceive),
+		},
+	}
+	if !aligned8Byte(fields, os.Stderr) {
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
 }
