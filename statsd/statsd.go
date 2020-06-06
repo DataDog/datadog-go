@@ -198,6 +198,8 @@ type ClientInterface interface {
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
+	// metrics needs to be the first field to ensure 64-bit alignment of atomics
+	metrics       ClientMetrics
 	// Sender handles the underlying networking protocol
 	sender *sender
 	// Namespace to prepend to all statsd calls
@@ -209,7 +211,6 @@ type Client struct {
 	flushTime     time.Duration
 	bufferPool    *bufferPool
 	buffer        *statsdBuffer
-	metrics       ClientMetrics
 	telemetryTags []string
 	stop          chan struct{}
 	wg            sync.WaitGroup
