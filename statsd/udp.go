@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -18,9 +19,9 @@ const (
 type udpWriter struct {
 	conn    net.Conn
 	addr    string
+	mu      sync.RWMutex
 	udpAddr *net.UDPAddr
 	close   chan struct{}
-	update  chan *net.UDPAddr
 }
 
 const dnsLookupPeriod = 30
@@ -47,7 +48,6 @@ func newUDPWriter(addr string) (*udpWriter, error) {
 		addr:    addr,
 		udpAddr: udpAddr,
 		close:   make(chan struct{}),
-		update:  make(chan *net.UDPAddr),
 	}
 	go writer.detectDNSChange()
 	return writer, nil
@@ -65,7 +65,15 @@ func (w *udpWriter) detectDNSChange() {
 
 			// Port should never change but checking for sake of rigor and completion
 			if !udpAddr.IP.Equal(w.udpAddr.IP) || udpAddr.Port != w.udpAddr.Port {
-				w.update <- udpAddr
+				conn, err := net.DialUDP("udp", nil, udpAddr)
+				if err != nil {
+					continue
+				}
+				w.udpAddr = udpAddr
+				w.mu.Lock()
+				_ = w.conn.Close()
+				w.conn = conn
+				w.mu.Unlock()
 			}
 		case <-w.close:
 			return
@@ -80,21 +88,12 @@ func (w *udpWriter) SetWriteTimeout(d time.Duration) error {
 
 // Write data to the UDP connection with no error handling
 func (w *udpWriter) Write(data []byte) (int, error) {
-	select {
-	case udpAddr := <-w.update:
-		conn, err := net.DialUDP("udp", nil, udpAddr)
-		if err != nil {
-			return 0, err
-		}
-		w.conn = conn
-	default:
-		// NOTHING
-	}
+	w.mu.RLock()
+	defer w.mu.RUnlock()
 	return w.conn.Write(data)
 }
 
 func (w *udpWriter) Close() error {
-	close(w.update)
 	close(w.close)
 	return w.conn.Close()
 }
