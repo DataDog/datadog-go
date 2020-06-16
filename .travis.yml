@@ -1,5 +1,9 @@
 language: go
 
+arch:
+  - amd64
+  - arm64
+
 go:
   - 1.8
   - 1.9
@@ -9,7 +13,20 @@ go:
   - 1.13.x
   - 1.14.x
 
+# test 32bit build too.
+jobs:
+  include:
+    - arch: amd64
+      go: 1.14.x
+      script:
+        - GOARCH=386 go test -v ./...
+    - arch: amd64
+      go: 1.8
+      script:
+        - GOARCH=386 go test -v ./...
+
 script:
- - go test -race -v ./...
+  # race detector is only available on amd64
+ - if [[ "$TRAVIS_CPU_ARCH" == "amd64" ]]; then go test -race -v ./...; else go test -v ./...; fi
  - go vet ./...
  - "[ -z \"`go fmt ./...`\" ]"
