@@ -236,8 +236,8 @@ func WithChannelModeBufferSize(bufferSize int) Option {
 	}
 }
 
-// WithoutAggregationInterval set the aggregation interval
-func WithoutAggregationInterval(interval time.Duration) Option {
+// WithAggregationInterval set the aggregation interval
+func WithAggregationInterval(interval time.Duration) Option {
 	return func(o *Options) error {
 		o.AggregationFlushInterval = interval
 		return nil
