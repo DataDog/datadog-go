@@ -24,6 +24,8 @@ jobs:
       go: 1.8
 
 script:
- - go test -race -v ./...
+  # race detector is only available on amd64
+ - if [ "$TRAVIS_CPU_ARCH" == "amd64" ] then go test -race -v ./...; fi
+ - if [ "$TRAVIS_CPU_ARCH" != "amd64" ] then go test -v ./...; fi
  - go vet ./...
  - "[ -z \"`go fmt ./...`\" ]"
