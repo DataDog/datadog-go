@@ -30,6 +30,12 @@ jobs:
         - GOARCH=386 go test -v ./...
         - go vet ./...
         - "[ -z \"`go fmt ./...`\" ]"
+    - arch: amd64
+      go: 1.14.x
+      env: GOARCH=386
+    - arch: amd64
+      go: 1.8
+      env: GOARCH=386
 
 script:
   # race detector is only available on amd64
