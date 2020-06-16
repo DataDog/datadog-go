@@ -209,7 +209,7 @@ type Client struct {
 	flushTime     time.Duration
 	bufferPool    *bufferPool
 	buffer        *statsdBuffer
-	metrics       ClientMetrics
+	metrics       *ClientMetrics
 	telemetryTags []string
 	stop          chan struct{}
 	wg            sync.WaitGroup
@@ -307,6 +307,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	c := Client{
 		Namespace: o.Namespace,
 		Tags:      o.Tags,
+		metrics:   &ClientMetrics{},
 	}
 	if o.Aggregation {
 		c.agg = newAggregator(&c)
