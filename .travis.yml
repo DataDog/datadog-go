@@ -9,6 +9,14 @@ go:
   - 1.13.x
   - 1.14.x
 
+jobs:
+  include:
+    - arch: amd64
+    - arch: arm64
+    # test 32bit build too
+    - arch: amd64
+      env: GOARCH=386
+
 script:
  - go test -race -v ./...
  - go vet ./...
