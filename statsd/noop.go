@@ -41,6 +41,12 @@ func (n *NoOpClient) Set(name string, value string, tags []string, rate float64)
 	return nil
 }
 
+// Time executes the passed function and returns nil
+func (n *NoOpClient) Time(name string, tags []string, rate float64, fn func()) error {
+	fn()
+	return nil
+}
+
 // Timing does nothing and returns nil
 func (n *NoOpClient) Timing(name string, value time.Duration, tags []string, rate float64) error {
 	return nil

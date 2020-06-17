@@ -46,6 +46,7 @@ func testTelemetry(t *testing.T, client *Client, expectedTelemetryTags []string)
 	client.Decr("Decr", nil, 1)
 	client.Incr("Incr", nil, 1)
 	client.Set("Set", "value", nil, 1)
+	client.Time("Time", nil, 1, func() {})
 	client.Timing("Timing", 21, nil, 1)
 	client.TimeInMilliseconds("TimeInMilliseconds", 21, nil, 1)
 	client.SimpleEvent("hello", "world")
@@ -54,7 +55,7 @@ func testTelemetry(t *testing.T, client *Client, expectedTelemetryTags []string)
 	metrics := client.flushTelemetry()
 
 	expectedMetricsName := map[string]int64{
-		"datadog.dogstatsd.client.metrics":                   9,
+		"datadog.dogstatsd.client.metrics":                   10,
 		"datadog.dogstatsd.client.events":                    1,
 		"datadog.dogstatsd.client.service_checks":            1,
 		"datadog.dogstatsd.client.metric_dropped_on_receive": 0,
@@ -178,4 +179,13 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
 	assert.Equal(t, cloneClient.addrOption, addr)
 	assert.Len(t, cloneClient.options, 3)
+}
+
+func testTime(t *testing.T, client *Client, expectedTelemetryTags []string) {
+	executed := 0
+	fn := func() {
+		executed = executed + 1
+	}
+	client.Time("Time", nil, 1, fn)
+	assert.Equal(t, executed, 1)
 }
