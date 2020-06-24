@@ -21,6 +21,11 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.SenderQueueSize, DefaultSenderQueueSize)
 	assert.Equal(t, options.WriteTimeoutUDS, DefaultWriteTimeoutUDS)
 	assert.Equal(t, options.Telemetry, DefaultTelemetry)
+	assert.Equal(t, options.ReceiveMode, DefaultReceivingMode)
+	assert.Equal(t, options.ChannelModeBufferSize, DefaultChannelModeBufferSize)
+	assert.Equal(t, options.AggregationFlushInterval, DefaultAggregationFlushInterval)
+	assert.Equal(t, options.Aggregation, DefaultAggregation)
+	assert.Zero(t, options.TelemetryAddr)
 }
 
 func TestOptions(t *testing.T) {
@@ -33,6 +38,9 @@ func TestOptions(t *testing.T) {
 	testBufferShardCount := 28
 	testSenderQueueSize := 64
 	testWriteTimeoutUDS := 1 * time.Minute
+	testChannelBufferSize := 500
+	testAggregationWindow := 10 * time.Second
+	testTelemetryAddr := "localhost:1234"
 
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
@@ -45,6 +53,11 @@ func TestOptions(t *testing.T) {
 		WithSenderQueueSize(testSenderQueueSize),
 		WithWriteTimeoutUDS(testWriteTimeoutUDS),
 		WithoutTelemetry(),
+		WithChannelMode(),
+		WithChannelModeBufferSize(testChannelBufferSize),
+		WithAggregationInterval(testAggregationWindow),
+		WithClientSideAggregation(),
+		WithTelemetryAddr(testTelemetryAddr),
 	})
 
 	assert.NoError(t, err)
@@ -58,8 +71,25 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.SenderQueueSize, testSenderQueueSize)
 	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
 	assert.Equal(t, options.Telemetry, false)
+	assert.Equal(t, options.ReceiveMode, ChannelMode)
+	assert.Equal(t, options.ChannelModeBufferSize, testChannelBufferSize)
+	assert.Equal(t, options.AggregationFlushInterval, testAggregationWindow)
+	assert.Equal(t, options.Aggregation, true)
+	assert.Equal(t, options.TelemetryAddr, testTelemetryAddr)
 }
 
+func TestResetOptions(t *testing.T) {
+	options, err := resolveOptions([]Option{
+		WithChannelMode(),
+		WithMutexMode(),
+		WithClientSideAggregation(),
+		WithoutClientSideAggregation(),
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, options.ReceiveMode, MutexMode)
+	assert.Equal(t, options.Aggregation, false)
+}
 func TestOptionsNamespaceWithoutDot(t *testing.T) {
 	testNamespace := "datadog"
 

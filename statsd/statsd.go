@@ -62,21 +62,6 @@ agent configuration file datadog.yaml.
 const DefaultMaxAgentPayloadSize = 8192
 
 /*
-TelemetryInterval is the interval at which telemetry will be sent by the client.
-*/
-const TelemetryInterval = 10 * time.Second
-
-/*
-clientTelemetryTag is a tag identifying this specific client.
-*/
-var clientTelemetryTag = "client:go"
-
-/*
-clientVersionTelemetryTag is a tag identifying this specific client version.
-*/
-var clientVersionTelemetryTag = "client_version:3.7.2"
-
-/*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
 traffic instead of UDP.
 */
@@ -205,20 +190,18 @@ type Client struct {
 	// Tags are global tags to be added to every statsd call
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
-	SkipErrors    bool
-	flushTime     time.Duration
-	bufferPool    *bufferPool
-	buffer        *statsdBuffer
-	metrics       *ClientMetrics
-	telemetryTags []string
-	stop          chan struct{}
-	wg            sync.WaitGroup
-	bufferShards  []*worker
-	closerLock    sync.Mutex
-	receiveMode   ReceivingMode
-	agg           *aggregator
-	options       []Option
-	addrOption    string
+	SkipErrors  bool
+	flushTime   time.Duration
+	metrics     *ClientMetrics
+	telemetry   *telemetryClient
+	stop        chan struct{}
+	wg          sync.WaitGroup
+	workers     []*worker
+	closerLock  sync.Mutex
+	receiveMode ReceivingMode
+	agg         *aggregator
+	options     []Option
+	addrOption  string
 }
 
 // ClientMetrics contains metrics about the client
@@ -233,42 +216,29 @@ type ClientMetrics struct {
 // https://golang.org/doc/faq#guarantee_satisfies_interface
 var _ ClientInterface = &Client{}
 
+func resolveAddr(addr string) (statsdWriter, string, error) {
+	if !strings.HasPrefix(addr, UnixAddressPrefix) {
+		w, err := newUDPWriter(addr)
+		return w, "udp", err
+	}
+
+	w, err := newUDSWriter(addr[len(UnixAddressPrefix):])
+	return w, "uds", err
+}
+
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
 // "unix:///path/to/socket".
 func New(addr string, options ...Option) (*Client, error) {
-	var w statsdWriter
 	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
 	}
 
-	var writerType string
-	optimalPayloadSize := OptimalUDPPayloadSize
-	defaultBufferPoolSize := DefaultUDPBufferPoolSize
-	if !strings.HasPrefix(addr, UnixAddressPrefix) {
-		w, err = newUDPWriter(addr)
-		writerType = "udp"
-	} else {
-		// FIXME: The agent has a performance pitfall preventing us from using better defaults here.
-		// Once it's fixed, use `DefaultMaxAgentPayloadSize` and `DefaultUDSBufferPoolSize` instead.
-		optimalPayloadSize = OptimalUDPPayloadSize
-		defaultBufferPoolSize = DefaultUDPBufferPoolSize
-		w, err = newUDSWriter(addr[len(UnixAddressPrefix):])
-		writerType = "uds"
-	}
+	w, writerType, err := resolveAddr(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if o.MaxBytesPerPayload == 0 {
-		o.MaxBytesPerPayload = optimalPayloadSize
-	}
-	if o.BufferPoolSize == 0 {
-		o.BufferPoolSize = defaultBufferPoolSize
-	}
-	if o.SenderQueueSize == 0 {
-		o.SenderQueueSize = defaultBufferPoolSize
-	}
 	client, err := newWithWriter(w, o, writerType)
 	if err == nil {
 		client.options = append(client.options, options...)
@@ -321,8 +291,8 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		}
 	}
 
-	c.telemetryTags = append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+writerName)
-
+	// FIXME: The agent has a performance pitfall preventing us from using better defaults here.
+	// Once it's fixed, use `DefaultMaxAgentPayloadSize` and `DefaultUDSBufferPoolSize` instead.
 	if o.MaxBytesPerPayload == 0 {
 		o.MaxBytesPerPayload = OptimalUDPPayloadSize
 	}
@@ -333,31 +303,39 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		o.SenderQueueSize = DefaultUDPBufferPoolSize
 	}
 
-	c.receiveMode = o.ReceiveMode
-	c.bufferPool = newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
-	c.buffer = c.bufferPool.borrowBuffer()
-	c.sender = newSender(w, o.SenderQueueSize, c.bufferPool)
+	bufferPool := newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
+	c.sender = newSender(w, o.SenderQueueSize, bufferPool)
 	for i := 0; i < o.BufferShardCount; i++ {
-		w := newWorker(c.bufferPool, c.sender)
-		c.bufferShards = append(c.bufferShards, w)
+		w := newWorker(bufferPool, c.sender)
+		c.workers = append(c.workers, w)
 		if c.receiveMode == ChannelMode {
-			w.startReceivingMetric(o.ChannelModeBufferSize) // TODO make it configurable
+			w.startReceivingMetric(o.ChannelModeBufferSize)
 		}
 	}
+
+	c.receiveMode = o.ReceiveMode
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
+
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
 		c.watch()
 	}()
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		if o.Telemetry {
-			c.telemetry()
+
+	if o.TelemetryAddr == "" {
+		c.telemetry = NewTelemetryClient(&c, writerName)
+	} else {
+		var err error
+		c.telemetry, err = NewTelemetryClientWithCustomAddr(&c, writerName, o.TelemetryAddr, bufferPool)
+		if err != nil {
+			return nil, err
 		}
-	}()
+	}
+
+	if o.Telemetry {
+		c.telemetry.run(&c.wg, c.stop)
+	}
 	return &c, nil
 }
 
@@ -384,7 +362,7 @@ func (c *Client) watch() {
 	for {
 		select {
 		case <-ticker.C:
-			for _, w := range c.bufferShards {
+			for _, w := range c.workers {
 				w.flush()
 			}
 		case <-c.stop:
@@ -394,48 +372,6 @@ func (c *Client) watch() {
 	}
 }
 
-func (c *Client) telemetry() {
-	ticker := time.NewTicker(TelemetryInterval)
-	for {
-		select {
-		case <-ticker.C:
-			for _, m := range c.flushTelemetry() {
-				c.send(m)
-			}
-		case <-c.stop:
-			ticker.Stop()
-			return
-		}
-	}
-}
-
-// flushTelemetry returns Telemetry metrics to be flushed. It's its own function to ease testing.
-func (c *Client) flushTelemetry() []metric {
-	m := []metric{}
-
-	// same as Count but without global namespace
-	telemetryCount := func(name string, value int64) {
-		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: c.telemetryTags, rate: 1})
-	}
-
-	clientMetrics := c.FlushTelemetryMetrics()
-	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics))
-	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents))
-	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks))
-	telemetryCount("datadog.dogstatsd.client.metric_dropped_on_receive", int64(clientMetrics.TotalDroppedOnReceive))
-
-	senderMetrics := c.sender.flushTelemetryMetrics()
-	telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads))
-	telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(senderMetrics.TotalSentBytes))
-	telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(senderMetrics.TotalDroppedPayloads))
-	telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(senderMetrics.TotalDroppedBytes))
-	telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(senderMetrics.TotalDroppedPayloadsQueueFull))
-	telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull))
-	telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter))
-	telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter))
-	return m
-}
-
 // Flush forces a flush of all the queued dogstatsd payloads
 // This method is blocking and will not return until everything is sent
 // through the network
@@ -443,7 +379,7 @@ func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	for _, w := range c.bufferShards {
+	for _, w := range c.workers {
 		w.flush()
 	}
 	c.sender.flush()
@@ -468,7 +404,7 @@ func (c *Client) send(m metric) error {
 	m.namespace = c.Namespace
 
 	h := hashString32(m.name)
-	worker := c.bufferShards[h%uint32(len(c.bufferShards))]
+	worker := c.workers[h%uint32(len(c.workers))]
 
 	if c.receiveMode == ChannelMode {
 		select {
@@ -609,7 +545,7 @@ func (c *Client) Close() error {
 	close(c.stop)
 
 	if c.receiveMode == ChannelMode {
-		for _, w := range c.bufferShards {
+		for _, w := range c.workers {
 			w.stopReceivingMetric()
 		}
 	}
