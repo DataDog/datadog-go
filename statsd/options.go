@@ -27,7 +27,7 @@ var (
 	DefaultWriteTimeoutUDS = 1 * time.Millisecond
 	// DefaultTelemetry is the default value for the Telemetry option
 	DefaultTelemetry = true
-	// DefaultReceivingingMode is the default behavior when sending metrics
+	// DefaultReceivingMode is the default behavior when sending metrics
 	DefaultReceivingMode = MutexMode
 	// DefaultChannelModeBufferSize is the default size of the channel holding incoming metrics
 	DefaultChannelModeBufferSize = 4096
@@ -95,6 +95,8 @@ type Options struct {
 	AggregationFlushInterval time.Duration
 	// [beta] Aggregation enables/disables client side aggregation
 	Aggregation bool
+	// TelemetryAddr specify a different endpoint for telemetry metrics.
+	TelemetryAddr string
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -220,7 +222,7 @@ func WithChannelMode() Option {
 	}
 }
 
-// WithMutexModeMode will use mutex to receive metrics
+// WithMutexMode will use mutex to receive metrics
 func WithMutexMode() Option {
 	return func(o *Options) error {
 		o.ReceiveMode = MutexMode
@@ -256,6 +258,14 @@ func WithClientSideAggregation() Option {
 func WithoutClientSideAggregation() Option {
 	return func(o *Options) error {
 		o.Aggregation = false
+		return nil
+	}
+}
+
+// WithTelemetryAddr specify a different address for telemetry metrics.
+func WithTelemetryAddr(addr string) Option {
+	return func(o *Options) error {
+		o.TelemetryAddr = addr
 		return nil
 	}
 }
