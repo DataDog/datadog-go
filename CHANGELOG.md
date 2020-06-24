@@ -1,6 +1,6 @@
 ## Changes
 
-[//]: # (comment: Don't forget to update statsd/statsd.go:clientVersionTelemetryTag when releasing a new version)
+[//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
 # 3.7.2 / 2020-06-16
 
