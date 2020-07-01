@@ -113,5 +113,9 @@ func (t *telemetryClient) flush() []metric {
 	telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull))
 	telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter))
 	telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter))
+
+	if aggMetrics := t.c.agg.flushTelemetryMetrics(); aggMetrics != nil {
+		telemetryCount("datadog.dogstatsd.client.aggregated_context", int64(aggMetrics.nbContext))
+	}
 	return m
 }

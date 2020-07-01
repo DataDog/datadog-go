@@ -12,6 +12,20 @@ import (
 )
 
 var basicExpectedTags = []string{clientTelemetryTag, clientVersionTelemetryTag, "client_transport:test_transport"}
+var basicExpectedMetrics = map[string]int64{
+	"datadog.dogstatsd.client.metrics":                   9,
+	"datadog.dogstatsd.client.events":                    1,
+	"datadog.dogstatsd.client.service_checks":            1,
+	"datadog.dogstatsd.client.metric_dropped_on_receive": 0,
+	"datadog.dogstatsd.client.packets_sent":              0,
+	"datadog.dogstatsd.client.bytes_sent":                0,
+	"datadog.dogstatsd.client.packets_dropped":           0,
+	"datadog.dogstatsd.client.bytes_dropped":             0,
+	"datadog.dogstatsd.client.packets_dropped_queue":     0,
+	"datadog.dogstatsd.client.bytes_dropped_queue":       0,
+	"datadog.dogstatsd.client.packets_dropped_writer":    0,
+	"datadog.dogstatsd.client.bytes_dropped_writer":      0,
+}
 
 func TestNewTelemetry(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithNamespace("test_namespace"))
@@ -41,30 +55,18 @@ func submitTestMetrics(c *Client) {
 	c.SimpleServiceCheck("hello", Warn)
 }
 
-func testTelemetry(t *testing.T, telemetry *telemetryClient, expectedTelemetryTags []string) {
+func testTelemetry(t *testing.T, telemetry *telemetryClient, expectedMetrics map[string]int64, expectedTelemetryTags []string) {
 	assert.NotNil(t, telemetry)
 
 	submitTestMetrics(telemetry.c)
+	if telemetry.c.agg != nil {
+		telemetry.c.agg.sendMetrics()
+	}
 	metrics := telemetry.flush()
 
-	expectedMetricsName := map[string]int64{
-		"datadog.dogstatsd.client.metrics":                   9,
-		"datadog.dogstatsd.client.events":                    1,
-		"datadog.dogstatsd.client.service_checks":            1,
-		"datadog.dogstatsd.client.metric_dropped_on_receive": 0,
-		"datadog.dogstatsd.client.packets_sent":              0,
-		"datadog.dogstatsd.client.bytes_sent":                0,
-		"datadog.dogstatsd.client.packets_dropped":           0,
-		"datadog.dogstatsd.client.bytes_dropped":             0,
-		"datadog.dogstatsd.client.packets_dropped_queue":     0,
-		"datadog.dogstatsd.client.bytes_dropped_queue":       0,
-		"datadog.dogstatsd.client.packets_dropped_writer":    0,
-		"datadog.dogstatsd.client.bytes_dropped_writer":      0,
-	}
-
-	assert.Equal(t, len(expectedMetricsName), len(metrics))
+	assert.Equal(t, len(expectedMetrics), len(metrics))
 	for _, m := range metrics {
-		expectedValue, found := expectedMetricsName[m.name]
+		expectedValue, found := expectedMetrics[m.name]
 		assert.True(t, found, fmt.Sprintf("Unknown metrics: %s", m.name))
 
 		assert.Equal(t, expectedValue, m.ivalue, fmt.Sprintf("wrong ivalue for '%s'", m.name))
@@ -80,7 +82,7 @@ func TestTelemetry(t *testing.T) {
 	require.Nil(t, err)
 
 	telemetry := NewTelemetryClient(client, "test_transport")
-	testTelemetry(t, telemetry, basicExpectedTags)
+	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
 }
 
 func TestTelemetryWithGlobalTags(t *testing.T) {
@@ -94,7 +96,24 @@ func TestTelemetryWithGlobalTags(t *testing.T) {
 	telemetry := NewTelemetryClient(client, "test_transport")
 
 	expectedTelemetryTags := append([]string{"tag1", "tag2", "env:test"}, basicExpectedTags...)
-	testTelemetry(t, telemetry, expectedTelemetryTags)
+	testTelemetry(t, telemetry, basicExpectedMetrics, expectedTelemetryTags)
+}
+
+func TestTelemetryWithAggregation(t *testing.T) {
+	// disabling autoflush of the telemetry
+	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation())
+	require.Nil(t, err)
+
+	telemetry := NewTelemetryClient(client, "test_transport")
+
+	expectedMetrics := map[string]int64{
+		"datadog.dogstatsd.client.aggregated_context": 5,
+	}
+	for k, v := range basicExpectedMetrics {
+		expectedMetrics[k] = v
+	}
+
+	testTelemetry(t, telemetry, expectedMetrics, basicExpectedTags)
 }
 
 func TestTelemetryCustomAddr(t *testing.T) {

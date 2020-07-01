@@ -380,6 +380,9 @@ func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
 	}
+	if c.agg != nil {
+		c.agg.sendMetrics()
+	}
 	for _, w := range c.workers {
 		w.flush()
 	}
