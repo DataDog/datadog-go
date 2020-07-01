@@ -13,19 +13,24 @@ type (
 )
 
 type aggregator struct {
-	client *Client
-
-	counts  countsMap
 	countsM sync.RWMutex
-
-	gauges  gaugesMap
 	gaugesM sync.RWMutex
+	setsM   sync.RWMutex
 
-	sets  setsMap
-	setsM sync.RWMutex
+	gauges gaugesMap
+	counts countsMap
+	sets   setsMap
+
+	nbContext int
 
 	closed chan struct{}
 	exited chan struct{}
+
+	client *Client
+}
+
+type aggregatorMetrics struct {
+	nbContext int
 }
 
 func newAggregator(c *Client) *aggregator {
@@ -67,6 +72,16 @@ func (a *aggregator) stop() {
 	a.sendMetrics()
 }
 
+func (a *aggregator) flushTelemetryMetrics() *aggregatorMetrics {
+	if a == nil {
+		return nil
+	}
+
+	return &aggregatorMetrics{
+		nbContext: a.nbContext,
+	}
+}
+
 func (a *aggregator) flushMetrics() []metric {
 	metrics := []metric{}
 
@@ -78,6 +93,7 @@ func (a *aggregator) flushMetrics() []metric {
 	a.sets = setsMap{}
 	a.setsM.Unlock()
 
+	a.nbContext = len(sets)
 	for _, s := range sets {
 		metrics = append(metrics, s.flushUnsafe()...)
 	}
@@ -87,6 +103,7 @@ func (a *aggregator) flushMetrics() []metric {
 	a.gauges = gaugesMap{}
 	a.gaugesM.Unlock()
 
+	a.nbContext += len(gauges)
 	for _, g := range gauges {
 		metrics = append(metrics, g.flushUnsafe())
 	}
@@ -96,6 +113,7 @@ func (a *aggregator) flushMetrics() []metric {
 	a.counts = countsMap{}
 	a.countsM.RUnlock()
 
+	a.nbContext += len(counts)
 	for _, c := range counts {
 		metrics = append(metrics, c.flushUnsafe())
 	}
