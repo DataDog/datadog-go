@@ -522,6 +522,9 @@ func TestDDEnvServiceVersionTagsEmitted(t *testing.T) {
 		}
 		buffer := make([]byte, 1024)
 		n, err := io.ReadAtLeast(server, buffer, 1)
+		if err != nil {
+			t.Errorf("ReadAtLeast: %s", err)
+		}
 		result := string(buffer[:n])
 		if result != tt.Expected {
 			t.Errorf("Flushed metric incorrect; expected %s but got %s", tt.Expected, result)
