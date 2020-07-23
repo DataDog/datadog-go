@@ -3,6 +3,7 @@ package statsd
 import (
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -128,4 +129,33 @@ func TestAggregatorFlush(t *testing.T) {
 		},
 	})
 
+}
+
+func TestAggregatorFlushConcurrency(t *testing.T) {
+	a := newAggregator(nil)
+
+	var wg sync.WaitGroup
+	wg.Add(10)
+
+	tags := []string{"tag1", "tag2"}
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+
+			a.gauge("gaugeTest1", 21, tags, 1)
+			a.count("countTest1", 21, tags, 1)
+			a.set("setTest1", "value1", tags, 1)
+		}()
+	}
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+
+			a.flushMetrics()
+		}()
+	}
+
+	wg.Wait()
 }
