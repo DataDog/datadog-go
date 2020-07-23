@@ -4,6 +4,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,29 @@ func TestFlushUnsafeCountMetricSample(t *testing.T) {
 	assert.Equal(t, m.rate, 1.0)
 }
 
+func TestFlushUnsafeCountMetricSampleConcurrency(t *testing.T) {
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, 1)
+
+	var wg sync.WaitGroup
+	wg.Add(10)
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+			c.flushUnsafe()
+		}()
+	}
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+			c.sample(1.0)
+		}()
+	}
+
+	wg.Wait()
+}
+
 func TestNewGaugeMetric(t *testing.T) {
 	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, 1)
 	assert.Equal(t, math.Float64frombits(g.value), float64(21))
@@ -78,6 +102,29 @@ func TestFlushUnsafeGaugeMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
 	assert.Equal(t, m.rate, 1.0)
+}
+
+func TestFlushUnsafeGaugeMetricSampleConcurrency(t *testing.T) {
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, 1)
+
+	var wg sync.WaitGroup
+	wg.Add(10)
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+			g.flushUnsafe()
+		}()
+	}
+
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer wg.Done()
+			g.sample(1.0)
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestNewSetMetric(t *testing.T) {

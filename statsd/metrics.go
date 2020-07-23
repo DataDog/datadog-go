@@ -39,7 +39,7 @@ func (c *countMetric) flushUnsafe() metric {
 		name:       c.name,
 		tags:       c.tags,
 		rate:       c.rate,
-		ivalue:     c.value,
+		ivalue:     atomic.LoadInt64(&c.value),
 	}
 }
 
@@ -71,7 +71,7 @@ func (g *gaugeMetric) flushUnsafe() metric {
 		name:       g.name,
 		tags:       g.tags,
 		rate:       g.rate,
-		fvalue:     math.Float64frombits(g.value),
+		fvalue:     math.Float64frombits(atomic.LoadUint64(&g.value)),
 	}
 }
 

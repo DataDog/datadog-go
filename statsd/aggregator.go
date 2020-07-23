@@ -3,6 +3,7 @@ package statsd
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -21,7 +22,7 @@ type aggregator struct {
 	counts countsMap
 	sets   setsMap
 
-	nbContext int
+	nbContext int32
 
 	closed chan struct{}
 	exited chan struct{}
@@ -30,7 +31,7 @@ type aggregator struct {
 }
 
 type aggregatorMetrics struct {
-	nbContext int
+	nbContext int32
 }
 
 func newAggregator(c *Client) *aggregator {
@@ -93,7 +94,8 @@ func (a *aggregator) flushMetrics() []metric {
 	a.sets = setsMap{}
 	a.setsM.Unlock()
 
-	a.nbContext = len(sets)
+	atomic.StoreInt32(&a.nbContext, int32(len(sets)))
+
 	for _, s := range sets {
 		metrics = append(metrics, s.flushUnsafe()...)
 	}
@@ -103,17 +105,17 @@ func (a *aggregator) flushMetrics() []metric {
 	a.gauges = gaugesMap{}
 	a.gaugesM.Unlock()
 
-	a.nbContext += len(gauges)
+	atomic.AddInt32(&a.nbContext, int32(len(gauges)))
 	for _, g := range gauges {
 		metrics = append(metrics, g.flushUnsafe())
 	}
 
-	a.countsM.RLock()
+	a.countsM.Lock()
 	counts := a.counts
 	a.counts = countsMap{}
-	a.countsM.RUnlock()
+	a.countsM.Unlock()
 
-	a.nbContext += len(counts)
+	atomic.AddInt32(&a.nbContext, int32(len(counts)))
 	for _, c := range counts {
 		metrics = append(metrics, c.flushUnsafe())
 	}
