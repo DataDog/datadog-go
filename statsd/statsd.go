@@ -373,9 +373,10 @@ func (c *Client) watch() {
 	}
 }
 
-// Flush forces a flush of all the queued dogstatsd payloads
-// This method is blocking and will not return until everything is sent
-// through the network
+// Flush forces a flush of all the queued dogstatsd payloads This method is
+// blocking and will not return until everything is sent through the network.
+// In MutexMode, this will also block sampling new data to the client while the
+// workers and sender are flushed.
 func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
@@ -384,8 +385,12 @@ func (c *Client) Flush() error {
 		c.agg.sendMetrics()
 	}
 	for _, w := range c.workers {
-		w.flush()
+		w.pause()
+		defer w.unpause()
+		w.flushUnsafe()
 	}
+	// Now that the worker are pause the sender can flush the queue between
+	// worker and senders
 	c.sender.flush()
 	return nil
 }
