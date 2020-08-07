@@ -94,6 +94,14 @@ func (w *worker) flush() {
 	w.Unlock()
 }
 
+func (w *worker) pause() {
+	w.Lock()
+}
+
+func (w *worker) unpause() {
+	w.Unlock()
+}
+
 // flush the current buffer. Lock must be held by caller.
 // flushed buffer written to the network asynchronously.
 func (w *worker) flushUnsafe() {
