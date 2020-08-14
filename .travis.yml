@@ -5,25 +5,32 @@ arch:
   - arm64
 
 go:
-  - 1.8
-  - 1.9
-  - 1.10.x
-  - 1.11.x
-  - 1.12.x
   - 1.13.x
   - 1.14.x
+  - 1.15.x
 
-# test 32bit build too.
 jobs:
   include:
+    # test 32bit build too.
+    - arch: amd64
+      go: 1.15.x
+      script:
+        - GOARCH=386 go test -v ./...
     - arch: amd64
       go: 1.14.x
       script:
         - GOARCH=386 go test -v ./...
     - arch: amd64
-      go: 1.8
+      go: 1.13.x
       script:
         - GOARCH=386 go test -v ./...
+    # testing packages are no longer compatible with 1.12. We only test that we
+    # can build.
+    - go: 1.12.x
+      script:
+        - ls -l
+        - go build -o test-build ./example/simple_example.go
+        - ./test-build
 
 script:
   # race detector is only available on amd64
