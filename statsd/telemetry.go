@@ -22,18 +22,16 @@ clientVersionTelemetryTag is a tag identifying this specific client version.
 var clientVersionTelemetryTag = "client_version:3.7.2"
 
 type telemetryClient struct {
-	c         *Client
-	tags      []string
-	namespace string
-	sender    *sender
-	worker    *worker
+	c      *Client
+	tags   []string
+	sender *sender
+	worker *worker
 }
 
 func NewTelemetryClient(c *Client, transport string) *telemetryClient {
 	return &telemetryClient{
-		c:         c,
-		tags:      append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
-		namespace: c.Namespace,
+		c:    c,
+		tags: append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
 	}
 }
 
@@ -77,7 +75,6 @@ func (t *telemetryClient) run(wg *sync.WaitGroup, stop chan struct{}) {
 func (t *telemetryClient) sendTelemetry() {
 	for _, m := range t.flush() {
 		if t.worker != nil {
-			m.namespace = t.namespace
 			t.worker.processMetric(m)
 		} else {
 			t.c.send(m)
