@@ -84,6 +84,15 @@ func TestTelemetry(t *testing.T) {
 	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
 }
 
+func TestTelemetryChannelMode(t *testing.T) {
+	// disabling autoflush of the telemetry
+	client, err := New("localhost:8125", WithoutTelemetry(), WithChannelMode())
+	require.Nil(t, err)
+
+	telemetry := NewTelemetryClient(client, "test_transport")
+	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
+}
+
 func TestTelemetryWithGlobalTags(t *testing.T) {
 	os.Setenv("DD_ENV", "test")
 	defer os.Unsetenv("DD_ENV")

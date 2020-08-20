@@ -44,21 +44,17 @@ func getTestServer(t *testing.T, addr string) *net.UDPConn {
 	return server
 }
 
-func TestFlushOnClose(t *testing.T) {
-	buffer := make([]byte, 4096)
-	addr := "localhost:1201"
+func testStatsdPipeline(t *testing.T, client *Client, addr string) {
 	server := getTestServer(t, addr)
 	defer server.Close()
 
-	client, err := New(addr)
-	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
-
 	client.Count("name", 1, []string{"tag"}, 1)
 
-	err = client.Close()
+	err := client.Close()
 	require.Nil(t, err, fmt.Sprintf("failed to close client: %s", err))
 
 	readDone := make(chan struct{})
+	buffer := make([]byte, 4096)
 	n := 0
 	go func() {
 		n, _ = io.ReadAtLeast(server, buffer, 1)
@@ -73,6 +69,24 @@ func TestFlushOnClose(t *testing.T) {
 
 	result := string(buffer[:n])
 	assert.Equal(t, "name:1|c|#tag", result)
+}
+
+func TestChannelMode(t *testing.T) {
+	addr := "localhost:1201"
+
+	client, err := New(addr, WithChannelMode())
+	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+
+	testStatsdPipeline(t, client, addr)
+}
+
+func TestMutexMode(t *testing.T) {
+	addr := "localhost:1201"
+
+	client, err := New(addr)
+	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+
+	testStatsdPipeline(t, client, addr)
 }
 
 func TestCloneWithExtraOptions(t *testing.T) {

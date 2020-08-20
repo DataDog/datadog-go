@@ -306,6 +306,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 
 	bufferPool := newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.sender = newSender(w, o.SenderQueueSize, bufferPool)
+	c.receiveMode = o.ReceiveMode
 	for i := 0; i < o.BufferShardCount; i++ {
 		w := newWorker(bufferPool, c.sender)
 		c.workers = append(c.workers, w)
@@ -314,7 +315,6 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		}
 	}
 
-	c.receiveMode = o.ReceiveMode
 	c.flushTime = o.BufferFlushInterval
 	c.stop = make(chan struct{}, 1)
 
