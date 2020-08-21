@@ -2,6 +2,17 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.0.0 / 2020-08-21
+
+### Notes
+
+* [FEATURE] Add new option `WithTelemetryAddr`, to send the telemetry data to a different endpoint. See [#157][].
+* [BUGFIX] Fix race condition in the flush mechanism of the aggregator. See [#166][]. Thanks to [@cyx][].
+
+### Breaking changes
+
+- Dropping support for EOL versions of Golang 1.11 and lower.
+
 # 3.7.2 / 2020-06-16
 
 ### Notes
@@ -20,8 +31,8 @@
 ### Notes
 
 * [FEATURE] Add new function to clone a Client, so library can inherit and extend options from the main application. See [#147][].
-* [IMPROVEMENT] Auto append a '.' when needed to namespace. See [#145][]. Thanks to [@kamatama41][]
-* [IMPROVEMENT] Add the client global tags to the telemetry tags. See [#143][]. Thanks to [@chrisleavoy][]
+* [IMPROVEMENT] Auto append a '.' when needed to namespace. See [#145][]. Thanks to [@kamatama41][].
+* [IMPROVEMENT] Add the client global tags to the telemetry tags. See [#143][]. Thanks to [@chrisleavoy][].
 
 # 3.6.0 / 2020-04-21
 
@@ -217,6 +228,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#148]: https://github.com/DataDog/datadog-go/pull/148
 [#154]: https://github.com/DataDog/datadog-go/pull/154
 [#156]: https://github.com/DataDog/datadog-go/pull/156
+[#157]: https://github.com/DataDog/datadog-go/pull/157
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -247,3 +259,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@danp60]: https://github.com/danp60
 [@kamatama41]: https://github.com/kamatama41
 [@chrisleavoy]: https://github.com/chrisleavoy
+[@cyx]: https://github.com/cyx

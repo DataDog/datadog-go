@@ -19,7 +19,7 @@ var clientTelemetryTag = "client:go"
 /*
 clientVersionTelemetryTag is a tag identifying this specific client version.
 */
-var clientVersionTelemetryTag = "client_version:3.7.2"
+var clientVersionTelemetryTag = "client_version:4.0.0"
 
 type telemetryClient struct {
 	c      *Client
