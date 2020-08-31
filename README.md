@@ -109,8 +109,8 @@ In very high throughput environments it is possible to improve performance by ch
 ### Maximum packets size in high-throughput scenarios
 
 In order to have the most efficient use of this library in high-throughput scenarios,
-default values for the maximum packets size have already been set for both UDS (8192 bytes)
-and UDP (1432 bytes) in order to have the best usage of the underlying network.
+default values for the maximum packets size have already been set to have the best
+usage of the underlying network.
 However, if you perfectly know your network and you know that a different value for the maximum packets
 size should be used, you can set it with the option `WithMaxBytesPerPayload`. Example:
 
