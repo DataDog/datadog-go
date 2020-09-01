@@ -106,6 +106,30 @@ In very high throughput environments it is possible to improve performance by ch
 - `sysctl -w net.unix.max_dgram_qlen=X` - Set datagram queue size to X (default value is usually 10).
 - `sysctl -w net.core.wmem_max=X` - Set the max size of the send buffer for all the host sockets.
 
+### Maximum packets size in high-throughput scenarios
+
+In order to have the most efficient use of this library in high-throughput scenarios,
+default values for the maximum packets size have already been set to have the best
+usage of the underlying network.
+However, if you perfectly know your network and you know that a different value for the maximum packets
+size should be used, you can set it with the option `WithMaxBytesPerPayload`. Example:
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/DataDog/datadog-go/statsd"
+)
+
+func main() {
+    statsd, err := statsd.New("127.0.0.1:8125", WithMaxBytesPerPayload(4096))
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ## Development
 
 Run the tests with:
