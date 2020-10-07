@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.0.1 / 2020-10-07
+
+### Notes
+
+* [BUGFIX] Fix incomplete manual flush of the sender when the client isn't stopped. See [#163][].
+
 # 4.0.0 / 2020-08-21
 
 ### Notes
@@ -229,6 +235,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#154]: https://github.com/DataDog/datadog-go/pull/154
 [#156]: https://github.com/DataDog/datadog-go/pull/156
 [#157]: https://github.com/DataDog/datadog-go/pull/157
+[#163]: https://github.com/DataDog/datadog-go/pull/163
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
