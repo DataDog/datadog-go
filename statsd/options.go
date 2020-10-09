@@ -35,6 +35,8 @@ var (
 	DefaultAggregationFlushInterval = 3 * time.Second
 	// DefaultAggregation
 	DefaultAggregation = false
+	// DevMode
+	DevMode = false
 )
 
 // Options contains the configuration options for a client.
@@ -97,6 +99,9 @@ type Options struct {
 	Aggregation bool
 	// TelemetryAddr specify a different endpoint for telemetry metrics.
 	TelemetryAddr string
+	// DevMode enables the "dev" mode where the client sends much more
+	// telemetry metrics to help troubleshooting the client behavior.
+	DevMode bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -266,6 +271,24 @@ func WithoutClientSideAggregation() Option {
 func WithTelemetryAddr(addr string) Option {
 	return func(o *Options) error {
 		o.TelemetryAddr = addr
+		return nil
+	}
+}
+
+// WithDevMode enables client "dev" mode, sending more Telemetry metrics to
+// help troubleshoot client behavior.
+func WithDevMode() Option {
+	return func(o *Options) error {
+		o.DevMode = true
+		return nil
+	}
+}
+
+// WithoutDevMode disables client "dev" mode, sending more Telemetry metrics to
+// help troubleshoot client behavior.
+func WithoutDevMode() Option {
+	return func(o *Options) error {
+		o.DevMode = false
 		return nil
 	}
 }

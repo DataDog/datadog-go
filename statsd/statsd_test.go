@@ -76,6 +76,7 @@ func TestChannelMode(t *testing.T) {
 
 	client, err := New(addr, WithChannelMode())
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+	assert.False(t, client.telemetry.devMode)
 
 	testStatsdPipeline(t, client, addr)
 }
@@ -85,6 +86,17 @@ func TestMutexMode(t *testing.T) {
 
 	client, err := New(addr)
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+	assert.False(t, client.telemetry.devMode)
+
+	testStatsdPipeline(t, client, addr)
+}
+
+func TestDevMode(t *testing.T) {
+	addr := "localhost:1201"
+
+	client, err := New(addr, WithDevMode())
+	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+	assert.True(t, client.telemetry.devMode)
 
 	testStatsdPipeline(t, client, addr)
 }

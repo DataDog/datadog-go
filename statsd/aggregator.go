@@ -14,7 +14,10 @@ type (
 )
 
 type aggregator struct {
-	nbContext int32
+	nbContext      int32
+	nbContextGauge int32
+	nbContextCount int32
+	nbContextSet   int32
 
 	countsM sync.RWMutex
 	gaugesM sync.RWMutex
@@ -31,7 +34,10 @@ type aggregator struct {
 }
 
 type aggregatorMetrics struct {
-	nbContext int32
+	nbContext      int32
+	nbContextGauge int32
+	nbContextCount int32
+	nbContextSet   int32
 }
 
 func newAggregator(c *Client) *aggregator {
@@ -79,7 +85,10 @@ func (a *aggregator) flushTelemetryMetrics() *aggregatorMetrics {
 	}
 
 	return &aggregatorMetrics{
-		nbContext: a.nbContext,
+		nbContext:      a.nbContext,
+		nbContextGauge: a.nbContextGauge,
+		nbContextCount: a.nbContextCount,
+		nbContextSet:   a.nbContextSet,
 	}
 }
 
@@ -94,8 +103,6 @@ func (a *aggregator) flushMetrics() []metric {
 	a.sets = setsMap{}
 	a.setsM.Unlock()
 
-	atomic.StoreInt32(&a.nbContext, int32(len(sets)))
-
 	for _, s := range sets {
 		metrics = append(metrics, s.flushUnsafe()...)
 	}
@@ -105,7 +112,6 @@ func (a *aggregator) flushMetrics() []metric {
 	a.gauges = gaugesMap{}
 	a.gaugesM.Unlock()
 
-	atomic.AddInt32(&a.nbContext, int32(len(gauges)))
 	for _, g := range gauges {
 		metrics = append(metrics, g.flushUnsafe())
 	}
@@ -115,11 +121,14 @@ func (a *aggregator) flushMetrics() []metric {
 	a.counts = countsMap{}
 	a.countsM.Unlock()
 
-	atomic.AddInt32(&a.nbContext, int32(len(counts)))
 	for _, c := range counts {
 		metrics = append(metrics, c.flushUnsafe())
 	}
 
+	atomic.StoreInt32(&a.nbContextCount, int32(len(counts)))
+	atomic.StoreInt32(&a.nbContextGauge, int32(len(gauges)))
+	atomic.StoreInt32(&a.nbContextSet, int32(len(sets)))
+	atomic.StoreInt32(&a.nbContext, int32(len(sets)+len(gauges)+len(counts)))
 	return metrics
 }
 
