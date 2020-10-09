@@ -206,10 +206,16 @@ type Client struct {
 
 // ClientMetrics contains metrics about the client
 type ClientMetrics struct {
-	TotalMetrics          uint64
-	TotalEvents           uint64
-	TotalServiceChecks    uint64
-	TotalDroppedOnReceive uint64
+	TotalMetrics             uint64
+	TotalMetricsGauge        uint64
+	TotalMetricsCount        uint64
+	TotalMetricsHistogram    uint64
+	TotalMetricsDistribution uint64
+	TotalMetricsSet          uint64
+	TotalMetricsTiming       uint64
+	TotalEvents              uint64
+	TotalServiceChecks       uint64
+	TotalDroppedOnReceive    uint64
 }
 
 // Verify that Client implements the ClientInterface.
@@ -326,10 +332,10 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 
 	if o.Telemetry {
 		if o.TelemetryAddr == "" {
-			c.telemetry = NewTelemetryClient(&c, writerName)
+			c.telemetry = NewTelemetryClient(&c, writerName, o.DevMode)
 		} else {
 			var err error
-			c.telemetry, err = NewTelemetryClientWithCustomAddr(&c, writerName, o.TelemetryAddr, bufferPool)
+			c.telemetry, err = NewTelemetryClientWithCustomAddr(&c, writerName, o.DevMode, o.TelemetryAddr, bufferPool)
 			if err != nil {
 				return nil, err
 			}
@@ -396,12 +402,23 @@ func (c *Client) Flush() error {
 }
 
 func (c *Client) FlushTelemetryMetrics() ClientMetrics {
-	return ClientMetrics{
-		TotalMetrics:          atomic.SwapUint64(&c.metrics.TotalMetrics, 0),
-		TotalEvents:           atomic.SwapUint64(&c.metrics.TotalEvents, 0),
-		TotalServiceChecks:    atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
-		TotalDroppedOnReceive: atomic.SwapUint64(&c.metrics.TotalDroppedOnReceive, 0),
+	cm := ClientMetrics{
+		TotalMetricsGauge:        atomic.SwapUint64(&c.metrics.TotalMetricsGauge, 0),
+		TotalMetricsCount:        atomic.SwapUint64(&c.metrics.TotalMetricsCount, 0),
+		TotalMetricsSet:          atomic.SwapUint64(&c.metrics.TotalMetricsSet, 0),
+		TotalMetricsHistogram:    atomic.SwapUint64(&c.metrics.TotalMetricsHistogram, 0),
+		TotalMetricsDistribution: atomic.SwapUint64(&c.metrics.TotalMetricsDistribution, 0),
+		TotalMetricsTiming:       atomic.SwapUint64(&c.metrics.TotalMetricsTiming, 0),
+		TotalEvents:              atomic.SwapUint64(&c.metrics.TotalEvents, 0),
+		TotalServiceChecks:       atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
+		TotalDroppedOnReceive:    atomic.SwapUint64(&c.metrics.TotalDroppedOnReceive, 0),
 	}
+
+	cm.TotalMetrics = cm.TotalMetricsGauge + cm.TotalMetricsCount +
+		cm.TotalMetricsSet + cm.TotalMetricsHistogram +
+		cm.TotalMetricsDistribution + cm.TotalMetricsTiming
+
+	return cm
 }
 
 func (c *Client) send(m metric) error {
@@ -431,7 +448,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	atomic.AddUint64(&c.metrics.TotalMetricsGauge, 1)
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags, rate)
 	}
@@ -443,7 +460,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	atomic.AddUint64(&c.metrics.TotalMetricsCount, 1)
 	if c.agg != nil {
 		return c.agg.count(name, value, tags, rate)
 	}
@@ -455,7 +472,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	atomic.AddUint64(&c.metrics.TotalMetricsHistogram, 1)
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
@@ -464,7 +481,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	atomic.AddUint64(&c.metrics.TotalMetricsDistribution, 1)
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
@@ -483,7 +500,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	atomic.AddUint64(&c.metrics.TotalMetricsSet, 1)
 	if c.agg != nil {
 		return c.agg.set(name, value, tags, rate)
 	}
@@ -501,7 +518,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetrics, 1)
+	atomic.AddUint64(&c.metrics.TotalMetricsTiming, 1)
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
 

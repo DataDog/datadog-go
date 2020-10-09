@@ -27,11 +27,26 @@ var basicExpectedMetrics = map[string]int64{
 	"datadog.dogstatsd.client.bytes_dropped_writer":      0,
 }
 
+var devModeExpectedMetrics = map[string]int64{
+	"datadog.dogstatsd.client.metricsGauge":        1,
+	"datadog.dogstatsd.client.metricsCount":        3,
+	"datadog.dogstatsd.client.metricsHistogram":    1,
+	"datadog.dogstatsd.client.metricsDistribution": 1,
+	"datadog.dogstatsd.client.metricsSet":          1,
+	"datadog.dogstatsd.client.metricsTiming":       2,
+}
+
+var devModeAggregationExpectedMetrics = map[string]int64{
+	"datadog.dogstatsd.client.aggregated_context_gauge": 1,
+	"datadog.dogstatsd.client.aggregated_context_set":   1,
+	"datadog.dogstatsd.client.aggregated_context_count": 3,
+}
+
 func TestNewTelemetry(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithNamespace("test_namespace"))
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport")
+	telemetry := NewTelemetryClient(client, "test_transport", false)
 	assert.NotNil(t, telemetry)
 
 	assert.Equal(t, telemetry.c, client)
@@ -80,8 +95,25 @@ func TestTelemetry(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport")
+	telemetry := NewTelemetryClient(client, "test_transport", false)
 	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
+}
+
+func TestTelemetryDevMode(t *testing.T) {
+	// disabling autoflush of the telemetry
+	client, err := New("localhost:8125", WithoutTelemetry(), WithDevMode())
+	require.Nil(t, err)
+
+	expectedMetrics := map[string]int64{}
+	for k, v := range basicExpectedMetrics {
+		expectedMetrics[k] = v
+	}
+	for k, v := range devModeExpectedMetrics {
+		expectedMetrics[k] = v
+	}
+
+	telemetry := NewTelemetryClient(client, "test_transport", true)
+	testTelemetry(t, telemetry, expectedMetrics, basicExpectedTags)
 }
 
 func TestTelemetryChannelMode(t *testing.T) {
@@ -89,7 +121,7 @@ func TestTelemetryChannelMode(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithChannelMode())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport")
+	telemetry := NewTelemetryClient(client, "test_transport", false)
 	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
 }
 
@@ -101,7 +133,7 @@ func TestTelemetryWithGlobalTags(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport")
+	telemetry := NewTelemetryClient(client, "test_transport", false)
 
 	expectedTelemetryTags := append([]string{"tag1", "tag2", "env:test"}, basicExpectedTags...)
 	testTelemetry(t, telemetry, basicExpectedMetrics, expectedTelemetryTags)
@@ -112,12 +144,35 @@ func TestTelemetryWithAggregation(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport")
+	telemetry := NewTelemetryClient(client, "test_transport", false)
 
 	expectedMetrics := map[string]int64{
 		"datadog.dogstatsd.client.aggregated_context": 5,
 	}
 	for k, v := range basicExpectedMetrics {
+		expectedMetrics[k] = v
+	}
+
+	testTelemetry(t, telemetry, expectedMetrics, basicExpectedTags)
+}
+
+func TestTelemetryWithAggregationDevMode(t *testing.T) {
+	// disabling autoflush of the telemetry
+	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation(), WithDevMode())
+	require.Nil(t, err)
+
+	telemetry := NewTelemetryClient(client, "test_transport", true)
+
+	expectedMetrics := map[string]int64{
+		"datadog.dogstatsd.client.aggregated_context": 5,
+	}
+	for k, v := range basicExpectedMetrics {
+		expectedMetrics[k] = v
+	}
+	for k, v := range devModeExpectedMetrics {
+		expectedMetrics[k] = v
+	}
+	for k, v := range devModeAggregationExpectedMetrics {
 		expectedMetrics[k] = v
 	}
 

@@ -22,26 +22,28 @@ clientVersionTelemetryTag is a tag identifying this specific client version.
 var clientVersionTelemetryTag = "client_version:4.0.1"
 
 type telemetryClient struct {
-	c      *Client
-	tags   []string
-	sender *sender
-	worker *worker
+	c       *Client
+	tags    []string
+	sender  *sender
+	worker  *worker
+	devMode bool
 }
 
-func NewTelemetryClient(c *Client, transport string) *telemetryClient {
+func NewTelemetryClient(c *Client, transport string, devMode bool) *telemetryClient {
 	return &telemetryClient{
-		c:    c,
-		tags: append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
+		c:       c,
+		tags:    append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
+		devMode: devMode,
 	}
 }
 
-func NewTelemetryClientWithCustomAddr(c *Client, transport string, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
+func NewTelemetryClientWithCustomAddr(c *Client, transport string, devMode bool, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
 	telemetryWriter, _, err := resolveAddr(telemetryAddr)
 	if err != nil {
 		return nil, fmt.Errorf("Could not resolve telemetry address: %v", err)
 	}
 
-	t := NewTelemetryClient(c, transport)
+	t := NewTelemetryClient(c, transport, devMode)
 
 	// Creating a custom sender/worker with 1 worker in mutex mode for the
 	// telemetry that share the same bufferPool.
@@ -97,6 +99,15 @@ func (t *telemetryClient) flush() []metric {
 
 	clientMetrics := t.c.FlushTelemetryMetrics()
 	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics))
+	if t.devMode {
+		telemetryCount("datadog.dogstatsd.client.metricsGauge", int64(clientMetrics.TotalMetricsGauge))
+		telemetryCount("datadog.dogstatsd.client.metricsCount", int64(clientMetrics.TotalMetricsCount))
+		telemetryCount("datadog.dogstatsd.client.metricsHistogram", int64(clientMetrics.TotalMetricsHistogram))
+		telemetryCount("datadog.dogstatsd.client.metricsDistribution", int64(clientMetrics.TotalMetricsDistribution))
+		telemetryCount("datadog.dogstatsd.client.metricsSet", int64(clientMetrics.TotalMetricsSet))
+		telemetryCount("datadog.dogstatsd.client.metricsTiming", int64(clientMetrics.TotalMetricsTiming))
+	}
+
 	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents))
 	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks))
 	telemetryCount("datadog.dogstatsd.client.metric_dropped_on_receive", int64(clientMetrics.TotalDroppedOnReceive))
@@ -113,6 +124,12 @@ func (t *telemetryClient) flush() []metric {
 
 	if aggMetrics := t.c.agg.flushTelemetryMetrics(); aggMetrics != nil {
 		telemetryCount("datadog.dogstatsd.client.aggregated_context", int64(aggMetrics.nbContext))
+		if t.devMode {
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_gauge", int64(aggMetrics.nbContextGauge))
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_set", int64(aggMetrics.nbContextSet))
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_count", int64(aggMetrics.nbContextCount))
+		}
 	}
+
 	return m
 }
