@@ -35,8 +35,8 @@ var (
 	DefaultAggregationFlushInterval = 3 * time.Second
 	// DefaultAggregation
 	DefaultAggregation = false
-	// DevMode
-	DevMode = false
+	// DefaultDevMode
+	DefaultDevMode = false
 )
 
 // Options contains the configuration options for a client.
@@ -120,6 +120,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		ChannelModeBufferSize:    DefaultChannelModeBufferSize,
 		AggregationFlushInterval: DefaultAggregationFlushInterval,
 		Aggregation:              DefaultAggregation,
+		DevMode:                  DefaultDevMode,
 	}
 
 	for _, option := range options {

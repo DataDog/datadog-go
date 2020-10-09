@@ -14,7 +14,6 @@ type (
 )
 
 type aggregator struct {
-	nbContext      int32
 	nbContextGauge int32
 	nbContextCount int32
 	nbContextSet   int32
@@ -84,12 +83,14 @@ func (a *aggregator) flushTelemetryMetrics() *aggregatorMetrics {
 		return nil
 	}
 
-	return &aggregatorMetrics{
-		nbContext:      a.nbContext,
-		nbContextGauge: a.nbContextGauge,
-		nbContextCount: a.nbContextCount,
-		nbContextSet:   a.nbContextSet,
+	am := &aggregatorMetrics{
+		nbContextGauge: atomic.SwapInt32(&a.nbContextGauge, 0),
+		nbContextCount: atomic.SwapInt32(&a.nbContextCount, 0),
+		nbContextSet:   atomic.SwapInt32(&a.nbContextSet, 0),
 	}
+
+	am.nbContext = am.nbContextGauge + am.nbContextCount + am.nbContextSet
+	return am
 }
 
 func (a *aggregator) flushMetrics() []metric {
@@ -125,10 +126,9 @@ func (a *aggregator) flushMetrics() []metric {
 		metrics = append(metrics, c.flushUnsafe())
 	}
 
-	atomic.StoreInt32(&a.nbContextCount, int32(len(counts)))
-	atomic.StoreInt32(&a.nbContextGauge, int32(len(gauges)))
-	atomic.StoreInt32(&a.nbContextSet, int32(len(sets)))
-	atomic.StoreInt32(&a.nbContext, int32(len(sets)+len(gauges)+len(counts)))
+	atomic.AddInt32(&a.nbContextCount, int32(len(counts)))
+	atomic.AddInt32(&a.nbContextGauge, int32(len(gauges)))
+	atomic.AddInt32(&a.nbContextSet, int32(len(sets)))
 	return metrics
 }
 
