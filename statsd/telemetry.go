@@ -29,7 +29,7 @@ type telemetryClient struct {
 	devMode bool
 }
 
-func NewTelemetryClient(c *Client, transport string, devMode bool) *telemetryClient {
+func newTelemetryClient(c *Client, transport string, devMode bool) *telemetryClient {
 	return &telemetryClient{
 		c:       c,
 		tags:    append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
@@ -37,13 +37,13 @@ func NewTelemetryClient(c *Client, transport string, devMode bool) *telemetryCli
 	}
 }
 
-func NewTelemetryClientWithCustomAddr(c *Client, transport string, devMode bool, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
+func newTelemetryClientWithCustomAddr(c *Client, transport string, devMode bool, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
 	telemetryWriter, _, err := resolveAddr(telemetryAddr)
 	if err != nil {
 		return nil, fmt.Errorf("Could not resolve telemetry address: %v", err)
 	}
 
-	t := NewTelemetryClient(c, transport, devMode)
+	t := newTelemetryClient(c, transport, devMode)
 
 	// Creating a custom sender/worker with 1 worker in mutex mode for the
 	// telemetry that share the same bufferPool.

@@ -46,7 +46,7 @@ func TestNewTelemetry(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithNamespace("test_namespace"))
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport", false)
+	telemetry := newTelemetryClient(client, "test_transport", false)
 	assert.NotNil(t, telemetry)
 
 	assert.Equal(t, telemetry.c, client)
@@ -95,7 +95,7 @@ func TestTelemetry(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport", false)
+	telemetry := newTelemetryClient(client, "test_transport", false)
 	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
 }
 
@@ -112,7 +112,7 @@ func TestTelemetryDevMode(t *testing.T) {
 		expectedMetrics[k] = v
 	}
 
-	telemetry := NewTelemetryClient(client, "test_transport", true)
+	telemetry := newTelemetryClient(client, "test_transport", true)
 	testTelemetry(t, telemetry, expectedMetrics, basicExpectedTags)
 }
 
@@ -121,7 +121,7 @@ func TestTelemetryChannelMode(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithChannelMode())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport", false)
+	telemetry := newTelemetryClient(client, "test_transport", false)
 	testTelemetry(t, telemetry, basicExpectedMetrics, basicExpectedTags)
 }
 
@@ -133,7 +133,7 @@ func TestTelemetryWithGlobalTags(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport", false)
+	telemetry := newTelemetryClient(client, "test_transport", false)
 
 	expectedTelemetryTags := append([]string{"tag1", "tag2", "env:test"}, basicExpectedTags...)
 	testTelemetry(t, telemetry, basicExpectedMetrics, expectedTelemetryTags)
@@ -144,7 +144,7 @@ func TestTelemetryWithAggregation(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport", false)
+	telemetry := newTelemetryClient(client, "test_transport", false)
 
 	expectedMetrics := map[string]int64{
 		"datadog.dogstatsd.client.aggregated_context": 5,
@@ -161,7 +161,7 @@ func TestTelemetryWithAggregationDevMode(t *testing.T) {
 	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation(), WithDevMode())
 	require.Nil(t, err)
 
-	telemetry := NewTelemetryClient(client, "test_transport", true)
+	telemetry := newTelemetryClient(client, "test_transport", true)
 
 	expectedMetrics := map[string]int64{
 		"datadog.dogstatsd.client.aggregated_context": 5,

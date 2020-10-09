@@ -332,10 +332,10 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 
 	if o.Telemetry {
 		if o.TelemetryAddr == "" {
-			c.telemetry = NewTelemetryClient(&c, writerName, o.DevMode)
+			c.telemetry = newTelemetryClient(&c, writerName, o.DevMode)
 		} else {
 			var err error
-			c.telemetry, err = NewTelemetryClientWithCustomAddr(&c, writerName, o.DevMode, o.TelemetryAddr, bufferPool)
+			c.telemetry, err = newTelemetryClientWithCustomAddr(&c, writerName, o.DevMode, o.TelemetryAddr, bufferPool)
 			if err != nil {
 				return nil, err
 			}
