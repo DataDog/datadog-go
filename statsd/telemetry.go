@@ -45,6 +45,7 @@ func newTelemetryClient(c *Client, transport string, devMode bool) *telemetryCli
 		t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
 		t.tagsByType[histogram] = append(append([]string{}, t.tags...), "metrics_type:histogram")
 		t.tagsByType[distribution] = append(append([]string{}, t.tags...), "metrics_type:distribution")
+		t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
 	}
 	return t
 }
@@ -140,6 +141,9 @@ func (t *telemetryClient) flush() []metric {
 			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextGauge), t.tagsByType[gauge])
 			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextSet), t.tagsByType[set])
 			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextCount), t.tagsByType[count])
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextHistogram), t.tagsByType[histogram])
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextDistribution), t.tagsByType[distribution])
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextTiming), t.tagsByType[timing])
 		}
 	}
 

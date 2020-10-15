@@ -6,19 +6,6 @@ adding tags and histograms and pushing upstream to Datadog.
 
 Refer to http://docs.datadoghq.com/guides/dogstatsd/ for information about DogStatsD.
 
-Example Usage:
-
-    // Create the client
-    c, err := statsd.New("127.0.0.1:8125")
-    if err != nil {
-        log.Fatal(err)
-    }
-    // Prefix every metric with the app name
-    c.Namespace = "flubber."
-    // Send the EC2 availability zone as a tag with every metric
-    c.Tags = append(c.Tags, "us-east-1a")
-    err = c.Gauge("request.duration", 1.2, nil, 1)
-
 statsd is based on go-statsd-client.
 */
 package statsd
@@ -89,9 +76,12 @@ const (
 	gauge metricType = iota
 	count
 	histogram
+	histogramAggregated
 	distribution
+	distributionAggregated
 	set
 	timing
+	timingAggregated
 	event
 	serviceCheck
 )
@@ -114,11 +104,13 @@ type metric struct {
 	globalTags []string
 	name       string
 	fvalue     float64
+	fvalues    []float64
 	ivalue     int64
 	svalue     string
 	evalue     *Event
 	scvalue    *ServiceCheck
 	tags       []string
+	stags      string
 	rate       float64
 }
 
@@ -206,6 +198,7 @@ type Client struct {
 	closerLock  sync.Mutex
 	receiveMode ReceivingMode
 	agg         *aggregator
+	aggHistDist *aggregator
 	options     []Option
 	addrOption  string
 }
@@ -291,9 +284,13 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		Tags:      o.Tags,
 		metrics:   &ClientMetrics{},
 	}
-	if o.Aggregation {
+	if o.Aggregation || o.ExtendedAggregation {
 		c.agg = newAggregator(&c)
 		c.agg.start(o.AggregationFlushInterval)
+
+		if o.ExtendedAggregation {
+			c.aggHistDist = c.agg
+		}
 	}
 
 	// Inject values of DD_* environment variables as global tags.
@@ -488,6 +485,9 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsHistogram, 1)
+	if c.aggHistDist != nil {
+		return c.agg.histogram(name, value, tags)
+	}
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
@@ -497,6 +497,9 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsDistribution, 1)
+	if c.aggHistDist != nil {
+		return c.agg.distribution(name, value, tags)
+	}
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
 
@@ -534,6 +537,9 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsTiming, 1)
+	if c.aggHistDist != nil {
+		return c.agg.timing(name, value, tags)
+	}
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
 

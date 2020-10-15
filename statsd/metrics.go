@@ -117,3 +117,65 @@ func (s *setMetric) flushUnsafe() []metric {
 	}
 	return metrics
 }
+
+// Histograms, Distributions and Timings
+
+type bufferedMetric struct {
+	sync.Mutex
+
+	data []float64
+	name string
+	// Histograms and Distributions store tags as one string since we need
+	// to compute its size multiple time when serializing.
+	tags  string
+	mtype metricType
+}
+
+func (s *bufferedMetric) sample(v float64) {
+	s.Lock()
+	defer s.Unlock()
+	s.data = append(s.data, v)
+}
+
+func (s *bufferedMetric) flushUnsafe() metric {
+	return metric{
+		metricType: s.mtype,
+		name:       s.name,
+		stags:      s.tags,
+		rate:       1,
+		fvalues:    s.data,
+	}
+}
+
+type histogramMetric = bufferedMetric
+
+func newHistogramMetric(name string, value float64, stringTags string) *histogramMetric {
+	return &histogramMetric{
+		data:  []float64{value},
+		name:  name,
+		tags:  stringTags,
+		mtype: histogramAggregated,
+	}
+}
+
+type distributionMetric = bufferedMetric
+
+func newDistributionMetric(name string, value float64, stringTags string) *distributionMetric {
+	return &distributionMetric{
+		data:  []float64{value},
+		name:  name,
+		tags:  stringTags,
+		mtype: distributionAggregated,
+	}
+}
+
+type timingMetric = bufferedMetric
+
+func newTimingMetric(name string, value float64, stringTags string) *timingMetric {
+	return &timingMetric{
+		data:  []float64{value},
+		name:  name,
+		tags:  stringTags,
+		mtype: timingAggregated,
+	}
+}

@@ -42,21 +42,39 @@ func appendBasicMetrics(metrics []metric, tags []string) []metric {
 	return metrics
 }
 
-func appendAggregationMetrics(metrics []metric, tags []string, devMode bool) []metric {
-	metrics = append(metrics, metric{
-		name:       "datadog.dogstatsd.client.aggregated_context",
-		ivalue:     5,
-		metricType: count,
-		tags:       append(tags, basicExpectedTags...),
-		rate:       float64(1),
-	})
+func appendAggregationMetrics(metrics []metric, tags []string, devMode bool, extendedAggregation bool) []metric {
+	if extendedAggregation {
+		metrics = append(metrics, metric{
+			name:       "datadog.dogstatsd.client.aggregated_context",
+			ivalue:     9,
+			metricType: count,
+			tags:       append(tags, basicExpectedTags...),
+			rate:       float64(1),
+		})
+	} else {
+		metrics = append(metrics, metric{
+			name:       "datadog.dogstatsd.client.aggregated_context",
+			ivalue:     5,
+			metricType: count,
+			tags:       append(tags, basicExpectedTags...),
+			rate:       float64(1),
+		})
+	}
 
 	if devMode {
 		contextByTypeName := "datadog.dogstatsd.client.aggregated_context_by_type"
 		devModeAggregationExpectedMetrics := map[string]int64{
-			"metrics_type:gauge": 1,
-			"metrics_type:set":   1,
-			"metrics_type:count": 3,
+			"metrics_type:gauge":        1,
+			"metrics_type:set":          1,
+			"metrics_type:count":        3,
+			"metrics_type:histogram":    0,
+			"metrics_type:distribution": 0,
+			"metrics_type:timing":       0,
+		}
+		if extendedAggregation {
+			devModeAggregationExpectedMetrics["metrics_type:histogram"] = 1
+			devModeAggregationExpectedMetrics["metrics_type:distribution"] = 1
+			devModeAggregationExpectedMetrics["metrics_type:timing"] = 2
 		}
 
 		for typeTag, value := range devModeAggregationExpectedMetrics {
@@ -227,7 +245,7 @@ func TestTelemetryWithGlobalTags(t *testing.T) {
 	testTelemetry(t, telemetry, expectedMetrics)
 }
 
-func TestTelemetryWithAggregation(t *testing.T) {
+func TestTelemetryWithAggregationBasic(t *testing.T) {
 	// disabling autoflush of the telemetry
 	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation())
 	require.Nil(t, err)
@@ -236,21 +254,35 @@ func TestTelemetryWithAggregation(t *testing.T) {
 
 	expectedMetrics := []metric{}
 	expectedMetrics = appendBasicMetrics(expectedMetrics, nil)
-	expectedMetrics = appendAggregationMetrics(expectedMetrics, nil, false)
+	expectedMetrics = appendAggregationMetrics(expectedMetrics, nil, false, false)
+
+	testTelemetry(t, telemetry, expectedMetrics)
+}
+
+func TestTelemetryWithAggregationAllType(t *testing.T) {
+	// disabling autoflush of the telemetry
+	client, err := New("localhost:8125", WithoutTelemetry(), WithExtendedClientSideAggregation())
+	require.Nil(t, err)
+
+	telemetry := newTelemetryClient(client, "test_transport", false)
+
+	expectedMetrics := []metric{}
+	expectedMetrics = appendBasicMetrics(expectedMetrics, nil)
+	expectedMetrics = appendAggregationMetrics(expectedMetrics, nil, false, true)
 
 	testTelemetry(t, telemetry, expectedMetrics)
 }
 
 func TestTelemetryWithAggregationDevMode(t *testing.T) {
 	// disabling autoflush of the telemetry
-	client, err := New("localhost:8125", WithoutTelemetry(), WithClientSideAggregation(), WithDevMode())
+	client, err := New("localhost:8125", WithoutTelemetry(), WithExtendedClientSideAggregation(), WithDevMode())
 	require.Nil(t, err)
 
 	telemetry := newTelemetryClient(client, "test_transport", true)
 
 	expectedMetrics := []metric{}
 	expectedMetrics = appendBasicMetrics(expectedMetrics, nil)
-	expectedMetrics = appendAggregationMetrics(expectedMetrics, nil, true)
+	expectedMetrics = appendAggregationMetrics(expectedMetrics, nil, true, true)
 	expectedMetrics = appendDevModeMetrics(expectedMetrics, nil)
 
 	testTelemetry(t, telemetry, expectedMetrics)
@@ -269,7 +301,7 @@ func TestTelemetryWithAggregationDevModeWithGlobalTags(t *testing.T) {
 
 	expectedMetrics := []metric{}
 	expectedMetrics = appendBasicMetrics(expectedMetrics, []string{"tag1", "tag2", "env:test"})
-	expectedMetrics = appendAggregationMetrics(expectedMetrics, []string{"tag1", "tag2", "env:test"}, true)
+	expectedMetrics = appendAggregationMetrics(expectedMetrics, []string{"tag1", "tag2", "env:test"}, true, false)
 	expectedMetrics = appendDevModeMetrics(expectedMetrics, []string{"tag1", "tag2", "env:test"})
 
 	testTelemetry(t, telemetry, expectedMetrics)

@@ -7,6 +7,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestFormatAppendTags(t *testing.T) {
+	var buffer []byte
+	buffer = appendTags(buffer, []string{"global:tag"}, []string{"tag:tag", "tag2:tag2"})
+	assert.Equal(t, `|#global:tag,tag:tag,tag2:tag2`, string(buffer))
+
+	var buffer2 []byte
+	buffer2 = appendTags(buffer2, []string{"global:tag"}, nil)
+	assert.Equal(t, `|#global:tag`, string(buffer2))
+
+	var buffer3 []byte
+	buffer3 = appendTags(buffer3, nil, []string{"tag:tag", "tag2:tag2"})
+	assert.Equal(t, `|#tag:tag,tag2:tag2`, string(buffer3))
+
+	var buffer4 []byte
+	buffer4 = appendTags(buffer4, nil, nil)
+	assert.Equal(t, "", string(buffer4))
+}
+
+func TestFormatAppendTagsAggregated(t *testing.T) {
+	var buffer []byte
+	buffer = appendTagsAggregated(buffer, []string{"global:tag"}, "tag:tag,tag2:tag2")
+	assert.Equal(t, `|#global:tag,tag:tag,tag2:tag2`, string(buffer))
+
+	var buffer2 []byte
+	buffer2 = appendTagsAggregated(buffer2, []string{"global:tag"}, "")
+	assert.Equal(t, `|#global:tag`, string(buffer2))
+
+	var buffer3 []byte
+	buffer3 = appendTagsAggregated(buffer3, nil, "tag:tag,tag2:tag2")
+	assert.Equal(t, `|#tag:tag,tag2:tag2`, string(buffer3))
+
+	var buffer4 []byte
+	buffer4 = appendTagsAggregated(buffer4, nil, "")
+	assert.Equal(t, "", string(buffer4))
+}
+
 func TestFormatAppendGauge(t *testing.T) {
 	var buffer []byte
 	buffer = appendGauge(buffer, "namespace.", []string{"global:tag"}, "gauge", 1., []string{"tag:tag"}, 1)

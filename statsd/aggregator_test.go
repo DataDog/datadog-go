@@ -14,29 +14,35 @@ func TestAggregatorSample(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest", 21, tags)
-	assert.Len(t, a.gauges, 1)
-	assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+	for i := 0; i < 2; i++ {
+		a.gauge("gaugeTest", 21, tags)
+		assert.Len(t, a.gauges, 1)
+		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
 
-	a.count("countTest", 21, tags)
-	assert.Len(t, a.counts, 1)
-	assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		a.count("countTest", 21, tags)
+		assert.Len(t, a.counts, 1)
+		assert.Contains(t, a.counts, "countTest:tag1,tag2")
 
-	a.set("setTest", "value1", tags)
-	assert.Len(t, a.sets, 1)
-	assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		a.set("setTest", "value1", tags)
+		assert.Len(t, a.sets, 1)
+		assert.Contains(t, a.sets, "setTest:tag1,tag2")
 
-	a.gauge("gaugeTest", 123, tags)
-	assert.Len(t, a.gauges, 1)
-	assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+		a.set("setTest", "value1", tags)
+		assert.Len(t, a.sets, 1)
+		assert.Contains(t, a.sets, "setTest:tag1,tag2")
 
-	a.count("countTest", 10, tags)
-	assert.Len(t, a.counts, 1)
-	assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		a.histogram("histogramTest", 21, tags)
+		assert.Len(t, a.histograms.values, 1)
+		assert.Contains(t, a.histograms.values, "histogramTest:tag1,tag2")
 
-	a.set("setTest", "value1", tags)
-	assert.Len(t, a.sets, 1)
-	assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		a.distribution("distributionTest", 21, tags)
+		assert.Len(t, a.distributions.values, 1)
+		assert.Contains(t, a.distributions.values, "distributionTest:tag1,tag2")
+
+		a.timing("timingTest", 21, tags)
+		assert.Len(t, a.timings.values, 1)
+		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
+	}
 }
 
 func TestAggregatorFlush(t *testing.T) {
@@ -57,13 +63,28 @@ func TestAggregatorFlush(t *testing.T) {
 	a.set("setTest1", "value2", tags)
 	a.set("setTest2", "value1", tags)
 
+	a.histogram("histogramTest1", 21, tags)
+	a.histogram("histogramTest1", 22, tags)
+	a.histogram("histogramTest2", 23, tags)
+
+	a.distribution("distributionTest1", 21, tags)
+	a.distribution("distributionTest1", 22, tags)
+	a.distribution("distributionTest2", 23, tags)
+
+	a.timing("timingTest1", 21, tags)
+	a.timing("timingTest1", 22, tags)
+	a.timing("timingTest2", 23, tags)
+
 	metrics := a.flushMetrics()
 
 	assert.Len(t, a.gauges, 0)
 	assert.Len(t, a.counts, 0)
 	assert.Len(t, a.sets, 0)
+	assert.Len(t, a.histograms.values, 0)
+	assert.Len(t, a.distributions.values, 0)
+	assert.Len(t, a.timings.values, 0)
 
-	assert.Len(t, metrics, 7)
+	assert.Len(t, metrics, 13)
 
 	sort.Slice(metrics, func(i, j int) bool {
 		if metrics[i].metricType == metrics[j].metricType {
@@ -77,7 +98,7 @@ func TestAggregatorFlush(t *testing.T) {
 		return metrics[i].metricType < metrics[j].metricType
 	})
 
-	assert.Equal(t, metrics, []metric{
+	assert.Equal(t, []metric{
 		metric{
 			metricType: gauge,
 			name:       "gaugeTest1",
@@ -107,6 +128,34 @@ func TestAggregatorFlush(t *testing.T) {
 			ivalue:     int64(1),
 		},
 		metric{
+			metricType: histogramAggregated,
+			name:       "histogramTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{21.0, 22.0},
+		},
+		metric{
+			metricType: histogramAggregated,
+			name:       "histogramTest2",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{23.0},
+		},
+		metric{
+			metricType: distributionAggregated,
+			name:       "distributionTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{21.0, 22.0},
+		},
+		metric{
+			metricType: distributionAggregated,
+			name:       "distributionTest2",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{23.0},
+		},
+		metric{
 			metricType: set,
 			name:       "setTest1",
 			tags:       tags,
@@ -127,7 +176,22 @@ func TestAggregatorFlush(t *testing.T) {
 			rate:       1,
 			svalue:     "value1",
 		},
-	})
+		metric{
+			metricType: timingAggregated,
+			name:       "timingTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{21.0, 22.0},
+		},
+		metric{
+			metricType: timingAggregated,
+			name:       "timingTest2",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{23.0},
+		},
+	},
+		metrics)
 
 }
 
@@ -146,6 +210,9 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 			a.gauge("gaugeTest1", 21, tags)
 			a.count("countTest1", 21, tags)
 			a.set("setTest1", "value1", tags)
+			a.histogram("histogramTest1", 21, tags)
+			a.distribution("distributionTest1", 21, tags)
+			a.timing("timingTest1", 21, tags)
 		}()
 	}
 
