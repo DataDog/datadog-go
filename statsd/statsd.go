@@ -450,7 +450,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsGauge, 1)
 	if c.agg != nil {
-		return c.agg.gauge(name, value, tags, rate)
+		return c.agg.gauge(name, value, tags)
 	}
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
 }
@@ -462,7 +462,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsCount, 1)
 	if c.agg != nil {
-		return c.agg.count(name, value, tags, rate)
+		return c.agg.count(name, value, tags)
 	}
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
 }
@@ -502,7 +502,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsSet, 1)
 	if c.agg != nil {
-		return c.agg.set(name, value, tags, rate)
+		return c.agg.set(name, value, tags)
 	}
 	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
 }
