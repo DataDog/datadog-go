@@ -17,15 +17,13 @@ type countMetric struct {
 	value int64
 	name  string
 	tags  []string
-	rate  float64
 }
 
-func newCountMetric(name string, value int64, tags []string, rate float64) *countMetric {
+func newCountMetric(name string, value int64, tags []string) *countMetric {
 	return &countMetric{
 		value: value,
 		name:  name,
 		tags:  tags,
-		rate:  rate,
 	}
 }
 
@@ -38,7 +36,7 @@ func (c *countMetric) flushUnsafe() metric {
 		metricType: count,
 		name:       c.name,
 		tags:       c.tags,
-		rate:       c.rate,
+		rate:       1,
 		ivalue:     c.value,
 	}
 }
@@ -49,15 +47,13 @@ type gaugeMetric struct {
 	value uint64
 	name  string
 	tags  []string
-	rate  float64
 }
 
-func newGaugeMetric(name string, value float64, tags []string, rate float64) *gaugeMetric {
+func newGaugeMetric(name string, value float64, tags []string) *gaugeMetric {
 	return &gaugeMetric{
 		value: math.Float64bits(value),
 		name:  name,
 		tags:  tags,
-		rate:  rate,
 	}
 }
 
@@ -70,7 +66,7 @@ func (g *gaugeMetric) flushUnsafe() metric {
 		metricType: gauge,
 		name:       g.name,
 		tags:       g.tags,
-		rate:       g.rate,
+		rate:       1,
 		fvalue:     math.Float64frombits(g.value),
 	}
 }
@@ -81,16 +77,14 @@ type setMetric struct {
 	data map[string]struct{}
 	name string
 	tags []string
-	rate float64
 	sync.Mutex
 }
 
-func newSetMetric(name string, value string, tags []string, rate float64) *setMetric {
+func newSetMetric(name string, value string, tags []string) *setMetric {
 	set := &setMetric{
 		data: map[string]struct{}{},
 		name: name,
 		tags: tags,
-		rate: rate,
 	}
 	set.data[value] = struct{}{}
 	return set
@@ -116,7 +110,7 @@ func (s *setMetric) flushUnsafe() []metric {
 			metricType: set,
 			name:       s.name,
 			tags:       s.tags,
-			rate:       s.rate,
+			rate:       1,
 			svalue:     value,
 		}
 		i++

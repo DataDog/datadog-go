@@ -136,7 +136,7 @@ func getContext(name string, tags []string) string {
 	return name + ":" + strings.Join(tags, ",")
 }
 
-func (a *aggregator) count(name string, value int64, tags []string, rate float64) error {
+func (a *aggregator) count(name string, value int64, tags []string) error {
 	context := getContext(name, tags)
 	a.countsM.RLock()
 	if count, found := a.counts[context]; found {
@@ -147,12 +147,12 @@ func (a *aggregator) count(name string, value int64, tags []string, rate float64
 	a.countsM.RUnlock()
 
 	a.countsM.Lock()
-	a.counts[context] = newCountMetric(name, value, tags, rate)
+	a.counts[context] = newCountMetric(name, value, tags)
 	a.countsM.Unlock()
 	return nil
 }
 
-func (a *aggregator) gauge(name string, value float64, tags []string, rate float64) error {
+func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	context := getContext(name, tags)
 	a.gaugesM.RLock()
 	if gauge, found := a.gauges[context]; found {
@@ -162,7 +162,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, rate float
 	}
 	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags, rate)
+	gauge := newGaugeMetric(name, value, tags)
 
 	a.gaugesM.Lock()
 	a.gauges[context] = gauge
@@ -170,7 +170,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, rate float
 	return nil
 }
 
-func (a *aggregator) set(name string, value string, tags []string, rate float64) error {
+func (a *aggregator) set(name string, value string, tags []string) error {
 	context := getContext(name, tags)
 	a.setsM.RLock()
 	if set, found := a.sets[context]; found {
@@ -181,7 +181,7 @@ func (a *aggregator) set(name string, value string, tags []string, rate float64)
 	a.setsM.RUnlock()
 
 	a.setsM.Lock()
-	a.sets[context] = newSetMetric(name, value, tags, rate)
+	a.sets[context] = newSetMetric(name, value, tags)
 	a.setsM.Unlock()
 	return nil
 }

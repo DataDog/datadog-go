@@ -14,27 +14,27 @@ func TestAggregatorSample(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest", 21, tags, 1)
+	a.gauge("gaugeTest", 21, tags)
 	assert.Len(t, a.gauges, 1)
 	assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
 
-	a.count("countTest", 21, tags, 1)
+	a.count("countTest", 21, tags)
 	assert.Len(t, a.counts, 1)
 	assert.Contains(t, a.counts, "countTest:tag1,tag2")
 
-	a.set("setTest", "value1", tags, 1)
+	a.set("setTest", "value1", tags)
 	assert.Len(t, a.sets, 1)
 	assert.Contains(t, a.sets, "setTest:tag1,tag2")
 
-	a.gauge("gaugeTest", 123, tags, 1)
+	a.gauge("gaugeTest", 123, tags)
 	assert.Len(t, a.gauges, 1)
 	assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
 
-	a.count("countTest", 10, tags, 1)
+	a.count("countTest", 10, tags)
 	assert.Len(t, a.counts, 1)
 	assert.Contains(t, a.counts, "countTest:tag1,tag2")
 
-	a.set("setTest", "value1", tags, 1)
+	a.set("setTest", "value1", tags)
 	assert.Len(t, a.sets, 1)
 	assert.Contains(t, a.sets, "setTest:tag1,tag2")
 }
@@ -44,18 +44,18 @@ func TestAggregatorFlush(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags, 1)
-	a.gauge("gaugeTest1", 10, tags, 1)
-	a.gauge("gaugeTest2", 15, tags, 1)
+	a.gauge("gaugeTest1", 21, tags)
+	a.gauge("gaugeTest1", 10, tags)
+	a.gauge("gaugeTest2", 15, tags)
 
-	a.count("countTest1", 21, tags, 1)
-	a.count("countTest1", 10, tags, 1)
-	a.count("countTest2", 1, tags, 1)
+	a.count("countTest1", 21, tags)
+	a.count("countTest1", 10, tags)
+	a.count("countTest2", 1, tags)
 
-	a.set("setTest1", "value1", tags, 1)
-	a.set("setTest1", "value1", tags, 1)
-	a.set("setTest1", "value2", tags, 1)
-	a.set("setTest2", "value1", tags, 1)
+	a.set("setTest1", "value1", tags)
+	a.set("setTest1", "value1", tags)
+	a.set("setTest1", "value2", tags)
+	a.set("setTest2", "value1", tags)
 
 	metrics := a.flushMetrics()
 
@@ -143,9 +143,9 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			a.gauge("gaugeTest1", 21, tags, 1)
-			a.count("countTest1", 21, tags, 1)
-			a.set("setTest1", "value1", tags, 1)
+			a.gauge("gaugeTest1", 21, tags)
+			a.count("countTest1", 21, tags)
+			a.set("setTest1", "value1", tags)
 		}()
 	}
 
