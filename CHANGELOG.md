@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.1.0 / 2020-10-23
+
+[BETA BUGFIX] Ignore sampling rate when client side aggregation is enabled (for Gauge, Count and Set). See [#170][].
+[FEATURE] Adding a new option `WithDevMode()`, to send more telemetry metrics to ease troubleshooting issues. See [#169][].
+
+
 # 4.0.1 / 2020-10-07
 
 ### Notes
@@ -236,6 +242,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#156]: https://github.com/DataDog/datadog-go/pull/156
 [#157]: https://github.com/DataDog/datadog-go/pull/157
 [#163]: https://github.com/DataDog/datadog-go/pull/163
+[#169]: https://github.com/DataDog/datadog-go/pull/169
+[#170]: https://github.com/DataDog/datadog-go/pull/170
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
