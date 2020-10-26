@@ -24,6 +24,7 @@ statsd is based on go-statsd-client.
 package statsd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -67,13 +68,22 @@ traffic instead of UDP.
 */
 const UnixAddressPrefix = "unix://"
 
+// ddEntityID specifies client-side entity ID injection
+const ddEntityID = "DD_ENTITY_ID"
+
+// ddEntityType provides the type of automatic entity ID retrieval (e.g. container ID)
+const ddEntityType = "DD_ENTITY_TYPE"
+
+// ddEntityIDTag specifies the tag name for the client-side entity ID injection
+const ddEntityIDTag = "dd.internal.entity_id"
+
 /*
 ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
 to a specific tag name.
 */
 var ddEnvTagsMapping = map[string]string{
 	// Client-side entity ID injection for container tagging.
-	"DD_ENTITY_ID": "dd.internal.entity_id",
+	ddEntityID: ddEntityIDTag,
 	// The name of the env in which the service runs.
 	"DD_ENV": "env",
 	// The name of the running service.
@@ -290,13 +300,31 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		c.agg.start(o.AggregationFlushInterval)
 	}
 
+	var hasEntityID bool
 	// Inject values of DD_* environment variables as global tags.
 	for envName, tagName := range ddEnvTagsMapping {
 		if value := os.Getenv(envName); value != "" {
+			if envName == ddEntityID {
+				hasEntityID = true
+			}
 			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", tagName, value))
 		}
 	}
 
+	// If there's DD_ENTITY_ID we ignore DD_ENTITY_TYPE otherwise we extract the entity ID based on supported type.
+	if !hasEntityID {
+		switch os.Getenv(ddEntityType) {
+		case "container":
+			// get container tag etc.
+			cID := ContainerID()
+			if cID != "" {
+				c.Tags = append(c.Tags, fmt.Sprintf("%s:container_id://%s", ddEntityIDTag, cID))
+			}
+		case "":
+		default:
+			return nil, errors.New("unsupported entity type")
+		}
+	}
 	// FIXME: The agent has a performance pitfall preventing us from using better defaults for UDS,
 	// this is why we fallback on UDP defaults even in UDS mode.
 	// Once it's fixed, use `DefaultMaxAgentPayloadSize` and `DefaultUDSBufferPoolSize` instead for UDS.
