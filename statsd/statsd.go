@@ -57,7 +57,8 @@ const DefaultUDSBufferPoolSize = 512
 /*
 DefaultMaxAgentPayloadSize is the default maximum payload size the agent
 can receive. This can be adjusted by changing dogstatsd_buffer_size in the
-agent configuration file datadog.yaml.
+agent configuration file datadog.yaml. This is also used as the optimal payload size
+for UDS datagrams.
 */
 const DefaultMaxAgentPayloadSize = 8192
 
@@ -100,6 +101,11 @@ type ReceivingMode int
 const (
 	MutexMode ReceivingMode = iota
 	ChannelMode
+)
+
+const (
+	WriterNameUDP string = "udp"
+	WriterNameUDS string = "uds"
 )
 
 type metric struct {
@@ -225,11 +231,11 @@ var _ ClientInterface = &Client{}
 func resolveAddr(addr string) (statsdWriter, string, error) {
 	if !strings.HasPrefix(addr, UnixAddressPrefix) {
 		w, err := newUDPWriter(addr)
-		return w, "udp", err
+		return w, WriterNameUDP, err
 	}
 
 	w, err := newUDSWriter(addr[len(UnixAddressPrefix):])
-	return w, "uds", err
+	return w, WriterNameUDS, err
 }
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" or
@@ -297,17 +303,26 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		}
 	}
 
-	// FIXME: The agent has a performance pitfall preventing us from using better defaults for UDS,
-	// this is why we fallback on UDP defaults even in UDS mode.
-	// Once it's fixed, use `DefaultMaxAgentPayloadSize` and `DefaultUDSBufferPoolSize` instead for UDS.
 	if o.MaxBytesPerPayload == 0 {
-		o.MaxBytesPerPayload = OptimalUDPPayloadSize
+		if writerName == WriterNameUDS {
+			o.MaxBytesPerPayload = DefaultMaxAgentPayloadSize
+		} else {
+			o.MaxBytesPerPayload = OptimalUDPPayloadSize
+		}
 	}
 	if o.BufferPoolSize == 0 {
-		o.BufferPoolSize = DefaultUDPBufferPoolSize
+		if writerName == WriterNameUDS {
+			o.BufferPoolSize = DefaultUDSBufferPoolSize
+		} else {
+			o.BufferPoolSize = DefaultUDPBufferPoolSize
+		}
 	}
 	if o.SenderQueueSize == 0 {
-		o.SenderQueueSize = DefaultUDPBufferPoolSize
+		if writerName == WriterNameUDS {
+			o.SenderQueueSize = DefaultUDSBufferPoolSize
+		} else {
+			o.SenderQueueSize = DefaultUDPBufferPoolSize
+		}
 	}
 
 	bufferPool := newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
