@@ -2,6 +2,11 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+
+# 4.2.0 / 2020-11-02
+
+* [UDS] Use better payload size defaults for UDS connections. See [#171][].
+
 # 4.1.0 / 2020-10-23
 
 [BETA BUGFIX] Ignore sampling rate when client side aggregation is enabled (for Gauge, Count and Set). See [#170][].
@@ -244,6 +249,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#163]: https://github.com/DataDog/datadog-go/pull/163
 [#169]: https://github.com/DataDog/datadog-go/pull/169
 [#170]: https://github.com/DataDog/datadog-go/pull/170
+[#171]: https://github.com/DataDog/datadog-go/pull/171
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
