@@ -22,19 +22,31 @@ clientVersionTelemetryTag is a tag identifying this specific client version.
 var clientVersionTelemetryTag = "client_version:4.2.0"
 
 type telemetryClient struct {
-	c       *Client
-	tags    []string
-	sender  *sender
-	worker  *worker
-	devMode bool
+	c          *Client
+	tags       []string
+	tagsByType map[metricType][]string
+	sender     *sender
+	worker     *worker
+	devMode    bool
 }
 
 func newTelemetryClient(c *Client, transport string, devMode bool) *telemetryClient {
-	return &telemetryClient{
-		c:       c,
-		tags:    append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
-		devMode: devMode,
+	t := &telemetryClient{
+		c:          c,
+		tags:       append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
+		tagsByType: map[metricType][]string{},
+		devMode:    devMode,
 	}
+
+	if devMode {
+		t.tagsByType[gauge] = append(append([]string{}, t.tags...), "metrics_type:gauge")
+		t.tagsByType[count] = append(append([]string{}, t.tags...), "metrics_type:count")
+		t.tagsByType[set] = append(append([]string{}, t.tags...), "metrics_type:set")
+		t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
+		t.tagsByType[histogram] = append(append([]string{}, t.tags...), "metrics_type:histogram")
+		t.tagsByType[distribution] = append(append([]string{}, t.tags...), "metrics_type:distribution")
+	}
+	return t
 }
 
 func newTelemetryClientWithCustomAddr(c *Client, transport string, devMode bool, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
@@ -93,41 +105,41 @@ func (t *telemetryClient) flush() []metric {
 	m := []metric{}
 
 	// same as Count but without global namespace
-	telemetryCount := func(name string, value int64) {
-		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: t.tags, rate: 1})
+	telemetryCount := func(name string, value int64, tags []string) {
+		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: tags, rate: 1})
 	}
 
 	clientMetrics := t.c.FlushTelemetryMetrics()
-	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics))
+	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics), t.tags)
 	if t.devMode {
-		telemetryCount("datadog.dogstatsd.client.metricsGauge", int64(clientMetrics.TotalMetricsGauge))
-		telemetryCount("datadog.dogstatsd.client.metricsCount", int64(clientMetrics.TotalMetricsCount))
-		telemetryCount("datadog.dogstatsd.client.metricsHistogram", int64(clientMetrics.TotalMetricsHistogram))
-		telemetryCount("datadog.dogstatsd.client.metricsDistribution", int64(clientMetrics.TotalMetricsDistribution))
-		telemetryCount("datadog.dogstatsd.client.metricsSet", int64(clientMetrics.TotalMetricsSet))
-		telemetryCount("datadog.dogstatsd.client.metricsTiming", int64(clientMetrics.TotalMetricsTiming))
+		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsGauge), t.tagsByType[gauge])
+		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsCount), t.tagsByType[count])
+		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsHistogram), t.tagsByType[histogram])
+		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsDistribution), t.tagsByType[distribution])
+		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsSet), t.tagsByType[set])
+		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsTiming), t.tagsByType[timing])
 	}
 
-	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents))
-	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks))
-	telemetryCount("datadog.dogstatsd.client.metric_dropped_on_receive", int64(clientMetrics.TotalDroppedOnReceive))
+	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents), t.tags)
+	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks), t.tags)
+	telemetryCount("datadog.dogstatsd.client.metric_dropped_on_receive", int64(clientMetrics.TotalDroppedOnReceive), t.tags)
 
 	senderMetrics := t.c.sender.flushTelemetryMetrics()
-	telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads))
-	telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(senderMetrics.TotalSentBytes))
-	telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(senderMetrics.TotalDroppedPayloads))
-	telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(senderMetrics.TotalDroppedBytes))
-	telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(senderMetrics.TotalDroppedPayloadsQueueFull))
-	telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull))
-	telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter))
-	telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter))
+	telemetryCount("datadog.dogstatsd.client.packets_sent", int64(senderMetrics.TotalSentPayloads), t.tags)
+	telemetryCount("datadog.dogstatsd.client.bytes_sent", int64(senderMetrics.TotalSentBytes), t.tags)
+	telemetryCount("datadog.dogstatsd.client.packets_dropped", int64(senderMetrics.TotalDroppedPayloads), t.tags)
+	telemetryCount("datadog.dogstatsd.client.bytes_dropped", int64(senderMetrics.TotalDroppedBytes), t.tags)
+	telemetryCount("datadog.dogstatsd.client.packets_dropped_queue", int64(senderMetrics.TotalDroppedPayloadsQueueFull), t.tags)
+	telemetryCount("datadog.dogstatsd.client.bytes_dropped_queue", int64(senderMetrics.TotalDroppedBytesQueueFull), t.tags)
+	telemetryCount("datadog.dogstatsd.client.packets_dropped_writer", int64(senderMetrics.TotalDroppedPayloadsWriter), t.tags)
+	telemetryCount("datadog.dogstatsd.client.bytes_dropped_writer", int64(senderMetrics.TotalDroppedBytesWriter), t.tags)
 
 	if aggMetrics := t.c.agg.flushTelemetryMetrics(); aggMetrics != nil {
-		telemetryCount("datadog.dogstatsd.client.aggregated_context", int64(aggMetrics.nbContext))
+		telemetryCount("datadog.dogstatsd.client.aggregated_context", int64(aggMetrics.nbContext), t.tags)
 		if t.devMode {
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_gauge", int64(aggMetrics.nbContextGauge))
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_set", int64(aggMetrics.nbContextSet))
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_count", int64(aggMetrics.nbContextCount))
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextGauge), t.tagsByType[gauge])
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextSet), t.tagsByType[set])
+			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextCount), t.tagsByType[count])
 		}
 	}
 
