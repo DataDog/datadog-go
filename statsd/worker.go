@@ -3,12 +3,14 @@ package statsd
 import (
 	"math/rand"
 	"sync"
+	"time"
 )
 
 type worker struct {
 	pool   *bufferPool
 	buffer *statsdBuffer
 	sender *sender
+	random *rand.Rand
 	sync.Mutex
 
 	inputMetrics chan metric
@@ -16,10 +18,16 @@ type worker struct {
 }
 
 func newWorker(pool *bufferPool, sender *sender) *worker {
+	// Note that calling time.Now().UnixNano() repeatedly quickly may return
+	// very similar values. That's fine for seeding the worker-specific random
+	// source because we just need an evenly distributed stream of float values.
+	// Do not use this random source for cryptographic randomness.
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &worker{
 		pool:   pool,
 		sender: sender,
 		buffer: pool.borrowBuffer(),
+		random: random,
 		stop:   make(chan struct{}),
 	}
 }
@@ -59,7 +67,7 @@ func (w *worker) processMetric(m metric) error {
 }
 
 func (w *worker) shouldSample(rate float64) bool {
-	if rate < 1 && rand.Float64() > rate {
+	if rate < 1 && w.random.Float64() > rate {
 		return false
 	}
 	return true
