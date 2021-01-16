@@ -18,7 +18,11 @@ type worker struct {
 }
 
 func newWorker(pool *bufferPool, sender *sender) *worker {
-	// Note that calling time.Now().UnixNano() repeatedly quickly may return
+	// Each worker uses its own random source to prevent workers in separate
+	// goroutines from contending for the lock on the "math/rand" package-global
+	// random source (e.g. calls like "rand.Float64()" must acquire a shared
+	// lock to get the next pseudorandom number).
+	// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
 	// very similar values. That's fine for seeding the worker-specific random
 	// source because we just need an evenly distributed stream of float values.
 	// Do not use this random source for cryptographic randomness.
