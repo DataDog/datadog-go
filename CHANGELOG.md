@@ -2,6 +2,11 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.3.0 / 2021-01-20
+
+* [BETA] Adding client side aggregation for distributions, histograms and timings. See [#176][].
+* [IMPROVEMENT] Use a worker-specific random source to remove lock contention. See [#178][]. Thanks to [@matthewdale][].
+* [IMPROVEMENT] Update devMode telemetry naming and taging to ease graphing in Datadog. See [#175][].
 
 # 4.2.0 / 2020-11-02
 
@@ -250,6 +255,9 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#169]: https://github.com/DataDog/datadog-go/pull/169
 [#170]: https://github.com/DataDog/datadog-go/pull/170
 [#171]: https://github.com/DataDog/datadog-go/pull/171
+[#175]: https://github.com/DataDog/datadog-go/pull/175
+[#176]: https://github.com/DataDog/datadog-go/pull/176
+[#178]: https://github.com/DataDog/datadog-go/pull/178
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -281,3 +289,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@kamatama41]: https://github.com/kamatama41
 [@chrisleavoy]: https://github.com/chrisleavoy
 [@cyx]: https://github.com/cyx
+[@matthewdale]: https://github.com/matthewdale
