@@ -73,7 +73,7 @@ func (w *worker) processMetric(m metric) error {
 }
 
 func (w *worker) shouldSample(rate float64) bool {
-	// rand.NewSource is not thread safe.
+	// sources created by rand.NewSource() (ie. w.random) are not thread safe.
 	// TODO: use defer once the lowest Go version we support is 1.14 (defer
 	// has an overhead before that).
 	w.randomLock.Lock()
