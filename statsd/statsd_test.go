@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,6 +34,62 @@ func TestCustomWriterBufferConfiguration(t *testing.T) {
 	assert.Equal(t, OptimalUDPPayloadSize, client.sender.pool.bufferMaxSize)
 	assert.Equal(t, DefaultUDPBufferPoolSize, cap(client.sender.pool.pool))
 	assert.Equal(t, DefaultUDPBufferPoolSize, cap(client.sender.queue))
+}
+
+// TestConcurrentSend sends various metric types in separate goroutines to
+// trigger any possible data races. It is intended to be run with the data race
+// detector enabled.
+func TestConcurrentSend(t *testing.T) {
+	tests := []struct {
+		description   string
+		clientOptions []Option
+	}{
+		{
+			description:   "Client with default options",
+			clientOptions: []Option{},
+		},
+		{
+			description:   "Client with mutex mode enabled",
+			clientOptions: []Option{WithMutexMode()},
+		},
+		{
+			description:   "Client with channel mode enabled",
+			clientOptions: []Option{WithChannelMode()},
+		},
+	}
+
+	for _, test := range tests {
+		test := test // Capture range variable.
+		t.Run(test.description, func(t *testing.T) {
+			t.Parallel()
+
+			client, err := New("localhost:9876", test.clientOptions...)
+			require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				client.Gauge("name", 1, []string{"tag"}, 0.1)
+				wg.Done()
+			}()
+
+			wg.Add(1)
+			go func() {
+				client.Count("name", 1, []string{"tag"}, 0.1)
+				wg.Done()
+			}()
+
+			wg.Add(1)
+			go func() {
+				client.Timing("name", 1, []string{"tag"}, 0.1)
+				wg.Done()
+			}()
+
+			wg.Wait()
+			err = client.Close()
+			require.Nil(t, err, fmt.Sprintf("failed to close client: %s", err))
+		})
+	}
 }
 
 func getTestServer(t *testing.T, addr string) *net.UDPConn {
