@@ -90,7 +90,7 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte) erro
 
 	// first check how much data we can write to the buffer:
 	//   +3 + len(metricSymbol) because the message will include '|<metricSymbol>|#' before the tags
-	//   +1 for the coma between the two set of tags
+	//   +1 for the potential line break at the start of the metric
 	tagsSize := len(m.stags) + 4 + len(metricSymbol)
 	for _, t := range m.globalTags {
 		tagsSize += len(t) + 1

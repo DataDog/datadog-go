@@ -253,3 +253,37 @@ func TestWorkerDistributionAggregatedMultiple(t *testing.T) {
 	data = <-s.queue
 	assert.Equal(t, "namespace.test_distribution:3.3:4.4|d|#globalTags,globalTags2,tag1,tag2", string(data.buffer))
 }
+
+func TestWorkerMultipleDifferentDistributionAggregated(t *testing.T) {
+	// first metric will fit but not the second one
+	_, s, w := initWorker(160)
+
+	m := metric{
+		metricType: distributionAggregated,
+		namespace:  "namespace.",
+		globalTags: []string{"globalTags", "globalTags2"},
+		name:       "test_distribution",
+		fvalues:    []float64{1.1, 2.2, 3.3, 4.4},
+		stags:      "tag1,tag2",
+		rate:       1,
+	}
+	err := w.processMetric(m)
+	assert.Nil(t, err)
+	m = metric{
+		metricType: distributionAggregated,
+		namespace:  "namespace.",
+		globalTags: []string{"globalTags", "globalTags2"},
+		name:       "test_distribution_2",
+		fvalues:    []float64{1.1, 2.2, 3.3, 4.4},
+		stags:      "tag1,tag2",
+		rate:       1,
+	}
+	err = w.processMetric(m)
+	assert.Nil(t, err)
+
+	w.flush()
+	data := <-s.queue
+	assert.Equal(t, "namespace.test_distribution:1.1:2.2:3.3:4.4|d|#globalTags,globalTags2,tag1,tag2\nnamespace.test_distribution_2:1.1:2.2:3.3|d|#globalTags,globalTags2,tag1,tag2", string(data.buffer))
+	data = <-s.queue
+	assert.Equal(t, "namespace.test_distribution_2:4.4|d|#globalTags,globalTags2,tag1,tag2", string(data.buffer))
+}
