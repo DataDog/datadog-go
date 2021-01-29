@@ -72,6 +72,7 @@ func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, gl
 	}
 
 	originalBuffer := b.buffer
+	b.writeSeparator()
 	b.buffer = appendHeader(b.buffer, namespace, name)
 
 	// buffer already full
