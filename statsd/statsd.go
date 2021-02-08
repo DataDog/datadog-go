@@ -56,6 +56,12 @@ traffic instead of UDP.
 const UnixAddressPrefix = "unix://"
 
 /*
+WindowsPipeAddressPrefix holds the prefix to use to enable Windows Named Pipes
+traffic instead of UDP.
+*/
+const WindowsPipeAddressPrefix = `\\.\pipe\`
+
+/*
 ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
 to a specific tag name.
 */
@@ -94,8 +100,9 @@ const (
 )
 
 const (
-	WriterNameUDP string = "udp"
-	WriterNameUDS string = "uds"
+	WriterNameUDP     string = "udp"
+	WriterNameUDS     string = "uds"
+	WriterWindowsPipe string = "pipe"
 )
 
 type metric struct {
@@ -222,17 +229,21 @@ type ClientMetrics struct {
 var _ ClientInterface = &Client{}
 
 func resolveAddr(addr string) (statsdWriter, string, error) {
-	if !strings.HasPrefix(addr, UnixAddressPrefix) {
+	switch {
+	case strings.HasPrefix(addr, WindowsPipeAddressPrefix):
+		w, err := newWindowsPipeWriter(addr)
+		return w, WriterWindowsPipe, err
+	case strings.HasPrefix(addr, UnixAddressPrefix):
+		w, err := newUDSWriter(addr[len(UnixAddressPrefix):])
+		return w, WriterNameUDS, err
+	default:
 		w, err := newUDPWriter(addr)
 		return w, WriterNameUDP, err
 	}
-
-	w, err := newUDSWriter(addr[len(UnixAddressPrefix):])
-	return w, WriterNameUDS, err
 }
 
-// New returns a pointer to a new Client given an addr in the format "hostname:port" or
-// "unix:///path/to/socket".
+// New returns a pointer to a new Client given an addr in the format "hostname:port" for UDP,
+// "unix:///path/to/socket" for UDS or "\\.\pipe\path\to\pipe" for Windows Named Pipes.
 func New(addr string, options ...Option) (*Client, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
