@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/Microsoft/go-winio"
@@ -27,10 +26,7 @@ func TestPipeWriter(t *testing.T) {
 		log.Fatal(err)
 	}
 	out := make(chan string)
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Fatal(err)
@@ -40,8 +36,8 @@ func TestPipeWriter(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		out <- string(buf[:n])
 		conn.Close()
+		out <- string(buf[:n])
 	}()
 
 	client, err := New(pipepath)
@@ -55,5 +51,4 @@ func TestPipeWriter(t *testing.T) {
 	if exp := "metric:1|g|#key:val"; got != exp {
 		t.Fatalf("Expected %q, got %q", exp, got)
 	}
-	wg.Wait() // wait to close conn and goroutine
 }
