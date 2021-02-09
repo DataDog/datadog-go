@@ -1,5 +1,9 @@
 language: go
 
+os:
+  - linux
+  - windows
+
 arch:
   - amd64
   - arm64
@@ -56,4 +60,4 @@ script:
   # race detector is only available on amd64
  - if [[ "$TRAVIS_CPU_ARCH" == "amd64" ]] || [[ "$TRAVIS_CPU_ARCH" == "ppc64le" ]]; then go test -race -v ./...; else go test -v ./...; fi
  - go vet ./...
- - "[ -z \"`go fmt ./...`\" ]"
+ - if [[ "$os" == "linux" ]]; then "[ -z \"`go fmt ./...`\" ]"; fi
