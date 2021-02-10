@@ -2,7 +2,7 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 4.4.0 / 2021-01-10
+# 4.4.0 / 2021-02-10
 
 * [BETA][BUGFIX] Fix multi-metric aggregation when packing different metrics in the same packet. See [#181][].
 * [FEATURE] Add support for Windows Named Pipes. See [#182][].
