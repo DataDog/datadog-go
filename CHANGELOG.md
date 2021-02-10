@@ -5,7 +5,7 @@
 # 4.4.0 / 2021-02-10
 
 * [BETA][BUGFIX] Fix multi-metric aggregation when packing different metrics in the same packet. See [#181][].
-* [FEATURE] Add support for Windows Named Pipes. See [#182][].
+* [FEATURE] Add support for Windows Named Pipes (Windows only). See [#182][].
 
 # 4.3.1 / 2021-01-28
 
@@ -268,6 +268,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#176]: https://github.com/DataDog/datadog-go/pull/176
 [#178]: https://github.com/DataDog/datadog-go/pull/178
 [#179]: https://github.com/DataDog/datadog-go/pull/179
+[#181]: https://github.com/DataDog/datadog-go/pull/181
+[#182]: https://github.com/DataDog/datadog-go/pull/182
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
