@@ -2,6 +2,11 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.4.0 / 2021-01-10
+
+* [BUGFIX] Fix a problem with multi-metric aggregation. See [#181][].
+* [FEATURE] Add support for Windows Named Pipes. See [#182][].
+
 # 4.3.1 / 2021-01-28
 
 * [BUGFIX] Fix race condition when using sample rate (introduce in 4.3.0). See [#179][].
