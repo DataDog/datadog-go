@@ -378,7 +378,8 @@ func NewBuffered(addr string, buflen int) (*Client, error) {
 	return New(addr, WithMaxMessagesPerPayload(buflen))
 }
 
-// SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP.
+// SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP
+// or Windows Pipes.
 func (c *Client) SetWriteTimeout(d time.Duration) error {
 	if c == nil {
 		return ErrNoClient
