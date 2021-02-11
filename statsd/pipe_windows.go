@@ -68,7 +68,7 @@ func (p *pipeWriter) ensureConnection() (net.Conn, error) {
 	return newconn, nil
 }
 
-func (p pipeWriter) Close() error {
+func (p *pipeWriter) Close() error {
 	return p.conn.Close()
 }
 
