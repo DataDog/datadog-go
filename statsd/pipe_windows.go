@@ -20,7 +20,9 @@ type pipeWriter struct {
 }
 
 func (p *pipeWriter) SetWriteTimeout(d time.Duration) error {
+	p.mu.Lock()
 	p.timeout = d
+	p.mu.Unlock()
 	return nil
 }
 
