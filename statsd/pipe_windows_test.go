@@ -106,17 +106,21 @@ func TestPipeWriterReconnect(t *testing.T) {
 		// ok
 	}
 
-	// third attempt succeeds with new connection
-	if err := client.Gauge("metric", 3, []string{"key:val"}, 1); err != nil {
-		t.Fatalf("Failed to send second gauge: %s", err)
-	}
-	timeout = time.After(100 * time.Millisecond)
-	select {
-	case got := <-out:
-		if exp := "metric:3|g|#key:val"; got != exp {
-			t.Fatalf("Expected %q, got %q", exp, got)
+	// subsequent attempts succeed with new connection
+	for n := 0; n < 3; n++ {
+		if err := client.Gauge("metric", 3, []string{"key:val"}, 1); err != nil {
+			t.Fatalf("Failed to send second gauge: %s", err)
 		}
-	case <-timeout:
-		t.Fatal("Third attempt should have succeeded")
+		timeout = time.After(500 * time.Millisecond)
+		select {
+		case got := <-out:
+			if exp := "metric:3|g|#key:val"; got != exp {
+				t.Fatalf("Expected %q, got %q", exp, got)
+			}
+			return
+		case <-timeout:
+			continue
+		}
 	}
+	t.Fatal("failed to reconnect")
 }
