@@ -4,8 +4,8 @@
 
 # 4.4.0 / 2021-02-10
 
-* [BETA BUGFIX] Fix multi-metric aggregation when packing different metrics in the same packet. See [#181][], [#185][].
-* [FEATURE] Add support for Windows Named Pipes (Windows only). See [#182][].
+* [BETA BUGFIX] Fix multi-metric aggregation when packing different metrics in the same packet. See [#181][].
+* [FEATURE] Add support for Windows Named Pipes (Windows only). See [#182][] and [#185][].
 
 # 4.3.1 / 2021-01-28
 
