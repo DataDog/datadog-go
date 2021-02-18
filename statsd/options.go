@@ -24,7 +24,7 @@ var (
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
 	DefaultSenderQueueSize = 0
 	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
-	DefaultWriteTimeoutUDS = 1 * time.Millisecond
+	DefaultWriteTimeoutUDS = 100 * time.Millisecond
 	// DefaultTelemetry is the default value for the Telemetry option
 	DefaultTelemetry = true
 	// DefaultReceivingMode is the default behavior when sending metrics
