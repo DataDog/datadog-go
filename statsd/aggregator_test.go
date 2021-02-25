@@ -31,15 +31,15 @@ func TestAggregatorSample(t *testing.T) {
 		assert.Len(t, a.sets, 1)
 		assert.Contains(t, a.sets, "setTest:tag1,tag2")
 
-		a.histogram("histogramTest", 21, tags)
+		a.histogram("histogramTest", 21, tags, 1)
 		assert.Len(t, a.histograms.values, 1)
 		assert.Contains(t, a.histograms.values, "histogramTest:tag1,tag2")
 
-		a.distribution("distributionTest", 21, tags)
+		a.distribution("distributionTest", 21, tags, 1)
 		assert.Len(t, a.distributions.values, 1)
 		assert.Contains(t, a.distributions.values, "distributionTest:tag1,tag2")
 
-		a.timing("timingTest", 21, tags)
+		a.timing("timingTest", 21, tags, 1)
 		assert.Len(t, a.timings.values, 1)
 		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
 	}
@@ -63,17 +63,17 @@ func TestAggregatorFlush(t *testing.T) {
 	a.set("setTest1", "value2", tags)
 	a.set("setTest2", "value1", tags)
 
-	a.histogram("histogramTest1", 21, tags)
-	a.histogram("histogramTest1", 22, tags)
-	a.histogram("histogramTest2", 23, tags)
+	a.histogram("histogramTest1", 21, tags, 1)
+	a.histogram("histogramTest1", 22, tags, 1)
+	a.histogram("histogramTest2", 23, tags, 1)
 
-	a.distribution("distributionTest1", 21, tags)
-	a.distribution("distributionTest1", 22, tags)
-	a.distribution("distributionTest2", 23, tags)
+	a.distribution("distributionTest1", 21, tags, 1)
+	a.distribution("distributionTest1", 22, tags, 1)
+	a.distribution("distributionTest2", 23, tags, 1)
 
-	a.timing("timingTest1", 21, tags)
-	a.timing("timingTest1", 22, tags)
-	a.timing("timingTest2", 23, tags)
+	a.timing("timingTest1", 21, tags, 1)
+	a.timing("timingTest1", 22, tags, 1)
+	a.timing("timingTest2", 23, tags, 1)
 
 	metrics := a.flushMetrics()
 
@@ -210,9 +210,9 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 			a.gauge("gaugeTest1", 21, tags)
 			a.count("countTest1", 21, tags)
 			a.set("setTest1", "value1", tags)
-			a.histogram("histogramTest1", 21, tags)
-			a.distribution("distributionTest1", 21, tags)
-			a.timing("timingTest1", 21, tags)
+			a.histogram("histogramTest1", 21, tags, 1)
+			a.distribution("distributionTest1", 21, tags, 1)
+			a.timing("timingTest1", 21, tags, 1)
 		}()
 	}
 

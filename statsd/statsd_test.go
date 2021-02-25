@@ -13,6 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	defaultAddr = "localhost:1201"
+)
+
 type statsdWriterWrapper struct{}
 
 func (statsdWriterWrapper) SetWriteTimeout(time.Duration) error {
@@ -102,14 +106,90 @@ func getTestServer(t *testing.T, addr string) *net.UDPConn {
 	return server
 }
 
-func testStatsdPipeline(t *testing.T, client *Client, addr string) {
-	server := getTestServer(t, addr)
-	defer server.Close()
+func TestCloneWithExtraOptions(t *testing.T) {
+	client, err := New(defaultAddr, WithTags([]string{"tag1", "tag2"}))
+	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
 
+	assert.Equal(t, client.Tags, []string{"tag1", "tag2"})
+	assert.Equal(t, client.Namespace, "")
+	assert.Equal(t, client.receiveMode, MutexMode)
+	assert.Equal(t, client.addrOption, defaultAddr)
+	assert.Len(t, client.options, 1)
+
+	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"), WithChannelMode())
+	require.Nil(t, err, fmt.Sprintf("failed to clone client: %s", err))
+
+	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
+	assert.Equal(t, cloneClient.Namespace, "test.")
+	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
+	assert.Equal(t, cloneClient.addrOption, defaultAddr)
+	assert.Len(t, cloneClient.options, 3)
+}
+
+func sendOneMetrics(client *Client) string {
 	client.Count("name", 1, []string{"tag"}, 1)
+	return "name:1|c|#tag"
+}
 
-	err := client.Close()
-	require.Nil(t, err, fmt.Sprintf("failed to close client: %s", err))
+func sendBasicMetrics(client *Client) string {
+	client.Gauge("gauge", 1, []string{"tag"}, 1)
+	client.Gauge("gauge", 21, []string{"tag"}, 1)
+	client.Count("count", 1, []string{"tag"}, 1)
+	client.Count("count", 3, []string{"tag"}, 1)
+	client.Set("set", "my_id", []string{"tag"}, 1)
+	client.Set("set", "my_id", []string{"tag"}, 1)
+
+	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag"
+}
+
+func sendAllMetrics(client *Client) string {
+	client.Gauge("gauge", 1, []string{"tag"}, 1)
+	client.Count("count", 2, []string{"tag"}, 1)
+	client.Set("set", "3_id", []string{"tag"}, 1)
+	client.Histogram("histo", 4, []string{"tag"}, 1)
+	client.Distribution("distro", 5, []string{"tag"}, 1)
+	client.Timing("timing", 6*time.Second, []string{"tag"}, 1)
+
+	return "gauge:1|g|#tag\ncount:2|c|#tag\nset:3_id|s|#tag\nhisto:4|h|#tag\ndistro:5|d|#tag\ntiming:6000.000000|ms|#tag"
+}
+
+func sendAllMetricsWithBasicAggregation(client *Client) string {
+	client.Gauge("gauge", 1, []string{"tag"}, 1)
+	client.Gauge("gauge", 21, []string{"tag"}, 1)
+	client.Count("count", 1, []string{"tag"}, 1)
+	client.Count("count", 3, []string{"tag"}, 1)
+	client.Set("set", "my_id", []string{"tag"}, 1)
+	client.Set("set", "my_id", []string{"tag"}, 1)
+	client.Histogram("histo", 3, []string{"tag"}, 1)
+	client.Histogram("histo", 31, []string{"tag"}, 1)
+	client.Distribution("distro", 3, []string{"tag"}, 1)
+	client.Distribution("distro", 22, []string{"tag"}, 1)
+	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
+	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
+
+	return "histo:3|h|#tag\nhisto:31|h|#tag\ndistro:3|d|#tag\ndistro:22|d|#tag\ntiming:3000.000000|ms|#tag\ntiming:12000.000000|ms|#tag\nset:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag"
+}
+
+func sendExtendedMetricsWithExtentedAggregation(client *Client) string {
+	client.Gauge("gauge", 1, []string{"tag"}, 1)
+	client.Gauge("gauge", 21, []string{"tag"}, 1)
+	client.Count("count", 1, []string{"tag"}, 1)
+	client.Count("count", 3, []string{"tag"}, 1)
+	client.Set("set", "my_id", []string{"tag"}, 1)
+	client.Set("set", "my_id", []string{"tag"}, 1)
+	client.Histogram("histo", 3, []string{"tag"}, 1)
+	client.Histogram("histo", 31, []string{"tag"}, 1)
+	client.Distribution("distro", 3, []string{"tag"}, 1)
+	client.Distribution("distro", 22, []string{"tag"}, 1)
+	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
+	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
+
+	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\nhisto:3:31|h|#tag\ndistro:3:22|d|#tag\ntiming:3000:12000|ms|#tag"
+}
+
+func testStatsdPipeline(t *testing.T, client *Client, genMetric func(*Client) string, flush func(*Client)) {
+	server := getTestServer(t, defaultAddr)
+	defer server.Close()
 
 	readDone := make(chan struct{})
 	buffer := make([]byte, 4096)
@@ -119,66 +199,92 @@ func testStatsdPipeline(t *testing.T, client *Client, addr string) {
 		close(readDone)
 	}()
 
+	expectedResults := genMetric(client)
+
+	flush(client)
+
 	select {
 	case <-readDone:
 	case <-time.After(2 * time.Second):
 		require.Fail(t, "No data was flush on Close")
 	}
 
-	result := string(buffer[:n])
-	assert.Equal(t, "name:1|c|#tag", result)
+	assert.Equal(t, expectedResults, string(buffer[:n]))
 }
 
-func TestChannelMode(t *testing.T) {
-	addr := "localhost:1201"
+func TestGroupClient(t *testing.T) {
+	type testCase struct {
+		opt       []Option
+		genMetric func(*Client) string
+		flushFunc func(*Client)
+	}
 
-	client, err := New(addr, WithChannelMode())
-	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
-	assert.False(t, client.telemetry.devMode)
+	testMap := map[string]testCase{
+		"MutexMode": testCase{
+			[]Option{WithBufferShardCount(1)},
+			sendAllMetrics,
+			func(*Client) {},
+		},
+		"ChannelMode": testCase{
+			[]Option{WithChannelMode(), WithBufferShardCount(1)},
+			sendAllMetrics,
+			func(*Client) {},
+		},
+		"DevMode": testCase{
+			[]Option{WithDevMode()},
+			sendOneMetrics,
+			func(*Client) {},
+		},
+		"BasicAggregation + Close": testCase{
+			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
+			sendBasicMetrics,
+			func(c *Client) { c.Close() },
+		},
+		"BasicAggregation all metric + Close": testCase{
+			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
+			sendAllMetricsWithBasicAggregation,
+			func(c *Client) { c.Close() },
+		},
+		"BasicAggregation + Flush": testCase{
+			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
+			sendBasicMetrics,
+			func(c *Client) { c.Flush() },
+		},
+		"BasicAggregationChannelMode + Close": testCase{
+			[]Option{WithClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
+			sendBasicMetrics,
+			func(c *Client) { c.Close() },
+		},
+		"BasicAggregationChannelMode + Flush": testCase{
+			[]Option{WithClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
+			sendBasicMetrics,
+			func(c *Client) { c.Flush() },
+		},
+		"ExtendedAggregation + Close": testCase{
+			[]Option{WithExtendedClientSideAggregation(), WithBufferShardCount(1)},
+			sendExtendedMetricsWithExtentedAggregation,
+			func(c *Client) { c.Close() },
+		},
+		"ExtendedAggregation + Close + ChannelMode": testCase{
+			[]Option{WithExtendedClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
+			sendExtendedMetricsWithExtentedAggregation,
+			func(c *Client) {
+				// since we're using ChannelMode we give a second to the worker to
+				// empty the channel. A second should be more than enough to pull 6
+				// items from a channel.
+				time.Sleep(1 * time.Second)
+				c.Close()
+			},
+		},
+	}
 
-	testStatsdPipeline(t, client, addr)
-}
-
-func TestMutexMode(t *testing.T) {
-	addr := "localhost:1201"
-
-	client, err := New(addr)
-	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
-	assert.False(t, client.telemetry.devMode)
-
-	testStatsdPipeline(t, client, addr)
-}
-
-func TestDevMode(t *testing.T) {
-	addr := "localhost:1201"
-
-	client, err := New(addr, WithDevMode())
-	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
-	assert.True(t, client.telemetry.devMode)
-
-	testStatsdPipeline(t, client, addr)
-}
-
-func TestCloneWithExtraOptions(t *testing.T) {
-	addr := "localhost:1201"
-
-	client, err := New(addr, WithTags([]string{"tag1", "tag2"}))
-	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
-
-	assert.Equal(t, client.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, client.Namespace, "")
-	assert.Equal(t, client.receiveMode, MutexMode)
-	assert.Equal(t, client.addrOption, addr)
-	assert.Len(t, client.options, 1)
-
-	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"), WithChannelMode())
-	require.Nil(t, err, fmt.Sprintf("failed to clone client: %s", err))
-
-	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, cloneClient.Namespace, "test.")
-	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
-	assert.Equal(t, cloneClient.addrOption, addr)
-	assert.Len(t, cloneClient.options, 3)
+	for testName, c := range testMap {
+		t.Run(testName, func(t *testing.T) {
+			client, err := New(defaultAddr, c.opt...)
+			require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
+			testStatsdPipeline(t, client, c.genMetric, c.flushFunc)
+		})
+	}
 }
 
 func TestResolveAddressFromEnvironment(t *testing.T) {

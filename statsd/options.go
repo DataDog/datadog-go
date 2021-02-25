@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -199,6 +200,9 @@ func WithBufferFlushInterval(bufferFlushInterval time.Duration) Option {
 // WithBufferShardCount sets the BufferShardCount option.
 func WithBufferShardCount(bufferShardCount int) Option {
 	return func(o *Options) error {
+		if bufferShardCount < 1 {
+			return fmt.Errorf("BufferShardCount must be a positive integer")
+		}
 		o.BufferShardCount = bufferShardCount
 		return nil
 	}

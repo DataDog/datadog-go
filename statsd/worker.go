@@ -59,7 +59,7 @@ func (w *worker) pullMetric() {
 }
 
 func (w *worker) processMetric(m metric) error {
-	if !w.shouldSample(m.rate) {
+	if !shouldSample(m.rate, w.random, &w.randomLock) {
 		return nil
 	}
 	w.Lock()
@@ -70,19 +70,6 @@ func (w *worker) processMetric(m metric) error {
 	}
 	w.Unlock()
 	return err
-}
-
-func (w *worker) shouldSample(rate float64) bool {
-	// sources created by rand.NewSource() (ie. w.random) are not thread safe.
-	// TODO: use defer once the lowest Go version we support is 1.14 (defer
-	// has an overhead before that).
-	w.randomLock.Lock()
-	if rate < 1 && w.random.Float64() > rate {
-		w.randomLock.Unlock()
-		return false
-	}
-	w.randomLock.Unlock()
-	return true
 }
 
 func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte) error {
