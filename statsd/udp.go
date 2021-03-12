@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -21,13 +22,6 @@ type udpWriter struct {
 
 // New returns a pointer to a new udpWriter given an addr in the format "hostname:port".
 func newUDPWriter(addr string) (*udpWriter, error) {
-	if addr == "" {
-		addr = addressFromEnvironment()
-	}
-	if addr == "" {
-		return nil, errors.New("No address passed and autodetection from environment failed")
-	}
-
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
@@ -62,6 +56,10 @@ func addressFromEnvironment() string {
 	autoHost := os.Getenv(autoHostEnvName)
 	if autoHost == "" {
 		return ""
+	}
+
+	if strings.HasPrefix(autoHost, WindowsPipeAddressPrefix) || strings.HasPrefix(autoHost, UnixAddressPrefix) {
+		return autoHost
 	}
 
 	autoPort := os.Getenv(autoPortEnvName)

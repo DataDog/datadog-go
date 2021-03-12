@@ -11,6 +11,7 @@ statsd is based on go-statsd-client.
 package statsd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -229,6 +230,13 @@ type ClientMetrics struct {
 var _ ClientInterface = &Client{}
 
 func resolveAddr(addr string) (statsdWriter, string, error) {
+	if addr == "" {
+		addr = addressFromEnvironment()
+	}
+	if addr == "" {
+		return nil, "", errors.New("No address passed and autodetection from environment failed")
+	}
+
 	switch {
 	case strings.HasPrefix(addr, WindowsPipeAddressPrefix):
 		w, err := newWindowsPipeWriter(addr)
