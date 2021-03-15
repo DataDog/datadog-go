@@ -80,5 +80,5 @@ func newWindowsPipeWriter(pipepath string) (*pipeWriter, error) {
 		conn:     nil,
 		timeout:  defaultPipeTimeout,
 		pipepath: pipepath,
-	}, err
+	}, nil
 }
