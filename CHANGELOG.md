@@ -2,6 +2,11 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.5.0 / 2021-03-15
+
+* [IMPROVEMENT] Increase UDS default timeout from 1ms to 100ms. See [#186][].
+* [IMPROVEMENT] Defer connection establishment to first write for Windows Named Pipe. See [#190][].
+
 # 4.4.0 / 2021-02-10
 
 * [BETA BUGFIX] Fix multi-metric aggregation when packing different metrics in the same packet. See [#181][].
@@ -271,6 +276,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#181]: https://github.com/DataDog/datadog-go/pull/181
 [#182]: https://github.com/DataDog/datadog-go/pull/182
 [#185]: https://github.com/DataDog/datadog-go/pull/185
+[#186]: https://github.com/DataDog/datadog-go/pull/186
+[#190]: https://github.com/DataDog/datadog-go/pull/190
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
