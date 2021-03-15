@@ -75,9 +75,9 @@ func (p *pipeWriter) Close() error {
 }
 
 func newWindowsPipeWriter(pipepath string) (*pipeWriter, error) {
-	conn, err := winio.DialPipe(pipepath, nil)
+	// Defer connection establishment to first write
 	return &pipeWriter{
-		conn:     conn,
+		conn:     nil,
 		timeout:  defaultPipeTimeout,
 		pipepath: pipepath,
 	}, err
