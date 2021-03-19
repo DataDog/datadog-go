@@ -124,3 +124,70 @@ func TestPipeWriterReconnect(t *testing.T) {
 	}
 	t.Fatal("failed to reconnect")
 }
+
+func TestAddressFromEnvironmentWindows(t *testing.T) {
+	hostInitialValue, hostInitiallySet := os.LookupEnv(autoHostEnvName)
+	if hostInitiallySet {
+		defer os.Setenv(autoHostEnvName, hostInitialValue)
+	} else {
+		defer os.Unsetenv(autoHostEnvName)
+	}
+	portInitialValue, portInitiallySet := os.LookupEnv(autoPortEnvName)
+	if portInitiallySet {
+		defer os.Setenv(autoPortEnvName, portInitialValue)
+	} else {
+		defer os.Unsetenv(autoPortEnvName)
+	}
+
+	for _, tc := range []struct {
+		addrParam          string
+		hostEnv            string
+		portEnv            string
+		expectedWriterType string
+		expectedAddr       string
+		expectedErr        error
+	}{
+		// unix socket
+		{"", `\\.\pipe\C:\testing`, "", WriterWindowsPipe, `\\.\pipe\C:\testing`, nil},
+	} {
+		os.Setenv(autoHostEnvName, tc.hostEnv)
+		os.Setenv(autoPortEnvName, tc.portEnv)
+
+		// Test the error
+		writer, writerType, err := resolveAddr(tc.addrParam)
+		if tc.expectedErr == nil {
+			if err != nil {
+				t.Errorf("Unexpected error while getting writer: %s", err)
+			}
+		} else {
+			if err == nil || tc.expectedErr.Error() != err.Error() {
+				t.Errorf("Unexpected error %q, got %q", tc.expectedErr, err)
+			}
+		}
+
+		if writer == nil {
+			if tc.expectedAddr != "" {
+				t.Error("Nil writer while we were expecting a valid one")
+			}
+
+			// Do not test for the addr if writer is nil
+			continue
+		}
+
+		if writerType != tc.expectedWriterType {
+			t.Errorf("expected writer type %q, got %q", tc.expectedWriterType, writerType)
+		}
+
+		switch writerType {
+		case WriterWindowsPipe:
+			writer := writer.(*pipeWriter)
+			writer.conn.RemoteAddr()
+			if writer.pipepath != tc.expectedAddr {
+				t.Errorf("Expected %q, got %q", tc.expectedAddr, writer.pipepath)
+			}
+		default:
+			t.Errorf("was not expecting writer type %s", writerType)
+		}
+		writer.Close()
+	}
+}

@@ -36,8 +36,6 @@ func TestAddressFromEnvironment(t *testing.T) {
 		{"", "10.12.16.9", "1234", WriterNameUDP, "10.12.16.9:1234", nil},
 		// Host passed, default port
 		{"", "10.12.16.9", "", WriterNameUDP, "10.12.16.9:8125", nil},
-		// unix socket
-		{"", "unix:///var/run/socket.sock", "", WriterNameUDS, "/var/run/socket.sock", nil},
 		// No autodetection failed
 		{"", "", "", WriterNameUDP, "", errors.New("No address passed and autodetection from environment failed")},
 	} {
@@ -75,11 +73,8 @@ func TestAddressFromEnvironment(t *testing.T) {
 			if writer.remoteAddr().String() != tc.expectedAddr {
 				t.Errorf("Expected %q, got %q", tc.expectedAddr, writer.remoteAddr().String())
 			}
-		case WriterNameUDS:
-			writer := writer.(*udsWriter)
-			if writer.addr.String() != tc.expectedAddr {
-				t.Errorf("Expected %q, got %q", tc.expectedAddr, writer.addr.String())
-			}
+		default:
+			t.Errorf("was not expecting writer type %s", writerType)
 		}
 		writer.Close()
 	}
