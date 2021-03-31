@@ -11,6 +11,7 @@ statsd is based on go-statsd-client.
 package statsd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -60,6 +61,12 @@ WindowsPipeAddressPrefix holds the prefix to use to enable Windows Named Pipes
 traffic instead of UDP.
 */
 const WindowsPipeAddressPrefix = `\\.\pipe\`
+
+const (
+	agentHostEnvVarName = "DD_AGENT_HOST"
+	agentPortEnvVarName = "DD_DOGSTATSD_PORT"
+	defaultUDPPort      = "8125"
+)
 
 /*
 ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
@@ -228,7 +235,35 @@ type ClientMetrics struct {
 // https://golang.org/doc/faq#guarantee_satisfies_interface
 var _ ClientInterface = &Client{}
 
-func resolveAddr(addr string) (statsdWriter, string, error) {
+func resolveAddr(addr string) string {
+	envPort := ""
+	if addr == "" {
+		addr = os.Getenv(agentHostEnvVarName)
+		envPort = os.Getenv(agentPortEnvVarName)
+	}
+
+	if addr == "" {
+		return ""
+	}
+
+	if !strings.HasPrefix(addr, WindowsPipeAddressPrefix) && !strings.HasPrefix(addr, UnixAddressPrefix) {
+		if !strings.Contains(addr, ":") {
+			if envPort != "" {
+				addr = fmt.Sprintf("%s:%s", addr, envPort)
+			} else {
+				addr = fmt.Sprintf("%s:%s", addr, defaultUDPPort)
+			}
+		}
+	}
+	return addr
+}
+
+func createWriter(addr string) (statsdWriter, string, error) {
+	addr = resolveAddr(addr)
+	if addr == "" {
+		return nil, "", errors.New("No address passed and autodetection from environment failed")
+	}
+
 	switch {
 	case strings.HasPrefix(addr, WindowsPipeAddressPrefix):
 		w, err := newWindowsPipeWriter(addr)
@@ -250,7 +285,7 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	w, writerType, err := resolveAddr(addr)
+	w, writerType, err := createWriter(addr)
 	if err != nil {
 		return nil, err
 	}

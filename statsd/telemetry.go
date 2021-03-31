@@ -51,7 +51,7 @@ func newTelemetryClient(c *Client, transport string, devMode bool) *telemetryCli
 }
 
 func newTelemetryClientWithCustomAddr(c *Client, transport string, devMode bool, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
-	telemetryWriter, _, err := resolveAddr(telemetryAddr)
+	telemetryWriter, _, err := createWriter(telemetryAddr)
 	if err != nil {
 		return nil, fmt.Errorf("Could not resolve telemetry address: %v", err)
 	}

@@ -10,94 +10,103 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func createNamedPipe(t *testing.T) (string, *os.File, net.Listener) {
+	f, err := ioutil.TempFile("", "test-pipe-")
+	require.Nil(t, err)
+
+	pipepath := WindowsPipeAddressPrefix + f.Name()
+	ln, err := winio.ListenPipe(pipepath, &winio.PipeConfig{
+		SecurityDescriptor: "D:AI(A;;GA;;;WD)",
+		InputBufferSize:    1_000_000,
+	})
+	if err != nil {
+		os.Remove(f.Name())
+		t.Fatal(err)
+	}
+	return pipepath, f, ln
+}
 
 // acceptOne accepts one single connection from ln, reads 512 bytes from it
 // and sends it to the out channel, afterwards closing the connection.
 func acceptOne(t *testing.T, ln net.Listener, out chan string) {
 	conn, err := ln.Accept()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	buf := make([]byte, 512)
 	n, err := conn.Read(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	conn.Close()
 	out <- string(buf[:n])
 }
 
 func TestPipeWriter(t *testing.T) {
-	f, err := ioutil.TempFile("", "test-pipe-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pipepath, f, ln := createNamedPipe(t)
 	defer os.Remove(f.Name())
-	pipepath := WindowsPipeAddressPrefix + f.Name()
-	ln, err := winio.ListenPipe(pipepath, &winio.PipeConfig{
-		SecurityDescriptor: "D:AI(A;;GA;;;WD)",
-		InputBufferSize:    1_000_000,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+
 	out := make(chan string)
 	go acceptOne(t, ln, out)
 
 	client, err := New(pipepath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := client.Gauge("metric", 1, []string{"key:val"}, 1); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
+	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
+	require.Nil(t, err)
+
 	got := <-out
-	if exp := "metric:1|g|#key:val"; got != exp {
-		t.Fatalf("Expected %q, got %q", exp, got)
-	}
+	assert.Equal(t, got, "metric:1|g|#key:val")
+}
+
+func TestPipeWriterEnv(t *testing.T) {
+	pipepath, f, ln := createNamedPipe(t)
+	defer os.Remove(f.Name())
+
+	out := make(chan string)
+	go acceptOne(t, ln, out)
+
+	os.Setenv(agentHostEnvVarName, pipepath)
+	defer os.Unsetenv(agentHostEnvVarName)
+
+	client, err := New("")
+	require.Nil(t, err)
+
+	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
+	require.Nil(t, err)
+
+	got := <-out
+	assert.Equal(t, got, "metric:1|g|#key:val")
 }
 
 func TestPipeWriterReconnect(t *testing.T) {
-	f, err := ioutil.TempFile("", "test-pipe-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pipepath, f, ln := createNamedPipe(t)
 	defer os.Remove(f.Name())
-	pipepath := WindowsPipeAddressPrefix + f.Name()
-	ln, err := winio.ListenPipe(pipepath, &winio.PipeConfig{
-		SecurityDescriptor: "D:AI(A;;GA;;;WD)",
-		InputBufferSize:    1_000_000,
-	})
-	if err != nil {
-		t.Fatalf("Listen: %s", err)
-	}
+
 	out := make(chan string)
 	go acceptOne(t, ln, out)
 	client, err := New(pipepath)
-	if err != nil {
-		t.Fatalf("New: %s", err)
-	}
+	require.Nil(t, err)
 
 	// first attempt works, then connection closes
-	if err := client.Gauge("metric", 1, []string{"key:val"}, 1); err != nil {
-		t.Fatalf("Failed to send gauge: %s", err)
-	}
+	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
+	require.Nil(t, err, "Failed to send gauge: %s", err)
+
 	timeout := time.After(1 * time.Second)
 	select {
 	case got := <-out:
-		if exp := "metric:1|g|#key:val"; got != exp {
-			t.Fatalf("Expected %q, got %q", exp, got)
-		}
+		assert.Equal(t, got, "metric:1|g|#key:val")
 	case <-timeout:
-		t.Fatal("timeout1")
+		t.Fatal("timeout receiving the first metric")
 	}
 
 	// second attempt fails by attempting the same connection
 	go acceptOne(t, ln, out)
-	if err := client.Gauge("metric", 2, []string{"key:val"}, 1); err != nil {
-		t.Fatalf("Failed to send second gauge: %s", err)
-	}
+	err = client.Gauge("metric", 2, []string{"key:val"}, 1)
+	require.Nil(t, err, "Failed to send second gauge: %s", err)
+
 	timeout = time.After(100 * time.Millisecond)
 	select {
 	case <-out:
@@ -108,15 +117,13 @@ func TestPipeWriterReconnect(t *testing.T) {
 
 	// subsequent attempts succeed with new connection
 	for n := 0; n < 3; n++ {
-		if err := client.Gauge("metric", 3, []string{"key:val"}, 1); err != nil {
-			t.Fatalf("Failed to send second gauge: %s", err)
-		}
+		err = client.Gauge("metric", 3, []string{"key:val"}, 1)
+		require.Nil(t, err, "Failed to send second gauge: %s", err)
+
 		timeout = time.After(500 * time.Millisecond)
 		select {
 		case got := <-out:
-			if exp := "metric:3|g|#key:val"; got != exp {
-				t.Fatalf("Expected %q, got %q", exp, got)
-			}
+			assert.Equal(t, got, "metric:3|g|#key:val")
 			return
 		case <-timeout:
 			continue
