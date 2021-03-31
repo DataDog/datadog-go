@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -178,4 +179,51 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
 	assert.Equal(t, cloneClient.addrOption, addr)
 	assert.Len(t, cloneClient.options, 3)
+}
+
+func TestResolveAddressFromEnvironment(t *testing.T) {
+	hostInitialValue, hostInitiallySet := os.LookupEnv(agentHostEnvVarName)
+	if hostInitiallySet {
+		defer os.Setenv(agentHostEnvVarName, hostInitialValue)
+	} else {
+		defer os.Unsetenv(agentHostEnvVarName)
+	}
+	portInitialValue, portInitiallySet := os.LookupEnv(agentPortEnvVarName)
+	if portInitiallySet {
+		defer os.Setenv(agentPortEnvVarName, portInitialValue)
+	} else {
+		defer os.Unsetenv(agentPortEnvVarName)
+	}
+
+	for _, tc := range []struct {
+		name         string
+		addrParam    string
+		hostEnv      string
+		portEnv      string
+		expectedAddr string
+	}{
+		{"UPD Nominal case", "127.0.0.1:1234", "", "", "127.0.0.1:1234"},
+		{"UPD Parameter overrides environment", "127.0.0.1:8125", "10.12.16.9", "1234", "127.0.0.1:8125"},
+		{"UPD Host and port passed as env", "", "10.12.16.9", "1234", "10.12.16.9:1234"},
+		{"UPD Host env, default port", "", "10.12.16.9", "", "10.12.16.9:8125"},
+		{"UPD Host passed, ignore env port", "10.12.16.9", "", "1234", "10.12.16.9:8125"},
+
+		{"UDS socket passed", "unix://test/path.socket", "", "", "unix://test/path.socket"},
+		{"UDS socket env", "", "unix://test/path.socket", "", "unix://test/path.socket"},
+		{"UDS socket env with port", "", "unix://test/path.socket", "8125", "unix://test/path.socket"},
+
+		{"Pipe passed", "\\\\.\\pipe\\my_pipe", "", "", "\\\\.\\pipe\\my_pipe"},
+		{"Pipe env", "", "\\\\.\\pipe\\my_pipe", "", "\\\\.\\pipe\\my_pipe"},
+		{"Pipe env with port", "", "\\\\.\\pipe\\my_pipe", "8125", "\\\\.\\pipe\\my_pipe"},
+
+		{"No autodetection failed", "", "", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			os.Setenv(agentHostEnvVarName, tc.hostEnv)
+			os.Setenv(agentPortEnvVarName, tc.portEnv)
+
+			addr := resolveAddr(tc.addrParam)
+			assert.Equal(t, tc.expectedAddr, addr)
+		})
+	}
 }
