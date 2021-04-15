@@ -212,7 +212,7 @@ type Client struct {
 	closerLock  sync.Mutex
 	receiveMode ReceivingMode
 	agg         *aggregator
-	aggHistDist *aggregator
+	aggExtended *aggregator
 	options     []Option
 	addrOption  string
 }
@@ -330,15 +330,6 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		Tags:      o.Tags,
 		metrics:   &ClientMetrics{},
 	}
-	if o.Aggregation || o.ExtendedAggregation {
-		c.agg = newAggregator(&c)
-		c.agg.start(o.AggregationFlushInterval)
-
-		if o.ExtendedAggregation {
-			c.aggHistDist = c.agg
-		}
-	}
-
 	// Inject values of DD_* environment variables as global tags.
 	for envName, tagName := range ddEnvTagsMapping {
 		if value := os.Getenv(envName); value != "" {
@@ -371,10 +362,29 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	bufferPool := newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.sender = newSender(w, o.SenderQueueSize, bufferPool)
 	c.receiveMode = o.ReceiveMode
+
+	if o.Aggregation || o.ExtendedAggregation {
+		c.agg = newAggregator(&c)
+		c.agg.start(o.AggregationFlushInterval)
+
+		if o.ExtendedAggregation {
+			c.aggExtended = c.agg
+
+			if c.receiveMode == ChannelMode {
+				c.agg.startReceivingMetric(o.ChannelModeBufferSize)
+			}
+		}
+	}
+
 	for i := 0; i < o.BufferShardCount; i++ {
 		w := newWorker(bufferPool, c.sender)
 		c.workers = append(c.workers, w)
-		if c.receiveMode == ChannelMode {
+
+		// ChannelMode mode at the worker level is not enabled when
+		// ExtendedAggregation is since the user app will not directly
+		// use the worker (the aggregator sit between the app and the
+		// workers).
+		if c.receiveMode == ChannelMode && !o.ExtendedAggregation {
 			w.startReceivingMetric(o.ChannelModeBufferSize)
 		}
 	}
@@ -447,7 +457,7 @@ func (c *Client) Flush() error {
 		return ErrNoClient
 	}
 	if c.agg != nil {
-		c.agg.sendMetrics()
+		c.agg.flush()
 	}
 	for _, w := range c.workers {
 		w.pause()
@@ -481,10 +491,6 @@ func (c *Client) FlushTelemetryMetrics() ClientMetrics {
 }
 
 func (c *Client) send(m metric) error {
-	if c == nil {
-		return ErrNoClient
-	}
-
 	m.globalTags = c.Tags
 	m.namespace = c.Namespace
 
@@ -500,6 +506,28 @@ func (c *Client) send(m metric) error {
 		return nil
 	}
 	return worker.processMetric(m)
+}
+
+// sendBlocking is used by the aggregator to inject aggregated metrics.
+func (c *Client) sendBlocking(m metric) error {
+	m.globalTags = c.Tags
+	m.namespace = c.Namespace
+
+	h := hashString32(m.name)
+	worker := c.workers[h%uint32(len(c.workers))]
+	return worker.processMetric(m)
+}
+
+func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc) error {
+	if c.receiveMode == ChannelMode {
+		select {
+		case c.aggExtended.inputMetrics <- metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}:
+		default:
+			atomic.AddUint64(&c.metrics.TotalDroppedOnReceive, 1)
+		}
+		return nil
+	}
+	return f(name, value, tags, rate)
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -532,8 +560,8 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsHistogram, 1)
-	if c.aggHistDist != nil {
-		return c.agg.histogram(name, value, tags)
+	if c.aggExtended != nil {
+		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
 }
@@ -544,8 +572,8 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsDistribution, 1)
-	if c.aggHistDist != nil {
-		return c.agg.distribution(name, value, tags)
+	if c.aggExtended != nil {
+		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
 }
@@ -584,8 +612,8 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalMetricsTiming, 1)
-	if c.aggHistDist != nil {
-		return c.agg.timing(name, value, tags)
+	if c.aggExtended != nil {
+		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
 }
@@ -638,20 +666,23 @@ func (c *Client) Close() error {
 	}
 	close(c.stop)
 
-	if c.receiveMode == ChannelMode {
+	if c.receiveMode == ChannelMode && c.aggExtended == nil {
 		for _, w := range c.workers {
 			w.stopReceivingMetric()
 		}
 	}
 
+	// flush the aggregator first
+	if c.agg != nil {
+		if c.aggExtended != nil && c.receiveMode == ChannelMode {
+			c.agg.stopReceivingMetric()
+		}
+		c.agg.stop()
+	}
+
 	// Wait for the threads to stop
 	c.wg.Wait()
 
-	// Finally flush any remaining metrics that may have come in at the last moment
-	if c.agg != nil {
-		c.agg.stop()
-	}
 	c.Flush()
-
 	return c.sender.close()
 }

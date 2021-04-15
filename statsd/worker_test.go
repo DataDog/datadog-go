@@ -19,7 +19,7 @@ func TestShouldSample(t *testing.T) {
 			worker := newWorker(newBufferPool(1, 1, 1), nil)
 			count := 0
 			for i := 0; i < iterations; i++ {
-				if worker.shouldSample(rate) {
+				if shouldSample(rate, worker.random, &worker.randomLock) {
 					count++
 				}
 			}
@@ -32,7 +32,7 @@ func BenchmarkShouldSample(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		worker := newWorker(newBufferPool(1, 1, 1), nil)
 		for pb.Next() {
-			worker.shouldSample(0.1)
+			shouldSample(0.1, worker.random, &worker.randomLock)
 		}
 	})
 }

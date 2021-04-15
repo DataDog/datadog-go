@@ -169,7 +169,7 @@ func testTelemetry(t *testing.T, telemetry *telemetryClient, expectedMetrics []m
 
 	submitTestMetrics(telemetry.c)
 	if telemetry.c.agg != nil {
-		telemetry.c.agg.sendMetrics()
+		telemetry.c.agg.flush()
 	}
 	metrics := telemetry.flush()
 
