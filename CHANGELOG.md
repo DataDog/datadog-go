@@ -2,10 +2,13 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.6.0 / 2021-04-16
+
+* [BETA] Support sample rate and channel mode for extended aggregation (ie: histograms, distributions and timings). See [#187][].
+
 # 4.5.1 / 2021-03-31
 
 * [BUGFIX] Fix support of UDS and named pipe for DD_AGENT_HOST environment variable. See [#192][].
-
 
 # 4.5.0 / 2021-03-15
 
@@ -282,6 +285,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#182]: https://github.com/DataDog/datadog-go/pull/182
 [#185]: https://github.com/DataDog/datadog-go/pull/185
 [#186]: https://github.com/DataDog/datadog-go/pull/186
+[#187]: https://github.com/DataDog/datadog-go/pull/187
 [#190]: https://github.com/DataDog/datadog-go/pull/190
 [#192]: https://github.com/DataDog/datadog-go/pull/190
 [@Aceeri]: https://github.com/Aceeri
