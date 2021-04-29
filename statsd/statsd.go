@@ -202,19 +202,20 @@ type Client struct {
 	// Tags are global tags to be added to every statsd call
 	Tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
-	SkipErrors  bool
-	flushTime   time.Duration
-	metrics     *ClientMetrics
-	telemetry   *telemetryClient
-	stop        chan struct{}
-	wg          sync.WaitGroup
-	workers     []*worker
-	closerLock  sync.Mutex
-	receiveMode ReceivingMode
-	agg         *aggregator
-	aggExtended *aggregator
-	options     []Option
-	addrOption  string
+	SkipErrors     bool
+	flushTime      time.Duration
+	metrics        *ClientMetrics
+	telemetry      *telemetryClient
+	stop           chan struct{}
+	wg             sync.WaitGroup
+	workers        []*worker
+	closerLock     sync.Mutex
+	workersMode    ReceivingMode
+	aggregatorMode ReceivingMode
+	agg            *aggregator
+	aggExtended    *aggregator
+	options        []Option
+	addrOption     string
 }
 
 // ClientMetrics contains metrics about the client
@@ -361,7 +362,16 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 
 	bufferPool := newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
 	c.sender = newSender(w, o.SenderQueueSize, bufferPool)
-	c.receiveMode = o.ReceiveMode
+	c.aggregatorMode = o.ReceiveMode
+
+	c.workersMode = o.ReceiveMode
+	// ChannelMode mode at the worker level is not enabled when
+	// ExtendedAggregation is since the user app will not directly
+	// use the worker (the aggregator sit between the app and the
+	// workers).
+	if o.ExtendedAggregation {
+		c.workersMode = MutexMode
+	}
 
 	if o.Aggregation || o.ExtendedAggregation {
 		c.agg = newAggregator(&c)
@@ -370,7 +380,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		if o.ExtendedAggregation {
 			c.aggExtended = c.agg
 
-			if c.receiveMode == ChannelMode {
+			if c.aggregatorMode == ChannelMode {
 				c.agg.startReceivingMetric(o.ChannelModeBufferSize)
 			}
 		}
@@ -380,11 +390,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		w := newWorker(bufferPool, c.sender)
 		c.workers = append(c.workers, w)
 
-		// ChannelMode mode at the worker level is not enabled when
-		// ExtendedAggregation is since the user app will not directly
-		// use the worker (the aggregator sit between the app and the
-		// workers).
-		if c.receiveMode == ChannelMode && !o.ExtendedAggregation {
+		if c.workersMode == ChannelMode {
 			w.startReceivingMetric(o.ChannelModeBufferSize)
 		}
 	}
@@ -497,7 +503,7 @@ func (c *Client) send(m metric) error {
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
 
-	if c.receiveMode == ChannelMode {
+	if c.workersMode == ChannelMode {
 		select {
 		case worker.inputMetrics <- m:
 		default:
@@ -519,7 +525,7 @@ func (c *Client) sendBlocking(m metric) error {
 }
 
 func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc) error {
-	if c.receiveMode == ChannelMode {
+	if c.aggregatorMode == ChannelMode {
 		select {
 		case c.aggExtended.inputMetrics <- metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}:
 		default:
@@ -666,7 +672,7 @@ func (c *Client) Close() error {
 	}
 	close(c.stop)
 
-	if c.receiveMode == ChannelMode && c.aggExtended == nil {
+	if c.workersMode == ChannelMode {
 		for _, w := range c.workers {
 			w.stopReceivingMetric()
 		}
@@ -674,7 +680,7 @@ func (c *Client) Close() error {
 
 	// flush the aggregator first
 	if c.agg != nil {
-		if c.aggExtended != nil && c.receiveMode == ChannelMode {
+		if c.aggExtended != nil && c.aggregatorMode == ChannelMode {
 			c.agg.stopReceivingMetric()
 		}
 		c.agg.stop()
