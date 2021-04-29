@@ -112,7 +112,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 
 	assert.Equal(t, client.Tags, []string{"tag1", "tag2"})
 	assert.Equal(t, client.Namespace, "")
-	assert.Equal(t, client.receiveMode, MutexMode)
+	assert.Equal(t, client.workersMode, MutexMode)
 	assert.Equal(t, client.addrOption, defaultAddr)
 	assert.Len(t, client.options, 1)
 
@@ -121,7 +121,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 
 	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
 	assert.Equal(t, cloneClient.Namespace, "test.")
-	assert.Equal(t, cloneClient.receiveMode, ChannelMode)
+	assert.Equal(t, cloneClient.workersMode, ChannelMode)
 	assert.Equal(t, cloneClient.addrOption, defaultAddr)
 	assert.Len(t, cloneClient.options, 3)
 }
