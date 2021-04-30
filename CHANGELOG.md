@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.6.1 / 2021-04-30
+
+* [BETA BUGFIX] Fix telemetry with extended aggregation and channelMode. See [#194][].
+
 # 4.6.0 / 2021-04-16
 
 * [BETA] Support sample rate and channel mode for extended aggregation (ie: histograms, distributions and timings). See [#187][].
@@ -287,7 +291,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#186]: https://github.com/DataDog/datadog-go/pull/186
 [#187]: https://github.com/DataDog/datadog-go/pull/187
 [#190]: https://github.com/DataDog/datadog-go/pull/190
-[#192]: https://github.com/DataDog/datadog-go/pull/190
+[#192]: https://github.com/DataDog/datadog-go/pull/192
+[#194]: https://github.com/DataDog/datadog-go/pull/194
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
