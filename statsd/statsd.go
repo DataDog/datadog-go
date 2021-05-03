@@ -381,7 +381,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 			c.aggExtended = c.agg
 
 			if c.aggregatorMode == ChannelMode {
-				c.agg.startReceivingMetric(o.ChannelModeBufferSize)
+				c.agg.startReceivingMetric(o.ChannelModeBufferSize, o.BufferShardCount)
 			}
 		}
 	}

@@ -40,6 +40,7 @@ type aggregator struct {
 	// we don't want goroutine to fight over the lock.
 	inputMetrics    chan metric
 	stopChannelMode chan struct{}
+	wg              sync.WaitGroup
 }
 
 type aggregatorMetrics struct {
@@ -81,13 +82,17 @@ func (a *aggregator) start(flushInterval time.Duration) {
 	}()
 }
 
-func (a *aggregator) startReceivingMetric(bufferSize int) {
+func (a *aggregator) startReceivingMetric(bufferSize int, nbWorkers int) {
 	a.inputMetrics = make(chan metric, bufferSize)
-	go a.pullMetric()
+	for i := 0; i < nbWorkers; i++ {
+		a.wg.Add(1)
+		go a.pullMetric()
+	}
 }
 
 func (a *aggregator) stopReceivingMetric() {
-	a.stopChannelMode <- struct{}{}
+	close(a.stopChannelMode)
+	a.wg.Wait()
 }
 
 func (a *aggregator) stop() {
@@ -107,6 +112,7 @@ func (a *aggregator) pullMetric() {
 				a.timing(m.name, m.fvalue, m.tags, m.rate)
 			}
 		case <-a.stopChannelMode:
+			a.wg.Done()
 			return
 		}
 	}
