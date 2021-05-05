@@ -2,6 +2,11 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.7.0 / 2021-05-05
+
+* [BETA] Increase the number of workers in the aggregator when using channelMode with extended aggregation to have
+  similar performance than channelMode without aggregation. See [#195][].
+
 # 4.6.1 / 2021-04-30
 
 * [BETA BUGFIX] Fix telemetry with extended aggregation and channelMode. See [#194][].
@@ -293,6 +298,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#190]: https://github.com/DataDog/datadog-go/pull/190
 [#192]: https://github.com/DataDog/datadog-go/pull/192
 [#194]: https://github.com/DataDog/datadog-go/pull/194
+[#195]: https://github.com/DataDog/datadog-go/pull/195
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
