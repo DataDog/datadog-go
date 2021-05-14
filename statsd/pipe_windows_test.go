@@ -58,7 +58,7 @@ func TestPipeWriter(t *testing.T) {
 	require.Nil(t, err)
 
 	got := <-out
-	assert.Equal(t, got, "metric:1|g|#key:val")
+	assert.Equal(t, got, "metric:1|g|#key:val\n")
 }
 
 func TestPipeWriterEnv(t *testing.T) {
@@ -78,7 +78,7 @@ func TestPipeWriterEnv(t *testing.T) {
 	require.Nil(t, err)
 
 	got := <-out
-	assert.Equal(t, got, "metric:1|g|#key:val")
+	assert.Equal(t, got, "metric:1|g|#key:val\n")
 }
 
 func TestPipeWriterReconnect(t *testing.T) {
@@ -97,7 +97,7 @@ func TestPipeWriterReconnect(t *testing.T) {
 	timeout := time.After(1 * time.Second)
 	select {
 	case got := <-out:
-		assert.Equal(t, got, "metric:1|g|#key:val")
+		assert.Equal(t, got, "metric:1|g|#key:val\n")
 	case <-timeout:
 		t.Fatal("timeout receiving the first metric")
 	}
@@ -123,7 +123,7 @@ func TestPipeWriterReconnect(t *testing.T) {
 		timeout = time.After(500 * time.Millisecond)
 		select {
 		case got := <-out:
-			assert.Equal(t, got, "metric:3|g|#key:val")
+			assert.Equal(t, got, "metric:3|g|#key:val\n")
 			return
 		case <-timeout:
 			continue
