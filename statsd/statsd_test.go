@@ -128,7 +128,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 
 func sendOneMetrics(client *Client) string {
 	client.Count("name", 1, []string{"tag"}, 1)
-	return "name:1|c|#tag"
+	return "name:1|c|#tag\n"
 }
 
 func sendBasicMetrics(client *Client) string {
@@ -139,7 +139,7 @@ func sendBasicMetrics(client *Client) string {
 	client.Set("set", "my_id", []string{"tag"}, 1)
 	client.Set("set", "my_id", []string{"tag"}, 1)
 
-	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag"
+	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\n"
 }
 
 func sendAllMetrics(client *Client) string {
@@ -150,7 +150,7 @@ func sendAllMetrics(client *Client) string {
 	client.Distribution("distro", 5, []string{"tag"}, 1)
 	client.Timing("timing", 6*time.Second, []string{"tag"}, 1)
 
-	return "gauge:1|g|#tag\ncount:2|c|#tag\nset:3_id|s|#tag\nhisto:4|h|#tag\ndistro:5|d|#tag\ntiming:6000.000000|ms|#tag"
+	return "gauge:1|g|#tag\ncount:2|c|#tag\nset:3_id|s|#tag\nhisto:4|h|#tag\ndistro:5|d|#tag\ntiming:6000.000000|ms|#tag\n"
 }
 
 func sendAllMetricsWithBasicAggregation(client *Client) string {
@@ -167,7 +167,7 @@ func sendAllMetricsWithBasicAggregation(client *Client) string {
 	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
 	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
 
-	return "histo:3|h|#tag\nhisto:31|h|#tag\ndistro:3|d|#tag\ndistro:22|d|#tag\ntiming:3000.000000|ms|#tag\ntiming:12000.000000|ms|#tag\nset:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag"
+	return "histo:3|h|#tag\nhisto:31|h|#tag\ndistro:3|d|#tag\ndistro:22|d|#tag\ntiming:3000.000000|ms|#tag\ntiming:12000.000000|ms|#tag\nset:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\n"
 }
 
 func sendExtendedMetricsWithExtentedAggregation(client *Client) string {
@@ -184,7 +184,7 @@ func sendExtendedMetricsWithExtentedAggregation(client *Client) string {
 	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
 	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
 
-	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\nhisto:3:31|h|#tag\ndistro:3:22|d|#tag\ntiming:3000:12000|ms|#tag"
+	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\nhisto:3:31|h|#tag\ndistro:3:22|d|#tag\ntiming:3000:12000|ms|#tag\n"
 }
 
 func testStatsdPipeline(t *testing.T, client *Client, genMetric func(*Client) string, flush func(*Client)) {

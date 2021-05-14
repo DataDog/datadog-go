@@ -27,19 +27,19 @@ var dogstatsdTests = []struct {
 	Rate            float64
 	Expected        string
 }{
-	{"", nil, "Gauge", "test.gauge", 1.0, nil, 1.0, "test.gauge:1|g"},
-	{"", nil, "Gauge", "test.gauge", 1.0, nil, 0.999999, "test.gauge:1|g|@0.999999"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 1.0, "test.gauge:1|g|#tagA"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA", "tagB"}, 1.0, "test.gauge:1|g|#tagA,tagB"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 0.999999, "test.gauge:1|g|@0.999999|#tagA"},
-	{"", nil, "Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA"},
-	{"", nil, "Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA"},
-	{"", nil, "Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.3|h|#tagA"},
-	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.3|d|#tagA"},
-	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA"},
-	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA"},
-	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA"},
-	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld"},
+	{"", nil, "Gauge", "test.gauge", 1.0, nil, 1.0, "test.gauge:1|g\n"},
+	{"", nil, "Gauge", "test.gauge", 1.0, nil, 0.999999, "test.gauge:1|g|@0.999999\n"},
+	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 1.0, "test.gauge:1|g|#tagA\n"},
+	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA", "tagB"}, 1.0, "test.gauge:1|g|#tagA,tagB\n"},
+	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 0.999999, "test.gauge:1|g|@0.999999|#tagA\n"},
+	{"", nil, "Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA\n"},
+	{"", nil, "Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA\n"},
+	{"", nil, "Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.3|h|#tagA\n"},
+	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.3|d|#tagA\n"},
+	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA\n"},
+	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA\n"},
+	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA\n"},
+	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld\n"},
 }
 
 func assertNotPanics(t *testing.T, f func()) {
@@ -178,6 +178,7 @@ func TestBufferedClient(t *testing.T) {
 		`foo.ab:0.123000|ms|#dd:2`,
 		`foo.ab:ss|s|#dd:2`,
 		`foo.ab:xx|s|#dd:2`,
+		``,
 	}
 
 	for i, res := range strings.Split(result, "\n") {
@@ -209,6 +210,7 @@ func TestBufferedClient(t *testing.T) {
 	expected = []string{
 		"_e{6,5}:title1|text1|p:normal|t:success|#dd:2,tagg",
 		"_e{6,5}:event1|text1|#dd:2",
+		"",
 	}
 
 	arr := strings.Split(result, "\n")
@@ -506,10 +508,10 @@ func TestDDEnvServiceVersionTagsEmitted(t *testing.T) {
 		GlobalTags []string
 		Expected   string
 	}{
-		{nil, nil, "test.count:100|c|#env:prod,service:dog,version:abc123"},
-		{[]string{"env:staging", "service:cat", "custom_tag"}, nil, "test.count:100|c|#env:prod,service:dog,version:abc123,env:staging,service:cat,custom_tag"},
-		{nil, []string{"version:def456", "custom_tag_two"}, "test.count:100|c|#custom_tag_two,env:prod,service:dog,version:abc123,version:def456"},
-		{[]string{"env:staging", "service:cat", "custom_tag"}, []string{"version:def456", "custom_tag_two"}, "test.count:100|c|#custom_tag_two,env:prod,service:dog,version:abc123,version:def456,env:staging,service:cat,custom_tag"},
+		{nil, nil, "test.count:100|c|#env:prod,service:dog,version:abc123\n"},
+		{[]string{"env:staging", "service:cat", "custom_tag"}, nil, "test.count:100|c|#env:prod,service:dog,version:abc123,env:staging,service:cat,custom_tag\n"},
+		{nil, []string{"version:def456", "custom_tag_two"}, "test.count:100|c|#custom_tag_two,env:prod,service:dog,version:abc123,version:def456\n"},
+		{[]string{"env:staging", "service:cat", "custom_tag"}, []string{"version:def456", "custom_tag_two"}, "test.count:100|c|#custom_tag_two,env:prod,service:dog,version:abc123,version:def456,env:staging,service:cat,custom_tag\n"},
 	} {
 		client, err := statsd.New(addr, statsd.WithTags(tt.GlobalTags))
 		if err != nil {
