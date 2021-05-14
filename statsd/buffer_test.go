@@ -51,14 +51,14 @@ func TestBufferEvent(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeEvent(Event{Title: "title", Text: "text"}, []string{"tag:tag"})
 	assert.Nil(t, err)
-	assert.Equal(t, `_e{5,4}:title|text|#tag:tag`, string(buffer.bytes()))
+	assert.Equal(t, "_e{5,4}:title|text|#tag:tag\n", string(buffer.bytes()))
 }
 
 func TestBufferServiceCheck(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeServiceCheck(ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"})
 	assert.Nil(t, err)
-	assert.Equal(t, `_sc|name|0|#tag:tag`, string(buffer.bytes()))
+	assert.Equal(t, "_sc|name|0|#tag:tag\n", string(buffer.bytes()))
 }
 
 func TestBufferFullItems(t *testing.T) {

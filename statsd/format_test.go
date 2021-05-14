@@ -127,7 +127,7 @@ func TestFormatEvent(t *testing.T) {
 		Title: "EvenTitle",
 		Text:  "EventText",
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText\n", string(buffer))
 }
 
 func TestFormatEventEscapeText(t *testing.T) {
@@ -136,7 +136,7 @@ func TestFormatEventEscapeText(t *testing.T) {
 		Title: "EvenTitle",
 		Text:  "\nEventText\nLine2\n\nLine4\n",
 	}, []string{})
-	assert.Equal(t, `_e{9,29}:EvenTitle|\nEventText\nLine2\n\nLine4\n`, string(buffer))
+	assert.Equal(t, "_e{9,29}:EvenTitle|\\nEventText\\nLine2\\n\\nLine4\\n\n", string(buffer))
 }
 
 func TestFormatEventTimeStamp(t *testing.T) {
@@ -146,7 +146,7 @@ func TestFormatEventTimeStamp(t *testing.T) {
 		Text:      "EventText",
 		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|d:1471219200`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|d:1471219200\n", string(buffer))
 }
 
 func TestFormatEventHostname(t *testing.T) {
@@ -156,7 +156,7 @@ func TestFormatEventHostname(t *testing.T) {
 		Text:     "EventText",
 		Hostname: "hostname",
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|h:hostname`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|h:hostname\n", string(buffer))
 }
 
 func TestFormatEventAggregationKey(t *testing.T) {
@@ -166,7 +166,7 @@ func TestFormatEventAggregationKey(t *testing.T) {
 		Text:           "EventText",
 		AggregationKey: "aggregationKey",
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|k:aggregationKey`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|k:aggregationKey\n", string(buffer))
 }
 
 func TestFormatEventPriority(t *testing.T) {
@@ -176,7 +176,7 @@ func TestFormatEventPriority(t *testing.T) {
 		Text:     "EventText",
 		Priority: "priority",
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|p:priority`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|p:priority\n", string(buffer))
 }
 
 func TestFormatEventSourceTypeName(t *testing.T) {
@@ -186,7 +186,7 @@ func TestFormatEventSourceTypeName(t *testing.T) {
 		Text:           "EventText",
 		SourceTypeName: "sourceTypeName",
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|s:sourceTypeName`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|s:sourceTypeName\n", string(buffer))
 }
 
 func TestFormatEventAlertType(t *testing.T) {
@@ -196,7 +196,7 @@ func TestFormatEventAlertType(t *testing.T) {
 		Text:      "EventText",
 		AlertType: "alertType",
 	}, []string{})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|t:alertType`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|t:alertType\n", string(buffer))
 }
 
 func TestFormatEventOneTag(t *testing.T) {
@@ -205,7 +205,7 @@ func TestFormatEventOneTag(t *testing.T) {
 		Title: "EvenTitle",
 		Text:  "EventText",
 	}, []string{"tag:test"})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|#tag:test`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|#tag:test\n", string(buffer))
 }
 
 func TestFormatEventTwoTag(t *testing.T) {
@@ -215,7 +215,7 @@ func TestFormatEventTwoTag(t *testing.T) {
 		Text:  "EventText",
 		Tags:  []string{"tag1:test"},
 	}, []string{"tag2:test"})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|#tag2:test,tag1:test`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|#tag2:test,tag1:test\n", string(buffer))
 }
 
 func TestFormatEventAllOptions(t *testing.T) {
@@ -231,13 +231,13 @@ func TestFormatEventAllOptions(t *testing.T) {
 		AlertType:      "alertType",
 		Tags:           []string{"tag:normal"},
 	}, []string{"tag:global"})
-	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|d:1471219200|h:hostname|k:aggregationKey|p:priority|s:SourceTypeName|t:alertType|#tag:global,tag:normal`, string(buffer))
+	assert.Equal(t, "_e{9,9}:EvenTitle|EventText|d:1471219200|h:hostname|k:aggregationKey|p:priority|s:SourceTypeName|t:alertType|#tag:global,tag:normal\n", string(buffer))
 }
 
 func TestFormatEventNil(t *testing.T) {
 	var buffer []byte
 	buffer = appendEvent(buffer, Event{}, []string{})
-	assert.Equal(t, `_e{0,0}:|`, string(buffer))
+	assert.Equal(t, "_e{0,0}:|\n", string(buffer))
 }
 
 func TestFormatServiceCheck(t *testing.T) {
@@ -246,7 +246,7 @@ func TestFormatServiceCheck(t *testing.T) {
 		Name:   "service.check",
 		Status: Ok,
 	}, []string{})
-	assert.Equal(t, `_sc|service.check|0`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0\n", string(buffer))
 }
 
 func TestFormatServiceCheckEscape(t *testing.T) {
@@ -256,7 +256,7 @@ func TestFormatServiceCheckEscape(t *testing.T) {
 		Status:  Ok,
 		Message: "\n\nmessagem:hello...\n\nm:aa\nm:m",
 	}, []string{})
-	assert.Equal(t, `_sc|service.check|0|m:\n\nmessagem\:hello...\n\nm\:aa\nm\:m`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|m:\\n\\nmessagem\\:hello...\\n\\nm\\:aa\\nm\\:m\n", string(buffer))
 }
 
 func TestFormatServiceCheckTimestamp(t *testing.T) {
@@ -266,7 +266,7 @@ func TestFormatServiceCheckTimestamp(t *testing.T) {
 		Status:    Ok,
 		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 	}, []string{})
-	assert.Equal(t, `_sc|service.check|0|d:1471219200`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|d:1471219200\n", string(buffer))
 }
 
 func TestFormatServiceCheckHostname(t *testing.T) {
@@ -276,7 +276,7 @@ func TestFormatServiceCheckHostname(t *testing.T) {
 		Status:   Ok,
 		Hostname: "hostname",
 	}, []string{})
-	assert.Equal(t, `_sc|service.check|0|h:hostname`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|h:hostname\n", string(buffer))
 }
 
 func TestFormatServiceCheckMessage(t *testing.T) {
@@ -286,7 +286,7 @@ func TestFormatServiceCheckMessage(t *testing.T) {
 		Status:  Ok,
 		Message: "message",
 	}, []string{})
-	assert.Equal(t, `_sc|service.check|0|m:message`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|m:message\n", string(buffer))
 }
 
 func TestFormatServiceCheckOneTag(t *testing.T) {
@@ -296,7 +296,7 @@ func TestFormatServiceCheckOneTag(t *testing.T) {
 		Status: Ok,
 		Tags:   []string{"tag:tag"},
 	}, []string{})
-	assert.Equal(t, `_sc|service.check|0|#tag:tag`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|#tag:tag\n", string(buffer))
 }
 
 func TestFormatServiceCheckTwoTag(t *testing.T) {
@@ -306,7 +306,7 @@ func TestFormatServiceCheckTwoTag(t *testing.T) {
 		Status: Ok,
 		Tags:   []string{"tag1:tag1"},
 	}, []string{"tag2:tag2"})
-	assert.Equal(t, `_sc|service.check|0|#tag2:tag2,tag1:tag1`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|#tag2:tag2,tag1:tag1\n", string(buffer))
 }
 
 func TestFormatServiceCheckAllOptions(t *testing.T) {
@@ -319,13 +319,13 @@ func TestFormatServiceCheckAllOptions(t *testing.T) {
 		Message:   "message",
 		Tags:      []string{"tag1:tag1"},
 	}, []string{"tag2:tag2"})
-	assert.Equal(t, `_sc|service.check|0|d:1471219200|h:hostname|#tag2:tag2,tag1:tag1|m:message`, string(buffer))
+	assert.Equal(t, "_sc|service.check|0|d:1471219200|h:hostname|#tag2:tag2,tag1:tag1|m:message\n", string(buffer))
 }
 
 func TestFormatServiceCheckNil(t *testing.T) {
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, ServiceCheck{}, nil)
-	assert.Equal(t, `_sc||0`, string(buffer))
+	assert.Equal(t, "_sc||0\n", string(buffer))
 }
 
 func TestFormatSeparator(t *testing.T) {

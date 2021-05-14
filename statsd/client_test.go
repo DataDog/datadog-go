@@ -207,10 +207,12 @@ func TestBufferedClient(t *testing.T) {
 	}
 
 	expected = []string{
-		`_e{6,5}:title1|text1|p:normal|t:success|#dd:2,tagg`,
-		`_e{6,5}:event1|text1|#dd:2`,
+		"_e{6,5}:title1|text1|p:normal|t:success|#dd:2,tagg",
+		"_e{6,5}:event1|text1|#dd:2",
 	}
 
+	arr := strings.Split(result, "\n")
+	_ = arr
 	for i, res := range strings.Split(result, "\n") {
 		if res != expected[i] {
 			t.Errorf("Got `%s`, expected `%s`", res, expected[i])
