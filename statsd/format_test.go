@@ -330,6 +330,6 @@ func TestFormatServiceCheckNil(t *testing.T) {
 
 func TestFormatSeparator(t *testing.T) {
 	var buffer []byte
-	buffer = appendSeparator(buffer)
+	buffer = appendNewline(buffer)
 	assert.Equal(t, "\n", string(buffer))
 }

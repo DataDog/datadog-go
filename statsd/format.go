@@ -210,6 +210,7 @@ func appendEvent(buffer []byte, event Event, globalTags []string) []byte {
 	}
 
 	buffer = appendTags(buffer, globalTags, event.Tags)
+	buffer = appendNewline(buffer)
 	return buffer
 }
 
@@ -249,9 +250,10 @@ func appendServiceCheck(buffer []byte, serviceCheck ServiceCheck, globalTags []s
 		buffer = append(buffer, "|m:"...)
 		buffer = appendEscapedServiceCheckText(buffer, serviceCheck.Message)
 	}
+	buffer = appendNewline(buffer)
 	return buffer
 }
 
-func appendSeparator(buffer []byte) []byte {
+func appendNewline(buffer []byte) []byte {
 	return append(buffer, '\n')
 }
