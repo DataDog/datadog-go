@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.8.0 / 2021-06-14
+
+* [BETA][IMPROVEMENT] Reduce aggregation default window to 2s to reduce sampling aliasing. See [#199][]
+* [IMPROVEMENT] Automatically add a "\n" after each metric so the agent can determine if a metric is truncated. Per source EOL detection was made available in agent 7.28 with the `dogstatsd_eol_required` setting. See [#198][]
+
+
 # 4.7.0 / 2021-05-05
 
 * [BETA] Increase the number of workers in the aggregator when using channelMode with extended aggregation to have
@@ -299,6 +305,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#192]: https://github.com/DataDog/datadog-go/pull/192
 [#194]: https://github.com/DataDog/datadog-go/pull/194
 [#195]: https://github.com/DataDog/datadog-go/pull/195
+[#198]: https://github.com/DataDog/datadog-go/pull/198
+[#199]: https://github.com/DataDog/datadog-go/pull/199
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
