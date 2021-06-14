@@ -5,7 +5,7 @@
 # 4.8.0 / 2021-06-14
 
 * [BETA][IMPROVEMENT] Reduce aggregation default window to 2s to reduce reduce sampling aliasing. See [#199][]
-* [IMPROVEMENT] EOL terminate all metrics. See [#198][]
+* [IMPROVEMENT] Automatically add a "\n" after each metric so the agent can determine if a metric is truncated. Per source EOL detection was made available in agent 7.28 with the `dogstatsd_eol_required` setting. See [#198][]
 
 
 # 4.7.0 / 2021-05-05
