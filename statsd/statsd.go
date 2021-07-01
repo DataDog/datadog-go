@@ -497,9 +497,6 @@ func (c *Client) FlushTelemetryMetrics() ClientMetrics {
 }
 
 func (c *Client) send(m metric) error {
-	m.globalTags = c.Tags
-	m.namespace = c.Namespace
-
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
 
@@ -545,7 +542,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // Count tracks how many times something happened per second.
@@ -557,7 +554,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c.agg != nil {
 		return c.agg.count(name, value, tags)
 	}
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -569,7 +566,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.aggExtended != nil {
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
-	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -581,7 +578,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.aggExtended != nil {
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
-	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // Decr is just Count of -1
@@ -603,7 +600,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c.agg != nil {
 		return c.agg.set(name, value, tags)
 	}
-	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate})
+	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -621,7 +618,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c.aggExtended != nil {
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
-	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate})
+	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // Event sends the provided Event.
@@ -630,7 +627,7 @@ func (c *Client) Event(e *Event) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalEvents, 1)
-	return c.send(metric{metricType: event, evalue: e, rate: 1})
+	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -645,7 +642,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
-	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1})
+	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.Tags, namespace: c.Namespace})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
