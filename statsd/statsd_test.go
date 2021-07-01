@@ -184,7 +184,7 @@ func sendExtendedMetricsWithExtentedAggregation(client *Client) string {
 	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
 	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
 
-	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\nhisto:3:31|h|#tag\ndistro:3:22|d|#tag\ntiming:3000:12000|ms|#tag\n"
+	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\nhisto:3:31|h|#tag\ndistro:3:22|d|#tag\ntiming:3000.000000:12000.000000|ms|#tag\n"
 }
 
 func testStatsdPipeline(t *testing.T, client *Client, genMetric func(*Client) string, flush func(*Client)) {
