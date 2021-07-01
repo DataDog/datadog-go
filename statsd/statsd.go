@@ -70,17 +70,13 @@ const (
 
 /*
 ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
-to a specific tag name.
+to a specific tag name. We use a slice to keep the order and simplify tests.
 */
-var ddEnvTagsMapping = map[string]string{
-	// Client-side entity ID injection for container tagging.
-	"DD_ENTITY_ID": "dd.internal.entity_id",
-	// The name of the env in which the service runs.
-	"DD_ENV": "env",
-	// The name of the running service.
-	"DD_SERVICE": "service",
-	// The current version of the running service.
-	"DD_VERSION": "version",
+var ddEnvTagsMapping = []struct{ envName, tagName string }{
+	{"DD_ENTITY_ID", "dd.internal.entity_id"}, // Client-side entity ID injection for container tagging.
+	{"DD_ENV", "env"},                         // The name of the env in which the service runs.
+	{"DD_SERVICE", "service"},                 // The name of the running service.
+	{"DD_VERSION", "version"},                 // The current version of the running service.
 }
 
 type metricType int
@@ -332,9 +328,9 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		metrics:   &ClientMetrics{},
 	}
 	// Inject values of DD_* environment variables as global tags.
-	for envName, tagName := range ddEnvTagsMapping {
-		if value := os.Getenv(envName); value != "" {
-			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", tagName, value))
+	for _, mapping := range ddEnvTagsMapping {
+		if value := os.Getenv(mapping.envName); value != "" {
+			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
 	}
 
