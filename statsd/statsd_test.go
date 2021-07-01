@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -332,4 +333,89 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 			assert.Equal(t, tc.expectedAddr, addr)
 		})
 	}
+}
+
+func TestEnvTags(t *testing.T) {
+	entityIDEnvName := "DD_ENTITY_ID"
+	ddEnvName := "DD_ENV"
+	ddServiceName := "DD_SERVICE"
+	ddVersionName := "DD_VERSION"
+
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	defer func() { os.Unsetenv(ddEnvName) }()
+	defer func() { os.Unsetenv(ddServiceName) }()
+	defer func() { os.Unsetenv(ddVersionName) }()
+
+	os.Setenv(entityIDEnvName, "test_id")
+	os.Setenv(ddEnvName, "test_env")
+	os.Setenv(ddServiceName, "test_service")
+	os.Setenv(ddVersionName, "test_version")
+
+	expectedTags := []string{"dd.internal.entity_id:test_id", "env:test_env", "service:test_service", "version:test_version"}
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		expectedTags,
+	)
+
+	sort.Strings(client.Tags)
+	assert.Equal(t, client.Tags, expectedTags)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestEnvTagsWithCustomTags(t *testing.T) {
+	entityIDEnvName := "DD_ENTITY_ID"
+	ddEnvName := "DD_ENV"
+	ddServiceName := "DD_SERVICE"
+	ddVersionName := "DD_VERSION"
+
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	defer func() { os.Unsetenv(ddEnvName) }()
+	defer func() { os.Unsetenv(ddServiceName) }()
+	defer func() { os.Unsetenv(ddVersionName) }()
+
+	os.Setenv(entityIDEnvName, "test_id")
+	os.Setenv(ddEnvName, "test_env")
+	os.Setenv(ddServiceName, "test_service")
+	os.Setenv(ddVersionName, "test_version")
+
+	expectedTags := []string{"tag1", "tag2", "dd.internal.entity_id:test_id", "env:test_env", "service:test_service", "version:test_version"}
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		expectedTags,
+		WithTags([]string{"tag1", "tag2"}),
+	)
+
+	ts.sendAllAndAssert(t, client)
+
+	sort.Strings(expectedTags)
+	sort.Strings(client.Tags)
+	assert.Equal(t, client.Tags, expectedTags)
+}
+
+func TestEnvTagsEmptyString(t *testing.T) {
+	entityIDEnvName := "DD_ENTITY_ID"
+	ddEnvName := "DD_ENV"
+	ddServiceName := "DD_SERVICE"
+	ddVersionName := "DD_VERSION"
+
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	defer func() { os.Unsetenv(ddEnvName) }()
+	defer func() { os.Unsetenv(ddServiceName) }()
+	defer func() { os.Unsetenv(ddVersionName) }()
+
+	os.Setenv(entityIDEnvName, "")
+	os.Setenv(ddEnvName, "")
+	os.Setenv(ddServiceName, "")
+	os.Setenv(ddVersionName, "")
+
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
 }
