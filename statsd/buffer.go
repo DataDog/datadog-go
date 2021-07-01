@@ -66,7 +66,7 @@ func (b *statsdBuffer) writeHistogram(namespace string, globalTags []string, nam
 }
 
 // writeAggregated serialized as many values as possible in the current buffer and return the position in values where it stopped.
-func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, globalTags []string, name string, values []float64, tags string, tagSize int) (int, error) {
+func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, globalTags []string, name string, values []float64, tags string, tagSize int, precision int) (int, error) {
 	if b.elementCount >= b.maxElements {
 		return 0, errBufferFull
 	}
@@ -87,7 +87,8 @@ func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, gl
 		if idx != 0 {
 			b.buffer = append(b.buffer, ':')
 		}
-		b.buffer = strconv.AppendFloat(b.buffer, v, 'f', -1, 64)
+
+		b.buffer = strconv.AppendFloat(b.buffer, v, 'f', precision, 64)
 
 		// Should we stop serializing and switch to another buffer
 		if len(b.buffer)+tagSize > b.maxSize {
