@@ -2,11 +2,15 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.8.1 / 2021-07-09
+
+* [BUGFIX] Prevent telemetry from using the client global namespace. See [#205][]
+* [BETA][BUGFIX] Fix timings having a different precision with and without extended aggregation. See [#204][]
+
 # 4.8.0 / 2021-06-14
 
 * [BETA][IMPROVEMENT] Reduce aggregation default window to 2s to reduce sampling aliasing. See [#199][]
 * [IMPROVEMENT] Automatically add a "\n" after each metric so the agent can determine if a metric is truncated. Per source EOL detection was made available in agent 7.28 with the `dogstatsd_eol_required` setting. See [#198][]
-
 
 # 4.7.0 / 2021-05-05
 
@@ -307,6 +311,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#195]: https://github.com/DataDog/datadog-go/pull/195
 [#198]: https://github.com/DataDog/datadog-go/pull/198
 [#199]: https://github.com/DataDog/datadog-go/pull/199
+[#204]: https://github.com/DataDog/datadog-go/pull/204
+[#205]: https://github.com/DataDog/datadog-go/pull/205
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
