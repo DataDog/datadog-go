@@ -419,3 +419,101 @@ func TestEnvTagsEmptyString(t *testing.T) {
 	assert.Len(t, client.Tags, 0)
 	ts.sendAllAndAssert(t, client)
 }
+
+func TestDdAgentHost(t *testing.T) {
+	defer func() { os.Unsetenv(agentHostEnvVarName) }()
+
+	os.Setenv(agentHostEnvVarName, "localhost:8765")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestDdAgentHostAndPort(t *testing.T) {
+	defer func() { os.Unsetenv(agentHostEnvVarName) }()
+	defer func() { os.Unsetenv(agentPortEnvVarName) }()
+
+	// Check that DD_AGENT_PORT is ignored when DD_AGENT_HOST already contains a port
+	os.Setenv(agentHostEnvVarName, "localhost:8765")
+	os.Setenv(agentPortEnvVarName, "1234")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
+
+	// Check that DD_DOGSTATSD_PORT is used
+	os.Setenv(agentHostEnvVarName, "localhost")
+	os.Setenv(agentPortEnvVarName, "8766")
+
+	ts, client = newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8766",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestDdDsdHost(t *testing.T) {
+	defer func() { os.Unsetenv(agentDsdHostEnvVarName) }()
+
+	os.Setenv(agentDsdHostEnvVarName, "localhost:8765")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestDdDsdHostAndPort(t *testing.T) {
+	defer func() { os.Unsetenv(agentDsdHostEnvVarName) }()
+	defer func() { os.Unsetenv(agentPortEnvVarName) }()
+
+	// Check that DD_DOGSTATSD_PORT is ignored when DD_AGENT_HOST already contains a port
+	os.Setenv(agentDsdHostEnvVarName, "localhost:8765")
+	os.Setenv(agentPortEnvVarName, "1234")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
+
+	// Check that DD_DOGSTATSD_PORT is used
+	os.Setenv(agentDsdHostEnvVarName, "localhost")
+	os.Setenv(agentPortEnvVarName, "8766")
+
+	ts, client = newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8766",
+		nil,
+	)
+
+	assert.Len(t, client.Tags, 0)
+	ts.sendAllAndAssert(t, client)
+}

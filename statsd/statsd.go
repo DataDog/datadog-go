@@ -64,9 +64,10 @@ traffic instead of UDP.
 const WindowsPipeAddressPrefix = `\\.\pipe\`
 
 const (
-	agentHostEnvVarName = "DD_AGENT_HOST"
-	agentPortEnvVarName = "DD_DOGSTATSD_PORT"
-	defaultUDPPort      = "8125"
+	agentHostEnvVarName    = "DD_AGENT_HOST"
+	agentDsdHostEnvVarName = "DD_DOGSTATSD_HOST"
+	agentPortEnvVarName    = "DD_DOGSTATSD_PORT"
+	defaultUDPPort         = "8125"
 )
 
 /*
@@ -240,7 +241,11 @@ var _ ClientInterface = &Client{}
 func resolveAddr(addr string) string {
 	envPort := ""
 	if addr == "" {
-		addr = os.Getenv(agentHostEnvVarName)
+		if dsdHost := os.Getenv(agentDsdHostEnvVarName); dsdHost != "" {
+			addr = dsdHost
+		} else {
+			addr = os.Getenv(agentHostEnvVarName)
+		}
 		envPort = os.Getenv(agentPortEnvVarName)
 	}
 
