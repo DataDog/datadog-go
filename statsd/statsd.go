@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -63,9 +64,10 @@ traffic instead of UDP.
 const WindowsPipeAddressPrefix = `\\.\pipe\`
 
 const (
-	agentHostEnvVarName = "DD_AGENT_HOST"
-	agentPortEnvVarName = "DD_DOGSTATSD_PORT"
-	defaultUDPPort      = "8125"
+	agentHostEnvVarName    = "DD_AGENT_HOST"
+	agentDsdHostEnvVarName = "DD_DOGSTATSD_HOST"
+	agentPortEnvVarName    = "DD_DOGSTATSD_PORT"
+	defaultUDPPort         = "8125"
 )
 
 /*
@@ -239,7 +241,11 @@ var _ ClientInterface = &Client{}
 func resolveAddr(addr string) string {
 	envPort := ""
 	if addr == "" {
-		addr = os.Getenv(agentHostEnvVarName)
+		if dsdHost := os.Getenv(agentDsdHostEnvVarName); dsdHost != "" {
+			addr = dsdHost
+		} else {
+			addr = os.Getenv(agentHostEnvVarName)
+		}
 		envPort = os.Getenv(agentPortEnvVarName)
 	}
 
@@ -332,11 +338,15 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		metrics:   &ClientMetrics{},
 	}
 	// Inject values of DD_* environment variables as global tags.
+	extraTags := []string{}
 	for envName, tagName := range ddEnvTagsMapping {
 		if value := os.Getenv(envName); value != "" {
-			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", tagName, value))
+			extraTags = append(extraTags, fmt.Sprintf("%s:%s", tagName, value))
 		}
 	}
+	// We sort env tags to ease testing since map order access is not guarantee
+	sort.Strings(extraTags)
+	c.Tags = append(c.Tags, extraTags...)
 
 	if o.MaxBytesPerPayload == 0 {
 		if writerName == WriterNameUDS {
