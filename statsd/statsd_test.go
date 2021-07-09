@@ -192,11 +192,11 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 	} else {
 		defer os.Unsetenv(agentHostEnvVarName)
 	}
-	portInitialValue, portInitiallySet := os.LookupEnv(agentPortEnvVarName)
+	portInitialValue, portInitiallySet := os.LookupEnv(dogstatsdPortEnvVarName)
 	if portInitiallySet {
-		defer os.Setenv(agentPortEnvVarName, portInitialValue)
+		defer os.Setenv(dogstatsdPortEnvVarName, portInitialValue)
 	} else {
-		defer os.Unsetenv(agentPortEnvVarName)
+		defer os.Unsetenv(dogstatsdPortEnvVarName)
 	}
 
 	for _, tc := range []struct {
@@ -224,7 +224,7 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			os.Setenv(agentHostEnvVarName, tc.hostEnv)
-			os.Setenv(agentPortEnvVarName, tc.portEnv)
+			os.Setenv(dogstatsdPortEnvVarName, tc.portEnv)
 
 			addr := resolveAddr(tc.addrParam)
 			assert.Equal(t, tc.expectedAddr, addr)
@@ -268,4 +268,96 @@ func TestGetTelemetry(t *testing.T) {
 	assert.Equal(t, uint64(1), tlm.AggregationNbContextHistogram, "telmetry AggregationNbContextHistogram was wrong")
 	assert.Equal(t, uint64(1), tlm.AggregationNbContextDistribution, "telmetry AggregationNbContextDistribution was wrong")
 	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
+}
+
+func TestEnvAgentHost(t *testing.T) {
+	defer func() { os.Unsetenv("DD_AGENT_HOST") }()
+
+	os.Setenv("DD_AGENT_HOST", "localhost:8765")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestEnvAgentHostAndPort(t *testing.T) {
+	defer func() { os.Unsetenv("DD_AGENT_HOST") }()
+	defer func() { os.Unsetenv("DD_DOGSTATSD_PORT") }()
+
+	// Check that DD_AGENT_PORT is ignored when DD_AGENT_HOST already contains a port
+	os.Setenv("DD_AGENT_HOST", "localhost:8765")
+	os.Setenv("DD_DOGSTATSD_PORT", "1234")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	ts.sendAllAndAssert(t, client)
+
+	// Check that DD_DOGSTATSD_PORT is used
+	os.Setenv("DD_AGENT_HOST", "localhost")
+	os.Setenv("DD_DOGSTATSD_PORT", "8766")
+
+	ts, client = newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8766",
+		nil,
+	)
+
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestEnvDogstatsddHost(t *testing.T) {
+	defer func() { os.Unsetenv("DD_DOGSTATSD_HOST") }()
+
+	os.Setenv("DD_DOGSTATSD_HOST", "localhost:8765")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestEnvDogstatsddHostAndPort(t *testing.T) {
+	defer func() { os.Unsetenv("DD_DOGSTATSD_HOST") }()
+	defer func() { os.Unsetenv("DD_DOGSTATSD_PORT") }()
+
+	// Check that DD_DOGSTATSD_PORT is ignored when DD_AGENT_HOST already contains a port
+	os.Setenv("DD_DOGSTATSD_HOST", "localhost:8765")
+	os.Setenv("DD_DOGSTATSD_PORT", "1234")
+
+	ts, client := newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8765",
+		nil,
+	)
+
+	ts.sendAllAndAssert(t, client)
+
+	// Check that DD_DOGSTATSD_PORT is used
+	os.Setenv("DD_DOGSTATSD_HOST", "localhost")
+	os.Setenv("DD_DOGSTATSD_PORT", "8766")
+
+	ts, client = newClientAndTestServerCustomAddr(t,
+		"udp",
+		"",
+		"localhost:8766",
+		nil,
+	)
+
+	ts.sendAllAndAssert(t, client)
 }

@@ -54,7 +54,6 @@ type testServer struct {
 	errors    []string
 	readData  []string
 	proto     string
-	addr      string
 	stopped   chan struct{}
 	tags      string
 	namespace string
@@ -66,14 +65,16 @@ type testServer struct {
 }
 
 func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client) {
+	return newClientAndTestServerCustomAddr(t, proto, addr, addr, tags, options...)
+}
 
+func newClientAndTestServerCustomAddr(t *testing.T, proto string, addrClient string, addrTest string, tags []string, options ...Option) (*testServer, *Client) {
 	opt, err := resolveOptions(options)
 	require.NoError(t, err)
 
 	ts := &testServer{
 		proto:               proto,
 		data:                []string{},
-		addr:                addr,
 		stopped:             make(chan struct{}),
 		aggregation:         opt.aggregation,
 		extendedAggregation: opt.extendedAggregation,
@@ -88,14 +89,14 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 
 	switch proto {
 	case "udp":
-		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+		udpAddr, err := net.ResolveUDPAddr("udp", addrTest)
 		require.NoError(t, err)
 
 		conn, err := net.ListenUDP("udp", udpAddr)
 		require.NoError(t, err)
 		ts.conn = conn
 	case "uds":
-		socketPath := addr[7:]
+		socketPath := addrTest[7:]
 		address, err := net.ResolveUnixAddr("unixgram", socketPath)
 		require.NoError(t, err)
 		conn, err := net.ListenUnixgram("unixgram", address)
@@ -107,7 +108,7 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 		require.FailNow(t, "unknown proto '%s'", proto)
 	}
 
-	client, err := New(addr, options...)
+	client, err := New(addrClient, options...)
 	require.NoError(t, err)
 
 	go ts.start()
