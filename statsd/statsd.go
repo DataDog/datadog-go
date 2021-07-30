@@ -95,11 +95,11 @@ const (
 	serviceCheck
 )
 
-type ReceivingMode int
+type receivingMode int
 
 const (
-	MutexMode ReceivingMode = iota
-	ChannelMode
+	mutexMode receivingMode = iota
+	channelMode
 )
 
 const (
@@ -201,8 +201,8 @@ type Client struct {
 	wg             sync.WaitGroup
 	workers        []*worker
 	closerLock     sync.Mutex
-	workersMode    ReceivingMode
-	aggregatorMode ReceivingMode
+	workersMode    receivingMode
+	aggregatorMode receivingMode
 	agg            *aggregator
 	aggExtended    *aggregator
 	options        []Option
@@ -277,7 +277,7 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	w, writerType, err := createWriter(addr, o.WriteTimeout)
+	w, writerType, err := createWriter(addr, o.writeTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -315,8 +315,8 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 
 func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, error) {
 	c := Client{
-		namespace: o.Namespace,
-		tags:      o.Tags,
+		namespace: o.namespace,
+		tags:      o.tags,
 		metrics:   &ClientMetrics{},
 	}
 	// Inject values of DD_* environment variables as global tags.
@@ -326,64 +326,64 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		}
 	}
 
-	if o.MaxBytesPerPayload == 0 {
+	if o.maxBytesPerPayload == 0 {
 		if writerName == writerNameUDS {
-			o.MaxBytesPerPayload = DefaultMaxAgentPayloadSize
+			o.maxBytesPerPayload = DefaultMaxAgentPayloadSize
 		} else {
-			o.MaxBytesPerPayload = OptimalUDPPayloadSize
+			o.maxBytesPerPayload = OptimalUDPPayloadSize
 		}
 	}
-	if o.BufferPoolSize == 0 {
+	if o.bufferPoolSize == 0 {
 		if writerName == writerNameUDS {
-			o.BufferPoolSize = DefaultUDSBufferPoolSize
+			o.bufferPoolSize = DefaultUDSBufferPoolSize
 		} else {
-			o.BufferPoolSize = DefaultUDPBufferPoolSize
+			o.bufferPoolSize = DefaultUDPBufferPoolSize
 		}
 	}
-	if o.SenderQueueSize == 0 {
+	if o.senderQueueSize == 0 {
 		if writerName == writerNameUDS {
-			o.SenderQueueSize = DefaultUDSBufferPoolSize
+			o.senderQueueSize = DefaultUDSBufferPoolSize
 		} else {
-			o.SenderQueueSize = DefaultUDPBufferPoolSize
+			o.senderQueueSize = DefaultUDPBufferPoolSize
 		}
 	}
 
-	bufferPool := newBufferPool(o.BufferPoolSize, o.MaxBytesPerPayload, o.MaxMessagesPerPayload)
-	c.sender = newSender(w, o.SenderQueueSize, bufferPool)
-	c.aggregatorMode = o.ReceiveMode
+	bufferPool := newBufferPool(o.bufferPoolSize, o.maxBytesPerPayload, o.maxMessagesPerPayload)
+	c.sender = newSender(w, o.senderQueueSize, bufferPool)
+	c.aggregatorMode = o.receiveMode
 
-	c.workersMode = o.ReceiveMode
-	// ChannelMode mode at the worker level is not enabled when
+	c.workersMode = o.receiveMode
+	// channelMode mode at the worker level is not enabled when
 	// ExtendedAggregation is since the user app will not directly
 	// use the worker (the aggregator sit between the app and the
 	// workers).
-	if o.ExtendedAggregation {
-		c.workersMode = MutexMode
+	if o.extendedAggregation {
+		c.workersMode = mutexMode
 	}
 
-	if o.Aggregation || o.ExtendedAggregation {
+	if o.aggregation || o.extendedAggregation {
 		c.agg = newAggregator(&c)
-		c.agg.start(o.AggregationFlushInterval)
+		c.agg.start(o.aggregationFlushInterval)
 
-		if o.ExtendedAggregation {
+		if o.extendedAggregation {
 			c.aggExtended = c.agg
 
-			if c.aggregatorMode == ChannelMode {
-				c.agg.startReceivingMetric(o.ChannelModeBufferSize, o.BufferShardCount)
+			if c.aggregatorMode == channelMode {
+				c.agg.startReceivingMetric(o.channelModeBufferSize, o.workersCount)
 			}
 		}
 	}
 
-	for i := 0; i < o.BufferShardCount; i++ {
+	for i := 0; i < o.workersCount; i++ {
 		w := newWorker(bufferPool, c.sender)
 		c.workers = append(c.workers, w)
 
-		if c.workersMode == ChannelMode {
-			w.startReceivingMetric(o.ChannelModeBufferSize)
+		if c.workersMode == channelMode {
+			w.startReceivingMetric(o.channelModeBufferSize)
 		}
 	}
 
-	c.flushTime = o.BufferFlushInterval
+	c.flushTime = o.bufferFlushInterval
 	c.stop = make(chan struct{}, 1)
 
 	c.wg.Add(1)
@@ -392,12 +392,12 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 		c.watch()
 	}()
 
-	if o.Telemetry {
-		if o.TelemetryAddr == "" {
+	if o.telemetry {
+		if o.telemetryAddr == "" {
 			c.telemetry = newTelemetryClient(&c, writerName)
 		} else {
 			var err error
-			c.telemetry, err = newTelemetryClientWithCustomAddr(&c, writerName, o.TelemetryAddr, bufferPool, o.WriteTimeout)
+			c.telemetry, err = newTelemetryClientWithCustomAddr(&c, writerName, o.telemetryAddr, bufferPool, o.writeTimeout)
 			if err != nil {
 				return nil, err
 			}
@@ -426,7 +426,7 @@ func (c *Client) watch() {
 
 // Flush forces a flush of all the queued dogstatsd payloads This method is
 // blocking and will not return until everything is sent through the network.
-// In MutexMode, this will also block sampling new data to the client while the
+// In mutexMode, this will also block sampling new data to the client while the
 // workers and sender are flushed.
 func (c *Client) Flush() error {
 	if c == nil {
@@ -470,7 +470,7 @@ func (c *Client) send(m metric) error {
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
 
-	if c.workersMode == ChannelMode {
+	if c.workersMode == channelMode {
 		select {
 		case worker.inputMetrics <- m:
 		default:
@@ -492,7 +492,7 @@ func (c *Client) sendBlocking(m metric) error {
 }
 
 func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc) error {
-	if c.aggregatorMode == ChannelMode {
+	if c.aggregatorMode == channelMode {
 		select {
 		case c.aggExtended.inputMetrics <- metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}:
 		default:
@@ -639,7 +639,7 @@ func (c *Client) Close() error {
 	}
 	close(c.stop)
 
-	if c.workersMode == ChannelMode {
+	if c.workersMode == channelMode {
 		for _, w := range c.workers {
 			w.stopReceivingMetric()
 		}
@@ -647,7 +647,7 @@ func (c *Client) Close() error {
 
 	// flush the aggregator first
 	if c.agg != nil {
-		if c.aggExtended != nil && c.aggregatorMode == ChannelMode {
+		if c.aggExtended != nil && c.aggregatorMode == channelMode {
 			c.agg.stopReceivingMetric()
 		}
 		c.agg.stop()
