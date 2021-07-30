@@ -193,9 +193,7 @@ type Client struct {
 	// namespace to prepend to all statsd calls
 	namespace string
 	// tags are global tags to be added to every statsd call
-	tags []string
-	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
-	SkipErrors     bool
+	tags           []string
 	flushTime      time.Duration
 	metrics        *ClientMetrics
 	telemetry      *telemetryClient
