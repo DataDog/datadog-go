@@ -408,15 +408,6 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	return &c, nil
 }
 
-// NewBuffered returns a Client that buffers its output and sends it in chunks.
-// Buflen is the length of the buffer in number of commands.
-//
-// When addr is empty, the client will default to a UDP client and use the DD_AGENT_HOST
-// and (optionally) the DD_DOGSTATSD_PORT environment variables to build the target address.
-func NewBuffered(addr string, buflen int) (*Client, error) {
-	return New(addr, WithMaxMessagesPerPayload(buflen))
-}
-
 func (c *Client) watch() {
 	ticker := time.NewTicker(c.flushTime)
 
