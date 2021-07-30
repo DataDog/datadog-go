@@ -14,7 +14,7 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 	for i := 0; i < tagsNumber; i++ {
 		tags = append(tags, fmt.Sprintf("tag%d:tag%d\n", i, i))
 	}
-	event := Event{
+	event := &Event{
 		Title:          "EvenTitle",
 		Text:           "EventText",
 		Timestamp:      time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
@@ -25,7 +25,7 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 		AlertType:      "alertType",
 		Tags:           tags,
 	}
-	serviceCheck := ServiceCheck{
+	serviceCheck := &ServiceCheck{
 		Name:      "service.check",
 		Status:    Ok,
 		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),

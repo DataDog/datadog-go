@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func encodeSC(sc *ServiceCheck) (string, error) {
+	err := sc.Check()
+	if err != nil {
+		return "", err
+	}
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, sc, nil)
+	return string(buffer), nil
+}
+
 func TestServiceChecks(t *testing.T) {
 	matrix := []struct {
 		serviceCheck   *ServiceCheck
@@ -46,7 +56,7 @@ func TestServiceChecks(t *testing.T) {
 	}
 
 	for _, m := range matrix {
-		scEncoded, err := m.serviceCheck.Encode()
+		scEncoded, err := encodeSC(m.serviceCheck)
 		require.NoError(t, err)
 		assert.Equal(t, m.expectedEncode, scEncoded)
 	}
@@ -55,31 +65,32 @@ func TestServiceChecks(t *testing.T) {
 
 func TestNameMissing(t *testing.T) {
 	sc := NewServiceCheck("", Ok)
-	_, err := sc.Encode()
+	_, err := encodeSC(sc)
 	require.Error(t, err)
 	assert.Equal(t, "statsd.ServiceCheck name is required", err.Error())
 }
 
 func TestUnknownStatus(t *testing.T) {
 	sc := NewServiceCheck("sc", ServiceCheckStatus(5))
-	_, err := sc.Encode()
+	_, err := encodeSC(sc)
 	require.Error(t, err)
 	assert.Equal(t, "statsd.ServiceCheck status has invalid value", err.Error())
-}
-
-func TestNewServiceCheck(t *testing.T) {
-	sc := NewServiceCheck("hello", Warn)
-	s, err := sc.Encode("tag1", "tag2")
-	require.NoError(t, err)
-	assert.Equal(t, "_sc|hello|1|#tag1,tag2", s)
-	assert.Len(t, sc.Tags, 0)
 }
 
 func TestNewServiceCheckWithTags(t *testing.T) {
 	sc := NewServiceCheck("hello", Warn)
 	sc.Tags = []string{"tag1", "tag2"}
-	s, err := sc.Encode("tag3", "tag4")
+	s, err := encodeSC(sc)
 	require.NoError(t, err)
-	assert.Equal(t, "_sc|hello|1|#tag3,tag4,tag1,tag2", s)
+	assert.Equal(t, "_sc|hello|1|#tag1,tag2", s)
+	assert.Len(t, sc.Tags, 2)
+}
+
+func TestNewServiceCheckWithTagsAppend(t *testing.T) {
+	sc := NewServiceCheck("hello", Warn)
+	sc.Tags = append(sc.Tags, "tag1", "tag2")
+	s, err := encodeSC(sc)
+	require.NoError(t, err)
+	assert.Equal(t, "_sc|hello|1|#tag1,tag2", s)
 	assert.Len(t, sc.Tags, 2)
 }
