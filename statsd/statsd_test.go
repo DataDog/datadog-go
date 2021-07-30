@@ -32,6 +32,48 @@ func (statsdWriterWrapper) Write(p []byte) (n int, err error) {
 	return 0, nil
 }
 
+func assertNotPanics(t *testing.T, f func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatal(r)
+		}
+	}()
+	f()
+}
+
+func TestNilError(t *testing.T) {
+	var c *Client
+	tests := []func() error{
+		func() error { return c.SetWriteTimeout(0) },
+		func() error { return c.Flush() },
+		func() error { return c.Close() },
+		func() error { return c.Count("", 0, nil, 1) },
+		func() error { return c.Incr("", nil, 1) },
+		func() error { return c.Decr("", nil, 1) },
+		func() error { return c.Histogram("", 0, nil, 1) },
+		func() error { return c.Distribution("", 0, nil, 1) },
+		func() error { return c.Gauge("", 0, nil, 1) },
+		func() error { return c.Set("", "", nil, 1) },
+		func() error { return c.Timing("", time.Second, nil, 1) },
+		func() error { return c.TimeInMilliseconds("", 1, nil, 1) },
+		func() error { return c.Event(NewEvent("", "")) },
+		func() error { return c.SimpleEvent("", "") },
+		func() error { return c.ServiceCheck(NewServiceCheck("", Ok)) },
+		func() error { return c.SimpleServiceCheck("", Ok) },
+		func() error {
+			_, err := CloneWithExtraOptions(nil, WithChannelMode())
+			return err
+		},
+	}
+	for i, f := range tests {
+		var err error
+		assertNotPanics(t, func() { err = f() })
+		if err != ErrNoClient {
+			t.Errorf("Test case %d: expected ErrNoClient, got %#v", i, err)
+		}
+	}
+}
+
 func TestCustomWriterBufferConfiguration(t *testing.T) {
 	client, err := NewWithWriter(statsdWriterWrapper{})
 	require.Nil(t, err)

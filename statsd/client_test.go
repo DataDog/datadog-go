@@ -41,15 +41,6 @@ var dogstatsdTests = []struct {
 	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld\n"},
 }
 
-func assertNotPanics(t *testing.T, f func()) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatal(r)
-		}
-	}()
-	f()
-}
-
 func TestClientUDP(t *testing.T) {
 	addr := "localhost:1201"
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
@@ -220,39 +211,6 @@ func TestBufferedClient(t *testing.T) {
 		}
 	}
 
-}
-
-func TestNilError(t *testing.T) {
-	var c *statsd.Client
-	tests := []func() error{
-		func() error { return c.SetWriteTimeout(0) },
-		func() error { return c.Flush() },
-		func() error { return c.Close() },
-		func() error { return c.Count("", 0, nil, 1) },
-		func() error { return c.Incr("", nil, 1) },
-		func() error { return c.Decr("", nil, 1) },
-		func() error { return c.Histogram("", 0, nil, 1) },
-		func() error { return c.Distribution("", 0, nil, 1) },
-		func() error { return c.Gauge("", 0, nil, 1) },
-		func() error { return c.Set("", "", nil, 1) },
-		func() error { return c.Timing("", time.Second, nil, 1) },
-		func() error { return c.TimeInMilliseconds("", 1, nil, 1) },
-		func() error { return c.Event(statsd.NewEvent("", "")) },
-		func() error { return c.SimpleEvent("", "") },
-		func() error { return c.ServiceCheck(statsd.NewServiceCheck("", statsd.Ok)) },
-		func() error { return c.SimpleServiceCheck("", statsd.Ok) },
-		func() error {
-			_, err := statsd.CloneWithExtraOptions(nil, statsd.WithChannelMode())
-			return err
-		},
-	}
-	for i, f := range tests {
-		var err error
-		assertNotPanics(t, func() { err = f() })
-		if err != statsd.ErrNoClient {
-			t.Errorf("Test case %d: expected ErrNoClient, got %#v", i, err)
-		}
-	}
 }
 
 func TestClosePanic(t *testing.T) {
