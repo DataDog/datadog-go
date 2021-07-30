@@ -6,6 +6,9 @@
 
 ## Breaking changes
 
+Many field/methods have been removed from the public API of the client to allow for the client internals to evolve
+more easily in the future without breaking the public API of the client.
+
 - `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
 - `WithWriteTimeoutUDS` option has been renamed `WithWriteTimeout` since it also impact named pipe transport.
 - `SetWriteTimeout` method has been removed in favor of `WithWriteTimeout` option.
@@ -20,6 +23,8 @@
   Instead of `statsd.NewBuffered(add, bufferLength)` please use `statsd.New(addr, statsd.WithMaxMessagesPerPayload(bufferLength))`
 - `Encode` method for `Event` and `ServiceCheck` have been removed.
 - The `Check` method for Events and ServiceChecks methods now use pointer receivers.
+- All `Options` internals outside of the public API. Only the part needed by the client app are left in the public API.
+  This also improve/clarify the `Options` documentation and usage.
 
 # 4.8.1 / 2021-07-09
 
