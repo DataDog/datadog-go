@@ -34,9 +34,9 @@ type aggregator struct {
 
 	client *Client
 
-	// aggregator implements ChannelMode mechanism to receive histograms,
+	// aggregator implements channelMode mechanism to receive histograms,
 	// distributions and timings. Since they need sampling they need to
-	// lock for random. When using both ChannelMode and ExtendedAggregation
+	// lock for random. When using both channelMode and ExtendedAggregation
 	// we don't want goroutine to fight over the lock.
 	inputMetrics    chan metric
 	stopChannelMode chan struct{}
