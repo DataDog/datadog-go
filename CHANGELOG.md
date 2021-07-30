@@ -16,6 +16,8 @@
   + `TelemetryInterval`
 - Field `Client.Namespace` is now private, please use the `WithNamespace` option.
 - Field `Client.Tags` is now private, please use the `WithTags` option.
+- Method `NewBuffered` has been removed in favor of the `WithMaxMessagesPerPayload()` option.
+  Instead of `statsd.NewBuffered(add, bufferLength)` please use `statsd.New(addr, statsd.WithMaxMessagesPerPayload(bufferLength))`
 
 # 4.8.2 / 2021-09-06
 
