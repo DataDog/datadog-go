@@ -103,9 +103,9 @@ const (
 )
 
 const (
-	WriterNameUDP     string = "udp"
-	WriterNameUDS     string = "uds"
-	WriterWindowsPipe string = "pipe"
+	writerNameUDP     string = "udp"
+	writerNameUDS     string = "uds"
+	writerWindowsPipe string = "pipe"
 )
 
 type metric struct {
@@ -261,13 +261,13 @@ func createWriter(addr string, writeTimeout time.Duration) (statsdWriter, string
 	switch {
 	case strings.HasPrefix(addr, WindowsPipeAddressPrefix):
 		w, err := newWindowsPipeWriter(addr, writeTimeout)
-		return w, WriterWindowsPipe, err
+		return w, writerWindowsPipe, err
 	case strings.HasPrefix(addr, UnixAddressPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressPrefix):], writeTimeout)
-		return w, WriterNameUDS, err
+		return w, writerNameUDS, err
 	default:
 		w, err := newUDPWriter(addr, writeTimeout)
-		return w, WriterNameUDP, err
+		return w, writerNameUDP, err
 	}
 }
 
@@ -329,21 +329,21 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 	}
 
 	if o.MaxBytesPerPayload == 0 {
-		if writerName == WriterNameUDS {
+		if writerName == writerNameUDS {
 			o.MaxBytesPerPayload = DefaultMaxAgentPayloadSize
 		} else {
 			o.MaxBytesPerPayload = OptimalUDPPayloadSize
 		}
 	}
 	if o.BufferPoolSize == 0 {
-		if writerName == WriterNameUDS {
+		if writerName == writerNameUDS {
 			o.BufferPoolSize = DefaultUDSBufferPoolSize
 		} else {
 			o.BufferPoolSize = DefaultUDPBufferPoolSize
 		}
 	}
 	if o.SenderQueueSize == 0 {
-		if writerName == WriterNameUDS {
+		if writerName == writerNameUDS {
 			o.SenderQueueSize = DefaultUDSBufferPoolSize
 		} else {
 			o.SenderQueueSize = DefaultUDPBufferPoolSize

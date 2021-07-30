@@ -7,9 +7,9 @@ import (
 )
 
 /*
-TelemetryInterval is the interval at which telemetry will be sent by the client.
+telemetryInterval is the interval at which telemetry will be sent by the client.
 */
-const TelemetryInterval = 10 * time.Second
+const telemetryInterval = 10 * time.Second
 
 /*
 clientTelemetryTag is a tag identifying this specific client.
@@ -67,7 +67,7 @@ func (t *telemetryClient) run(wg *sync.WaitGroup, stop chan struct{}) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		ticker := time.NewTicker(TelemetryInterval)
+		ticker := time.NewTicker(telemetryInterval)
 		for {
 			select {
 			case <-ticker.C:
