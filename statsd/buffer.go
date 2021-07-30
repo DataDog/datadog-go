@@ -147,7 +147,7 @@ func (b *statsdBuffer) writeTiming(namespace string, globalTags []string, name s
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeEvent(event Event, globalTags []string) error {
+func (b *statsdBuffer) writeEvent(event *Event, globalTags []string) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -157,7 +157,7 @@ func (b *statsdBuffer) writeEvent(event Event, globalTags []string) error {
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeServiceCheck(serviceCheck ServiceCheck, globalTags []string) error {
+func (b *statsdBuffer) writeServiceCheck(serviceCheck *ServiceCheck, globalTags []string) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
