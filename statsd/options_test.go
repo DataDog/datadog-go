@@ -19,7 +19,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.BufferFlushInterval, DefaultBufferFlushInterval)
 	assert.Equal(t, options.BufferShardCount, DefaultBufferShardCount)
 	assert.Equal(t, options.SenderQueueSize, DefaultSenderQueueSize)
-	assert.Equal(t, options.WriteTimeoutUDS, DefaultWriteTimeoutUDS)
+	assert.Equal(t, options.WriteTimeout, DefaultWriteTimeout)
 	assert.Equal(t, options.Telemetry, DefaultTelemetry)
 	assert.Equal(t, options.ReceiveMode, DefaultReceivingMode)
 	assert.Equal(t, options.ChannelModeBufferSize, DefaultChannelModeBufferSize)
@@ -38,7 +38,7 @@ func TestOptions(t *testing.T) {
 	testBufferFlushInterval := 48 * time.Second
 	testBufferShardCount := 28
 	testSenderQueueSize := 64
-	testWriteTimeoutUDS := 1 * time.Minute
+	testWriteTimeout := 1 * time.Minute
 	testChannelBufferSize := 500
 	testAggregationWindow := 10 * time.Second
 	testTelemetryAddr := "localhost:1234"
@@ -52,7 +52,7 @@ func TestOptions(t *testing.T) {
 		WithBufferFlushInterval(testBufferFlushInterval),
 		WithBufferShardCount(testBufferShardCount),
 		WithSenderQueueSize(testSenderQueueSize),
-		WithWriteTimeoutUDS(testWriteTimeoutUDS),
+		WithWriteTimeout(testWriteTimeout),
 		WithoutTelemetry(),
 		WithChannelMode(),
 		WithChannelModeBufferSize(testChannelBufferSize),
@@ -70,7 +70,7 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.BufferFlushInterval, testBufferFlushInterval)
 	assert.Equal(t, options.BufferShardCount, testBufferShardCount)
 	assert.Equal(t, options.SenderQueueSize, testSenderQueueSize)
-	assert.Equal(t, options.WriteTimeoutUDS, testWriteTimeoutUDS)
+	assert.Equal(t, options.WriteTimeout, testWriteTimeout)
 	assert.Equal(t, options.Telemetry, false)
 	assert.Equal(t, options.ReceiveMode, ChannelMode)
 	assert.Equal(t, options.ChannelModeBufferSize, testChannelBufferSize)

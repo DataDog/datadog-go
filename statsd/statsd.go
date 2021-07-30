@@ -183,9 +183,6 @@ type ClientInterface interface {
 
 	// Flush forces a flush of all the queued dogstatsd payloads.
 	Flush() error
-
-	// SetWriteTimeout allows the user to set a custom write timeout.
-	SetWriteTimeout(d time.Duration) error
 }
 
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
@@ -255,7 +252,7 @@ func resolveAddr(addr string) string {
 	return addr
 }
 
-func createWriter(addr string) (statsdWriter, string, error) {
+func createWriter(addr string, writeTimeout time.Duration) (statsdWriter, string, error) {
 	addr = resolveAddr(addr)
 	if addr == "" {
 		return nil, "", errors.New("No address passed and autodetection from environment failed")
@@ -263,13 +260,13 @@ func createWriter(addr string) (statsdWriter, string, error) {
 
 	switch {
 	case strings.HasPrefix(addr, WindowsPipeAddressPrefix):
-		w, err := newWindowsPipeWriter(addr)
+		w, err := newWindowsPipeWriter(addr, writeTimeout)
 		return w, WriterWindowsPipe, err
 	case strings.HasPrefix(addr, UnixAddressPrefix):
-		w, err := newUDSWriter(addr[len(UnixAddressPrefix):])
+		w, err := newUDSWriter(addr[len(UnixAddressPrefix):], writeTimeout)
 		return w, WriterNameUDS, err
 	default:
-		w, err := newUDPWriter(addr)
+		w, err := newUDPWriter(addr, writeTimeout)
 		return w, WriterNameUDP, err
 	}
 }
@@ -282,7 +279,7 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	w, writerType, err := createWriter(addr)
+	w, writerType, err := createWriter(addr, o.WriteTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +293,7 @@ func New(addr string, options ...Option) (*Client, error) {
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
-// io.WriteCloser + SetWriteTimeout(time.Duration) error
+// io.WriteCloser
 func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
@@ -319,9 +316,6 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 }
 
 func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, error) {
-
-	w.SetWriteTimeout(o.WriteTimeoutUDS)
-
 	c := Client{
 		Namespace: o.Namespace,
 		Tags:      o.Tags,
@@ -405,7 +399,7 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 			c.telemetry = newTelemetryClient(&c, writerName)
 		} else {
 			var err error
-			c.telemetry, err = newTelemetryClientWithCustomAddr(&c, writerName, o.TelemetryAddr, bufferPool)
+			c.telemetry, err = newTelemetryClientWithCustomAddr(&c, writerName, o.TelemetryAddr, bufferPool, o.WriteTimeout)
 			if err != nil {
 				return nil, err
 			}
@@ -423,15 +417,6 @@ func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, erro
 // and (optionally) the DD_DOGSTATSD_PORT environment variables to build the target address.
 func NewBuffered(addr string, buflen int) (*Client, error) {
 	return New(addr, WithMaxMessagesPerPayload(buflen))
-}
-
-// SetWriteTimeout allows the user to set a custom UDS write timeout. Not supported for UDP
-// or Windows Pipes.
-func (c *Client) SetWriteTimeout(d time.Duration) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	return c.sender.transport.SetWriteTimeout(d)
 }
 
 func (c *Client) watch() {

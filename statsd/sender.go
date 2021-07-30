@@ -2,7 +2,6 @@ package statsd
 
 import (
 	"sync/atomic"
-	"time"
 )
 
 // A statsdWriter offers a standard interface regardless of the underlying
@@ -11,7 +10,6 @@ import (
 // `statsdWriter.Write` must be synchronous.
 type statsdWriter interface {
 	Write(data []byte) (n int, err error)
-	SetWriteTimeout(time.Duration) error
 	Close() error
 }
 
