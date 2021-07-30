@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func encodeEvent(e *Event) (string, error) {
+	err := e.Check()
+	if err != nil {
+		return "", err
+	}
+	var buffer []byte
+	buffer = appendEvent(buffer, e, nil)
+	return string(buffer), nil
+}
+
 func TestEventEncode(t *testing.T) {
 	matrix := []struct {
 		event   *Event
@@ -34,7 +44,7 @@ func TestEventEncode(t *testing.T) {
 	}
 
 	for _, m := range matrix {
-		r, err := m.event.Encode()
+		r, err := encodeEvent(m.event)
 		require.NoError(t, err)
 		assert.Equal(t, r, m.encoded)
 	}
@@ -42,31 +52,32 @@ func TestEventEncode(t *testing.T) {
 
 func TestNewEventTitleMissing(t *testing.T) {
 	e := NewEvent("", "hi")
-	_, err := e.Encode()
+	_, err := encodeEvent(e)
 	require.Error(t, err)
 	assert.Equal(t, "statsd.Event title is required", err.Error())
 }
 
 func TestNewEventTextMissing(t *testing.T) {
 	e := NewEvent("hi", "")
-	_, err := e.Encode()
+	_, err := encodeEvent(e)
 	require.Error(t, err)
 	assert.Equal(t, "statsd.Event text is required", err.Error())
 }
 
 func TestNewEvent(t *testing.T) {
 	e := NewEvent("hello", "world")
-	eventEncoded, err := e.Encode("tag1", "tag2")
+	e.Tags = []string{"tag1", "tag2"}
+	eventEncoded, err := encodeEvent(e)
 	require.NoError(t, err)
 	assert.Equal(t, "_e{5,5}:hello|world|#tag1,tag2", eventEncoded)
-	assert.Len(t, e.Tags, 0)
+	assert.Len(t, e.Tags, 2)
 }
 
-func TestNewEventTags(t *testing.T) {
+func TestNewEventTagsAppend(t *testing.T) {
 	e := NewEvent("hello", "world")
-	e.Tags = []string{"tag1", "tag2"}
-	eventEncoded, err := e.Encode("tag3", "tag4")
+	e.Tags = append(e.Tags, "tag1", "tag2")
+	eventEncoded, err := encodeEvent(e)
 	require.NoError(t, err)
-	assert.Equal(t, "_e{5,5}:hello|world|#tag3,tag4,tag1,tag2", eventEncoded)
+	assert.Equal(t, "_e{5,5}:hello|world|#tag1,tag2", eventEncoded)
 	assert.Len(t, e.Tags, 2)
 }
