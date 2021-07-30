@@ -2,7 +2,6 @@ package statsd
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,10 +15,7 @@ func (w *mockedWriter) Write(data []byte) (n int, err error) {
 	args := w.Called(data)
 	return args.Int(0), args.Error(1)
 }
-func (w *mockedWriter) SetWriteTimeout(d time.Duration) error {
-	args := w.Called(d)
-	return args.Error(0)
-}
+
 func (w *mockedWriter) Close() error {
 	args := w.Called()
 	return args.Error(0)

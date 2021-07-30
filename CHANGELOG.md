@@ -7,6 +7,8 @@
 ## Breaking changes
 
 - `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
+- `WithWriteTimeoutUDS` option has been renamed `WithWriteTimeout` since it also impact named pipe transport.
+- `SetWriteTimeout` method has been removed in favor of `WithWriteTimeout` option.
 
 # 4.8.2 / 2021-09-06
 

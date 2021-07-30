@@ -2,8 +2,11 @@
 
 package statsd
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
-func newWindowsPipeWriter(pipepath string) (statsdWriter, error) {
+func newWindowsPipeWriter(pipepath string, writeTimeout time.Duration) (statsdWriter, error) {
 	return nil, errors.New("Windows Named Pipes are only supported on Windows")
 }

@@ -27,5 +27,4 @@ func TestNoOpClient(t *testing.T) {
 	a.Nil(c.SimpleServiceCheck("asd", Ok))
 	a.Nil(c.Close())
 	a.Nil(c.Flush())
-	a.Nil(c.SetWriteTimeout(time.Second))
 }
