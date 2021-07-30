@@ -14,6 +14,8 @@
   + `WriterNameUDS`
   + `WriterWindowsPipe`
   + `TelemetryInterval`
+- Field `Client.Namespace` is now private, please use the `WithNamespace` option.
+- Field `Client.Tags` is now private, please use the `WithTags` option.
 
 # 4.8.2 / 2021-09-06
 

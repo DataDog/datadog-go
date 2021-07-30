@@ -32,7 +32,7 @@ type telemetryClient struct {
 func newTelemetryClient(c *Client, transport string) *telemetryClient {
 	t := &telemetryClient{
 		c:          c,
-		tags:       append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
+		tags:       append(c.tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
 		tagsByType: map[metricType][]string{},
 	}
 

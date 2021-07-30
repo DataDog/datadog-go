@@ -16,31 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var dogstatsdTests = []struct {
-	GlobalNamespace string
-	GlobalTags      []string
-	Method          string
-	Metric          string
-	Value           interface{}
-	Tags            []string
-	Rate            float64
-	Expected        string
-}{
-	{"", nil, "Gauge", "test.gauge", 1.0, nil, 1.0, "test.gauge:1|g\n"},
-	{"", nil, "Gauge", "test.gauge", 1.0, nil, 0.999999, "test.gauge:1|g|@0.999999\n"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 1.0, "test.gauge:1|g|#tagA\n"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA", "tagB"}, 1.0, "test.gauge:1|g|#tagA,tagB\n"},
-	{"", nil, "Gauge", "test.gauge", 1.0, []string{"tagA"}, 0.999999, "test.gauge:1|g|@0.999999|#tagA\n"},
-	{"", nil, "Count", "test.count", int64(1), []string{"tagA"}, 1.0, "test.count:1|c|#tagA\n"},
-	{"", nil, "Count", "test.count", int64(-1), []string{"tagA"}, 1.0, "test.count:-1|c|#tagA\n"},
-	{"", nil, "Histogram", "test.histogram", 2.3, []string{"tagA"}, 1.0, "test.histogram:2.3|h|#tagA\n"},
-	{"", nil, "Distribution", "test.distribution", 2.3, []string{"tagA"}, 1.0, "test.distribution:2.3|d|#tagA\n"},
-	{"", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagA\n"},
-	{"flubber.", nil, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "flubber.test.set:uuid|s|#tagA\n"},
-	{"", []string{"tagC"}, "Set", "test.set", "uuid", []string{"tagA"}, 1.0, "test.set:uuid|s|#tagC,tagA\n"},
-	{"", nil, "Count", "test.count", int64(1), []string{"hello\nworld"}, 1.0, "test.count:1|c|#helloworld\n"},
-}
-
 type testUnixgramServer struct {
 	tmpDir string
 	*net.UnixConn
@@ -98,8 +73,8 @@ func (suite *UdsTestSuite) TestClientUDS() {
 	}
 
 	for _, tt := range dogstatsdTests {
-		client.Namespace = tt.GlobalNamespace
-		client.Tags = tt.GlobalTags
+		client.namespace = tt.GlobalNamespace
+		client.tags = tt.GlobalTags
 		method := reflect.ValueOf(client).MethodByName(tt.Method)
 		e := method.Call([]reflect.Value{
 			reflect.ValueOf(tt.Metric),
