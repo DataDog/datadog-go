@@ -18,16 +18,6 @@ var (
 	defaultAddr = "localhost:1201"
 )
 
-type statsdWriterWrapper struct{}
-
-func (statsdWriterWrapper) Close() error {
-	return nil
-}
-
-func (statsdWriterWrapper) Write(p []byte) (n int, err error) {
-	return 0, nil
-}
-
 func assertNotPanics(t *testing.T, f func()) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -67,6 +57,16 @@ func TestNilError(t *testing.T) {
 			t.Errorf("Test case %d: expected ErrNoClient, got %#v", i, err)
 		}
 	}
+}
+
+type statsdWriterWrapper struct{}
+
+func (statsdWriterWrapper) Close() error {
+	return nil
+}
+
+func (statsdWriterWrapper) Write(p []byte) (n int, err error) {
+	return 0, nil
 }
 
 func TestCustomWriterBufferConfiguration(t *testing.T) {
@@ -148,8 +148,8 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	client, err := New(defaultAddr, WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
 
-	assert.Equal(t, client.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, client.Namespace, "")
+	assert.Equal(t, client.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, client.namespace, "")
 	assert.Equal(t, client.workersMode, MutexMode)
 	assert.Equal(t, client.addrOption, defaultAddr)
 	assert.Len(t, client.options, 1)
@@ -157,8 +157,8 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"), WithChannelMode())
 	require.Nil(t, err, fmt.Sprintf("failed to clone client: %s", err))
 
-	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, cloneClient.Namespace, "test.")
+	assert.Equal(t, cloneClient.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, cloneClient.namespace, "test.")
 	assert.Equal(t, cloneClient.workersMode, ChannelMode)
 	assert.Equal(t, cloneClient.addrOption, defaultAddr)
 	assert.Len(t, cloneClient.options, 3)
@@ -390,8 +390,8 @@ func TestEnvTags(t *testing.T) {
 		expectedTags,
 	)
 
-	sort.Strings(client.Tags)
-	assert.Equal(t, client.Tags, expectedTags)
+	sort.Strings(client.tags)
+	assert.Equal(t, client.tags, expectedTags)
 	ts.sendAllAndAssert(t, client)
 }
 
@@ -422,8 +422,8 @@ func TestEnvTagsWithCustomTags(t *testing.T) {
 	ts.sendAllAndAssert(t, client)
 
 	sort.Strings(expectedTags)
-	sort.Strings(client.Tags)
-	assert.Equal(t, client.Tags, expectedTags)
+	sort.Strings(client.tags)
+	assert.Equal(t, client.tags, expectedTags)
 }
 
 func TestEnvTagsEmptyString(t *testing.T) {
@@ -448,6 +448,6 @@ func TestEnvTagsEmptyString(t *testing.T) {
 		nil,
 	)
 
-	assert.Len(t, client.Tags, 0)
+	assert.Len(t, client.tags, 0)
 	ts.sendAllAndAssert(t, client)
 }
