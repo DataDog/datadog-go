@@ -150,7 +150,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 
 	assert.Equal(t, client.tags, []string{"tag1", "tag2"})
 	assert.Equal(t, client.namespace, "")
-	assert.Equal(t, client.workersMode, MutexMode)
+	assert.Equal(t, client.workersMode, mutexMode)
 	assert.Equal(t, client.addrOption, defaultAddr)
 	assert.Len(t, client.options, 1)
 
@@ -159,7 +159,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 
 	assert.Equal(t, cloneClient.tags, []string{"tag1", "tag2"})
 	assert.Equal(t, cloneClient.namespace, "test.")
-	assert.Equal(t, cloneClient.workersMode, ChannelMode)
+	assert.Equal(t, cloneClient.workersMode, channelMode)
 	assert.Equal(t, cloneClient.addrOption, defaultAddr)
 	assert.Len(t, cloneClient.options, 3)
 }
@@ -259,50 +259,50 @@ func TestGroupClient(t *testing.T) {
 
 	testMap := map[string]testCase{
 		"MutexMode": testCase{
-			[]Option{WithBufferShardCount(1)},
+			[]Option{WithWorkersCount(1)},
 			sendAllMetrics,
 			func(*Client) {},
 		},
 		"ChannelMode": testCase{
-			[]Option{WithChannelMode(), WithBufferShardCount(1)},
+			[]Option{WithChannelMode(), WithWorkersCount(1)},
 			sendAllMetrics,
 			func(*Client) {},
 		},
 		"BasicAggregation + Close": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
+			[]Option{WithClientSideAggregation(), WithWorkersCount(1)},
 			sendBasicMetrics,
 			func(c *Client) { c.Close() },
 		},
 		"BasicAggregation all metric + Close": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
+			[]Option{WithClientSideAggregation(), WithWorkersCount(1)},
 			sendAllMetricsWithBasicAggregation,
 			func(c *Client) { c.Close() },
 		},
 		"BasicAggregation + Flush": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
+			[]Option{WithClientSideAggregation(), WithWorkersCount(1)},
 			sendBasicMetrics,
 			func(c *Client) { c.Flush() },
 		},
 		"BasicAggregationChannelMode + Close": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
+			[]Option{WithClientSideAggregation(), WithWorkersCount(1), WithChannelMode()},
 			sendBasicMetrics,
 			func(c *Client) { c.Close() },
 		},
 		"BasicAggregationChannelMode + Flush": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
+			[]Option{WithClientSideAggregation(), WithWorkersCount(1), WithChannelMode()},
 			sendBasicMetrics,
 			func(c *Client) { c.Flush() },
 		},
 		"ExtendedAggregation + Close": testCase{
-			[]Option{WithExtendedClientSideAggregation(), WithBufferShardCount(1)},
+			[]Option{WithExtendedClientSideAggregation(), WithWorkersCount(1)},
 			sendExtendedMetricsWithExtentedAggregation,
 			func(c *Client) { c.Close() },
 		},
 		"ExtendedAggregation + Close + ChannelMode": testCase{
-			[]Option{WithExtendedClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
+			[]Option{WithExtendedClientSideAggregation(), WithWorkersCount(1), WithChannelMode()},
 			sendExtendedMetricsWithExtentedAggregation,
 			func(c *Client) {
-				// since we're using ChannelMode we give a second to the worker to
+				// since we're using channelMode we give a second to the worker to
 				// empty the channel. A second should be more than enough to pull 6
 				// items from a channel.
 				time.Sleep(1 * time.Second)
