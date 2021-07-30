@@ -112,9 +112,9 @@ func (w *worker) writeMetricUnsafe(m metric) error {
 	case timing:
 		return w.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case event:
-		return w.buffer.writeEvent(*m.evalue, m.globalTags)
+		return w.buffer.writeEvent(m.evalue, m.globalTags)
 	case serviceCheck:
-		return w.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
+		return w.buffer.writeServiceCheck(m.scvalue, m.globalTags)
 	case histogramAggregated:
 		return w.writeAggregatedMetricUnsafe(m, histogramSymbol, -1)
 	case distributionAggregated:
