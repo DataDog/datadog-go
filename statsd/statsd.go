@@ -190,10 +190,10 @@ type ClientInterface interface {
 type Client struct {
 	// Sender handles the underlying networking protocol
 	sender *sender
-	// Namespace to prepend to all statsd calls
-	Namespace string
-	// Tags are global tags to be added to every statsd call
-	Tags []string
+	// namespace to prepend to all statsd calls
+	namespace string
+	// tags are global tags to be added to every statsd call
+	tags []string
 	// skipErrors turns off error passing and allows UDS to emulate UDP behaviour
 	SkipErrors     bool
 	flushTime      time.Duration
@@ -317,14 +317,14 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 
 func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, error) {
 	c := Client{
-		Namespace: o.Namespace,
-		Tags:      o.Tags,
+		namespace: o.Namespace,
+		tags:      o.Tags,
 		metrics:   &ClientMetrics{},
 	}
 	// Inject values of DD_* environment variables as global tags.
 	for _, mapping := range ddEnvTagsMapping {
 		if value := os.Getenv(mapping.envName); value != "" {
-			c.Tags = append(c.Tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
+			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
 	}
 
@@ -494,8 +494,8 @@ func (c *Client) send(m metric) error {
 
 // sendBlocking is used by the aggregator to inject aggregated metrics.
 func (c *Client) sendBlocking(m metric) error {
-	m.globalTags = c.Tags
-	m.namespace = c.Namespace
+	m.globalTags = c.tags
+	m.namespace = c.namespace
 
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
@@ -523,7 +523,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Count tracks how many times something happened per second.
@@ -535,7 +535,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c.agg != nil {
 		return c.agg.count(name, value, tags)
 	}
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -547,7 +547,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.aggExtended != nil {
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
-	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -559,7 +559,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.aggExtended != nil {
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
-	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Decr is just Count of -1
@@ -581,7 +581,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c.agg != nil {
 		return c.agg.set(name, value, tags)
 	}
-	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -599,7 +599,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c.aggExtended != nil {
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
-	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Event sends the provided Event.
@@ -608,7 +608,7 @@ func (c *Client) Event(e *Event) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalEvents, 1)
-	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -623,7 +623,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
-	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.Tags, namespace: c.Namespace})
+	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.

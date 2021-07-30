@@ -1,6 +1,6 @@
 // Copyright 2013 Ooyala, Inc.
 
-package statsd_test
+package statsd
 
 import (
 	"io"
@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DataDog/datadog-go/statsd"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,16 +53,12 @@ func TestClientUDP(t *testing.T) {
 	}
 	defer server.Close()
 
-	client, err := statsd.New(addr)
+	client, err := New(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	clientTest(t, server, client)
-}
-
-type statsdWriterWrapper struct {
-	io.WriteCloser
 }
 
 func TestClientWithConn(t *testing.T) {
@@ -72,7 +67,7 @@ func TestClientWithConn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := statsd.NewWithWriter(statsdWriterWrapper{conn})
+	client, err := NewWithWriter(conn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,10 +75,10 @@ func TestClientWithConn(t *testing.T) {
 	clientTest(t, server, client)
 }
 
-func clientTest(t *testing.T, server io.Reader, client *statsd.Client) {
+func clientTest(t *testing.T, server io.Reader, client *Client) {
 	for _, tt := range dogstatsdTests {
-		client.Namespace = tt.GlobalNamespace
-		client.Tags = tt.GlobalTags
+		client.namespace = tt.GlobalNamespace
+		client.tags = tt.GlobalTags
 		method := reflect.ValueOf(client).MethodByName(tt.Method)
 		e := method.Call([]reflect.Value{
 			reflect.ValueOf(tt.Metric),
@@ -121,13 +116,13 @@ func TestBufferedClient(t *testing.T) {
 	defer server.Close()
 
 	bufferLength := 9
-	client, err := statsd.NewBuffered(addr, bufferLength)
+	client, err := NewBuffered(addr, bufferLength)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client.Namespace = "foo."
-	client.Tags = []string{"dd:2"}
+	client.namespace = "foo."
+	client.tags = []string{"dd:2"}
 
 	dur, _ := time.ParseDuration("123us")
 
@@ -173,7 +168,7 @@ func TestBufferedClient(t *testing.T) {
 		}
 	}
 
-	client.Event(&statsd.Event{Title: "title1", Text: "text1", Priority: statsd.Normal, AlertType: statsd.Success, Tags: []string{"tagg"}})
+	client.Event(&Event{Title: "title1", Text: "text1", Priority: Normal, AlertType: Success, Tags: []string{"tagg"}})
 	client.SimpleEvent("event1", "text1")
 	err = client.Flush()
 
@@ -210,7 +205,7 @@ func TestBufferedClient(t *testing.T) {
 }
 
 func TestClosePanic(t *testing.T) {
-	c, err := statsd.New("localhost:8125")
+	c, err := New("localhost:8125")
 	assert.NoError(t, err)
 	c.Close()
 	c.Close()
@@ -218,7 +213,7 @@ func TestClosePanic(t *testing.T) {
 
 func TestCloseRace(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		c, err := statsd.New("localhost:8125")
+		c, err := New("localhost:8125")
 		assert.NoError(t, err)
 		start := make(chan struct{})
 		var wg sync.WaitGroup
