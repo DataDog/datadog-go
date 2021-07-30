@@ -66,10 +66,6 @@ type statsdWriterWrapper struct {
 	io.WriteCloser
 }
 
-func (statsdWriterWrapper) SetWriteTimeout(time.Duration) error {
-	return nil
-}
-
 func TestClientWithConn(t *testing.T) {
 	server, conn, err := os.Pipe()
 	if err != nil {

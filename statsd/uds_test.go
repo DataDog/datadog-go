@@ -184,7 +184,7 @@ func TestConnectionNotUnset(t *testing.T) {
 	ts := newTestUnixgramServer(t)
 	defer ts.Cleanup()
 
-	writer, err := newUDSWriter(ts.LocalAddr().String())
+	writer, err := newUDSWriter(ts.LocalAddr().String(), 100*time.Millisecond)
 	assert.NoError(t, err)
 
 	_, err = writer.Write([]byte("test.gauge:1|g"))
