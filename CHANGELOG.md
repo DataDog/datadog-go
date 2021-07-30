@@ -9,6 +9,11 @@
 - `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
 - `WithWriteTimeoutUDS` option has been renamed `WithWriteTimeout` since it also impact named pipe transport.
 - `SetWriteTimeout` method has been removed in favor of `WithWriteTimeout` option.
+- The following internal fields and methods have been removed from the public API:
+  + `WriterNameUDP`
+  + `WriterNameUDS`
+  + `WriterWindowsPipe`
+  + `TelemetryInterval`
 
 # 4.8.1 / 2021-07-09
 
