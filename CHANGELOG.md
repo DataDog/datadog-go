@@ -18,6 +18,8 @@
 - Field `Client.Tags` is now private, please use the `WithTags` option.
 - Method `NewBuffered` has been removed in favor of the `WithMaxMessagesPerPayload()` option.
   Instead of `statsd.NewBuffered(add, bufferLength)` please use `statsd.New(addr, statsd.WithMaxMessagesPerPayload(bufferLength))`
+- `Encode` method for `Event` and `ServiceCheck` have been removed.
+- The `Check` method for Events and ServiceChecks methods now use pointer receivers.
 
 # 4.8.1 / 2021-07-09
 

@@ -123,7 +123,7 @@ func TestFormatTagRemoveNewLines(t *testing.T) {
 
 func TestFormatEvent(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
 		Text:  "EventText",
 	}, []string{})
@@ -132,7 +132,7 @@ func TestFormatEvent(t *testing.T) {
 
 func TestFormatEventEscapeText(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
 		Text:  "\nEventText\nLine2\n\nLine4\n",
 	}, []string{})
@@ -141,7 +141,7 @@ func TestFormatEventEscapeText(t *testing.T) {
 
 func TestFormatEventTimeStamp(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:     "EvenTitle",
 		Text:      "EventText",
 		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
@@ -151,7 +151,7 @@ func TestFormatEventTimeStamp(t *testing.T) {
 
 func TestFormatEventHostname(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:    "EvenTitle",
 		Text:     "EventText",
 		Hostname: "hostname",
@@ -161,7 +161,7 @@ func TestFormatEventHostname(t *testing.T) {
 
 func TestFormatEventAggregationKey(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:          "EvenTitle",
 		Text:           "EventText",
 		AggregationKey: "aggregationKey",
@@ -171,7 +171,7 @@ func TestFormatEventAggregationKey(t *testing.T) {
 
 func TestFormatEventPriority(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:    "EvenTitle",
 		Text:     "EventText",
 		Priority: "priority",
@@ -181,7 +181,7 @@ func TestFormatEventPriority(t *testing.T) {
 
 func TestFormatEventSourceTypeName(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:          "EvenTitle",
 		Text:           "EventText",
 		SourceTypeName: "sourceTypeName",
@@ -191,7 +191,7 @@ func TestFormatEventSourceTypeName(t *testing.T) {
 
 func TestFormatEventAlertType(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:     "EvenTitle",
 		Text:      "EventText",
 		AlertType: "alertType",
@@ -201,7 +201,7 @@ func TestFormatEventAlertType(t *testing.T) {
 
 func TestFormatEventOneTag(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
 		Text:  "EventText",
 	}, []string{"tag:test"})
@@ -210,7 +210,7 @@ func TestFormatEventOneTag(t *testing.T) {
 
 func TestFormatEventTwoTag(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
 		Text:  "EventText",
 		Tags:  []string{"tag1:test"},
@@ -220,7 +220,7 @@ func TestFormatEventTwoTag(t *testing.T) {
 
 func TestFormatEventAllOptions(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{
+	buffer = appendEvent(buffer, &Event{
 		Title:          "EvenTitle",
 		Text:           "EventText",
 		Timestamp:      time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
@@ -236,13 +236,13 @@ func TestFormatEventAllOptions(t *testing.T) {
 
 func TestFormatEventNil(t *testing.T) {
 	var buffer []byte
-	buffer = appendEvent(buffer, Event{}, []string{})
+	buffer = appendEvent(buffer, &Event{}, []string{})
 	assert.Equal(t, `_e{0,0}:|`, string(buffer))
 }
 
 func TestFormatServiceCheck(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:   "service.check",
 		Status: Ok,
 	}, []string{})
@@ -251,7 +251,7 @@ func TestFormatServiceCheck(t *testing.T) {
 
 func TestFormatServiceCheckEscape(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:    "service.check",
 		Status:  Ok,
 		Message: "\n\nmessagem:hello...\n\nm:aa\nm:m",
@@ -261,7 +261,7 @@ func TestFormatServiceCheckEscape(t *testing.T) {
 
 func TestFormatServiceCheckTimestamp(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:      "service.check",
 		Status:    Ok,
 		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
@@ -271,7 +271,7 @@ func TestFormatServiceCheckTimestamp(t *testing.T) {
 
 func TestFormatServiceCheckHostname(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:     "service.check",
 		Status:   Ok,
 		Hostname: "hostname",
@@ -281,7 +281,7 @@ func TestFormatServiceCheckHostname(t *testing.T) {
 
 func TestFormatServiceCheckMessage(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:    "service.check",
 		Status:  Ok,
 		Message: "message",
@@ -291,7 +291,7 @@ func TestFormatServiceCheckMessage(t *testing.T) {
 
 func TestFormatServiceCheckOneTag(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:   "service.check",
 		Status: Ok,
 		Tags:   []string{"tag:tag"},
@@ -301,7 +301,7 @@ func TestFormatServiceCheckOneTag(t *testing.T) {
 
 func TestFormatServiceCheckTwoTag(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:   "service.check",
 		Status: Ok,
 		Tags:   []string{"tag1:tag1"},
@@ -311,7 +311,7 @@ func TestFormatServiceCheckTwoTag(t *testing.T) {
 
 func TestFormatServiceCheckAllOptions(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:      "service.check",
 		Status:    Ok,
 		Timestamp: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
@@ -324,7 +324,7 @@ func TestFormatServiceCheckAllOptions(t *testing.T) {
 
 func TestFormatServiceCheckNil(t *testing.T) {
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, ServiceCheck{}, nil)
+	buffer = appendServiceCheck(buffer, &ServiceCheck{}, nil)
 	assert.Equal(t, `_sc||0`, string(buffer))
 }
 

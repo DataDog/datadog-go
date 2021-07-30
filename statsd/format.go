@@ -163,7 +163,7 @@ func appendEscapedEventText(buffer []byte, text string) []byte {
 	return buffer
 }
 
-func appendEvent(buffer []byte, event Event, globalTags []string) []byte {
+func appendEvent(buffer []byte, event *Event, globalTags []string) []byte {
 	escapedTextLen := escapedEventTextLen(event.Text)
 
 	buffer = append(buffer, "_e{"...)
@@ -227,7 +227,7 @@ func appendEscapedServiceCheckText(buffer []byte, text string) []byte {
 	return buffer
 }
 
-func appendServiceCheck(buffer []byte, serviceCheck ServiceCheck, globalTags []string) []byte {
+func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []string) []byte {
 	buffer = append(buffer, "_sc|"...)
 	buffer = append(buffer, serviceCheck.Name...)
 	buffer = append(buffer, '|')
