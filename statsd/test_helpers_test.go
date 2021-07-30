@@ -73,11 +73,11 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 		data:                []string{},
 		addr:                addr,
 		stopped:             make(chan struct{}),
-		aggregation:         opt.Aggregation,
-		extendedAggregation: opt.ExtendedAggregation,
-		telemetryEnabled:    opt.Telemetry,
+		aggregation:         opt.aggregation,
+		extendedAggregation: opt.extendedAggregation,
+		telemetryEnabled:    opt.telemetry,
 		telemetry:           testTelemetryData{},
-		namespace:           opt.Namespace,
+		namespace:           opt.namespace,
 	}
 
 	if tags != nil {

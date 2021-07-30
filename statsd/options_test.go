@@ -11,22 +11,22 @@ func TestDefaultOptions(t *testing.T) {
 	options, err := resolveOptions([]Option{})
 
 	assert.NoError(t, err)
-	assert.Equal(t, options.Namespace, DefaultNamespace)
-	assert.Equal(t, options.Tags, DefaultTags)
-	assert.Equal(t, options.MaxBytesPerPayload, DefaultMaxBytesPerPayload)
-	assert.Equal(t, options.MaxMessagesPerPayload, DefaultMaxMessagesPerPayload)
-	assert.Equal(t, options.BufferPoolSize, DefaultBufferPoolSize)
-	assert.Equal(t, options.BufferFlushInterval, DefaultBufferFlushInterval)
-	assert.Equal(t, options.BufferShardCount, DefaultBufferShardCount)
-	assert.Equal(t, options.SenderQueueSize, DefaultSenderQueueSize)
-	assert.Equal(t, options.WriteTimeout, DefaultWriteTimeout)
-	assert.Equal(t, options.Telemetry, DefaultTelemetry)
-	assert.Equal(t, options.ReceiveMode, DefaultReceivingMode)
-	assert.Equal(t, options.ChannelModeBufferSize, DefaultChannelModeBufferSize)
-	assert.Equal(t, options.AggregationFlushInterval, DefaultAggregationFlushInterval)
-	assert.Equal(t, options.Aggregation, DefaultAggregation)
-	assert.Equal(t, options.ExtendedAggregation, DefaultExtendedAggregation)
-	assert.Zero(t, options.TelemetryAddr)
+	assert.Equal(t, options.namespace, defaultNamespace)
+	assert.Equal(t, options.tags, defaultTags)
+	assert.Equal(t, options.maxBytesPerPayload, defaultMaxBytesPerPayload)
+	assert.Equal(t, options.maxMessagesPerPayload, defaultMaxMessagesPerPayload)
+	assert.Equal(t, options.bufferPoolSize, defaultBufferPoolSize)
+	assert.Equal(t, options.bufferFlushInterval, defaultBufferFlushInterval)
+	assert.Equal(t, options.workersCount, defaultWorkerCount)
+	assert.Equal(t, options.senderQueueSize, defaultSenderQueueSize)
+	assert.Equal(t, options.writeTimeout, defaultWriteTimeout)
+	assert.Equal(t, options.telemetry, defaultTelemetry)
+	assert.Equal(t, options.receiveMode, defaultReceivingMode)
+	assert.Equal(t, options.channelModeBufferSize, defaultChannelModeBufferSize)
+	assert.Equal(t, options.aggregationFlushInterval, defaultAggregationFlushInterval)
+	assert.Equal(t, options.aggregation, defaultAggregation)
+	assert.Equal(t, options.extendedAggregation, defaultExtendedAggregation)
+	assert.Zero(t, options.telemetryAddr)
 }
 
 func TestOptions(t *testing.T) {
@@ -50,7 +50,7 @@ func TestOptions(t *testing.T) {
 		WithMaxMessagesPerPayload(testMaxMessagePerPayload),
 		WithBufferPoolSize(testBufferPoolSize),
 		WithBufferFlushInterval(testBufferFlushInterval),
-		WithBufferShardCount(testBufferShardCount),
+		WithWorkersCount(testBufferShardCount),
 		WithSenderQueueSize(testSenderQueueSize),
 		WithWriteTimeout(testWriteTimeout),
 		WithoutTelemetry(),
@@ -62,22 +62,22 @@ func TestOptions(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, options.Namespace, testNamespace)
-	assert.Equal(t, options.Tags, testTags)
-	assert.Equal(t, options.MaxBytesPerPayload, testMaxBytesPerPayload)
-	assert.Equal(t, options.MaxMessagesPerPayload, testMaxMessagePerPayload)
-	assert.Equal(t, options.BufferPoolSize, testBufferPoolSize)
-	assert.Equal(t, options.BufferFlushInterval, testBufferFlushInterval)
-	assert.Equal(t, options.BufferShardCount, testBufferShardCount)
-	assert.Equal(t, options.SenderQueueSize, testSenderQueueSize)
-	assert.Equal(t, options.WriteTimeout, testWriteTimeout)
-	assert.Equal(t, options.Telemetry, false)
-	assert.Equal(t, options.ReceiveMode, ChannelMode)
-	assert.Equal(t, options.ChannelModeBufferSize, testChannelBufferSize)
-	assert.Equal(t, options.AggregationFlushInterval, testAggregationWindow)
-	assert.Equal(t, options.Aggregation, true)
-	assert.Equal(t, options.ExtendedAggregation, false)
-	assert.Equal(t, options.TelemetryAddr, testTelemetryAddr)
+	assert.Equal(t, options.namespace, testNamespace)
+	assert.Equal(t, options.tags, testTags)
+	assert.Equal(t, options.maxBytesPerPayload, testMaxBytesPerPayload)
+	assert.Equal(t, options.maxMessagesPerPayload, testMaxMessagePerPayload)
+	assert.Equal(t, options.bufferPoolSize, testBufferPoolSize)
+	assert.Equal(t, options.bufferFlushInterval, testBufferFlushInterval)
+	assert.Equal(t, options.workersCount, testBufferShardCount)
+	assert.Equal(t, options.senderQueueSize, testSenderQueueSize)
+	assert.Equal(t, options.writeTimeout, testWriteTimeout)
+	assert.Equal(t, options.telemetry, false)
+	assert.Equal(t, options.receiveMode, channelMode)
+	assert.Equal(t, options.channelModeBufferSize, testChannelBufferSize)
+	assert.Equal(t, options.aggregationFlushInterval, testAggregationWindow)
+	assert.Equal(t, options.aggregation, true)
+	assert.Equal(t, options.extendedAggregation, false)
+	assert.Equal(t, options.telemetryAddr, testTelemetryAddr)
 }
 
 func TestExtendedAggregation(t *testing.T) {
@@ -86,8 +86,8 @@ func TestExtendedAggregation(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, options.Aggregation, true)
-	assert.Equal(t, options.ExtendedAggregation, true)
+	assert.Equal(t, options.aggregation, true)
+	assert.Equal(t, options.extendedAggregation, true)
 }
 
 func TestResetOptions(t *testing.T) {
@@ -99,8 +99,8 @@ func TestResetOptions(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, options.ReceiveMode, MutexMode)
-	assert.Equal(t, options.Aggregation, false)
+	assert.Equal(t, options.receiveMode, mutexMode)
+	assert.Equal(t, options.aggregation, false)
 }
 func TestOptionsNamespaceWithoutDot(t *testing.T) {
 	testNamespace := "datadog"
@@ -110,5 +110,5 @@ func TestOptionsNamespaceWithoutDot(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, options.Namespace, testNamespace+".")
+	assert.Equal(t, options.namespace, testNamespace+".")
 }
