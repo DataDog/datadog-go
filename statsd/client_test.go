@@ -116,7 +116,7 @@ func TestBufferedClient(t *testing.T) {
 	defer server.Close()
 
 	bufferLength := 9
-	client, err := NewBuffered(addr, bufferLength)
+	client, err := New(addr, WithMaxMessagesPerPayload(bufferLength))
 	if err != nil {
 		t.Fatal(err)
 	}
