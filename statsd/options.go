@@ -24,8 +24,8 @@ var (
 	DefaultBufferShardCount = 32
 	// DefaultSenderQueueSize is the default value for the DefaultSenderQueueSize option
 	DefaultSenderQueueSize = 0
-	// DefaultWriteTimeoutUDS is the default value for the WriteTimeoutUDS option
-	DefaultWriteTimeoutUDS = 100 * time.Millisecond
+	// DefaultWriteTimeout is the default value for the WriteTimeout option
+	DefaultWriteTimeout = 100 * time.Millisecond
 	// DefaultTelemetry is the default value for the Telemetry option
 	DefaultTelemetry = true
 	// DefaultReceivingMode is the default behavior when sending metrics
@@ -69,8 +69,8 @@ type Options struct {
 	// The magic value 0 will set the option to the optimal size for the transport
 	// protocol used when creating the client: 2048 for UDP and 512 for UDS.
 	SenderQueueSize int
-	// WriteTimeoutUDS is the timeout after which a UDS packet is dropped.
-	WriteTimeoutUDS time.Duration
+	// WriteTimeout is the timeout after which a packet is dropped.
+	WriteTimeout time.Duration
 	// Telemetry is a set of metrics automatically injected by the client in the
 	// dogstatsd stream to be able to monitor the client itself.
 	Telemetry bool
@@ -119,7 +119,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		BufferFlushInterval:      DefaultBufferFlushInterval,
 		BufferShardCount:         DefaultBufferShardCount,
 		SenderQueueSize:          DefaultSenderQueueSize,
-		WriteTimeoutUDS:          DefaultWriteTimeoutUDS,
+		WriteTimeout:             DefaultWriteTimeout,
 		Telemetry:                DefaultTelemetry,
 		ReceiveMode:              DefaultReceivingMode,
 		ChannelModeBufferSize:    DefaultChannelModeBufferSize,
@@ -212,10 +212,10 @@ func WithSenderQueueSize(senderQueueSize int) Option {
 	}
 }
 
-// WithWriteTimeoutUDS sets the WriteTimeoutUDS option.
-func WithWriteTimeoutUDS(writeTimeoutUDS time.Duration) Option {
+// WithWriteTimeout sets the WriteTimeout option.
+func WithWriteTimeout(writeTimeout time.Duration) Option {
 	return func(o *Options) error {
-		o.WriteTimeoutUDS = writeTimeoutUDS
+		o.WriteTimeout = writeTimeout
 		return nil
 	}
 }

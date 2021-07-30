@@ -20,10 +20,6 @@ var (
 
 type statsdWriterWrapper struct{}
 
-func (statsdWriterWrapper) SetWriteTimeout(time.Duration) error {
-	return nil
-}
-
 func (statsdWriterWrapper) Close() error {
 	return nil
 }
@@ -44,7 +40,6 @@ func assertNotPanics(t *testing.T, f func()) {
 func TestNilError(t *testing.T) {
 	var c *Client
 	tests := []func() error{
-		func() error { return c.SetWriteTimeout(0) },
 		func() error { return c.Flush() },
 		func() error { return c.Close() },
 		func() error { return c.Count("", 0, nil, 1) },
