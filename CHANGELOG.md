@@ -9,6 +9,7 @@
 Many field/methods have been removed from the public API of the client to allow for the client internals to evolve
 more easily in the future without breaking the public API of the client.
 
+- The project now use go.mod file for its dependencies.
 - `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
 - `WithWriteTimeoutUDS` option has been renamed `WithWriteTimeout` since it also impact named pipe transport.
 - `SetWriteTimeout` method has been removed in favor of `WithWriteTimeout` option.
