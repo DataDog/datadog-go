@@ -13,6 +13,7 @@ package statsd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -250,7 +251,7 @@ func resolveAddr(addr string) string {
 	return addr
 }
 
-func createWriter(addr string, writeTimeout time.Duration) (statsdWriter, string, error) {
+func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, string, error) {
 	addr = resolveAddr(addr)
 	if addr == "" {
 		return nil, "", errors.New("No address passed and autodetection from environment failed")
@@ -292,7 +293,7 @@ func New(addr string, options ...Option) (*Client, error) {
 
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser
-func NewWithWriter(w statsdWriter, options ...Option) (*Client, error) {
+func NewWithWriter(w io.WriteCloser, options ...Option) (*Client, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
@@ -313,7 +314,7 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 	return New(c.addrOption, opt...)
 }
 
-func newWithWriter(w statsdWriter, o *Options, writerName string) (*Client, error) {
+func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, error) {
 	c := Client{
 		namespace: o.namespace,
 		tags:      o.tags,
