@@ -25,6 +25,7 @@ more easily in the future without breaking the public API of the client.
 - The `Check` method for Events and ServiceChecks methods now use pointer receivers.
 - All `Options` internals outside of the public API. Only the part needed by the client app are left in the public API.
   This also improve/clarify the `Options` documentation and usage.
+- `statsdWriter` have been removed from the API, `io.WriteCloser` can now be used instead.
 
 # 4.8.2 / 2021-09-06
 
