@@ -1,17 +1,9 @@
 package statsd
 
 import (
+	"io"
 	"sync/atomic"
 )
-
-// A statsdWriter offers a standard interface regardless of the underlying
-// protocol. For now UDS and UPD writers are available.
-// Attention: the underlying buffer of `data` is reused after a `statsdWriter.Write` call.
-// `statsdWriter.Write` must be synchronous.
-type statsdWriter interface {
-	Write(data []byte) (n int, err error)
-	Close() error
-}
 
 // SenderMetrics contains metrics about the health of the sender
 type SenderMetrics struct {
@@ -26,7 +18,7 @@ type SenderMetrics struct {
 }
 
 type sender struct {
-	transport   statsdWriter
+	transport   io.WriteCloser
 	pool        *bufferPool
 	queue       chan *statsdBuffer
 	metrics     *SenderMetrics
@@ -34,7 +26,7 @@ type sender struct {
 	flushSignal chan struct{}
 }
 
-func newSender(transport statsdWriter, queueSize int, pool *bufferPool) *sender {
+func newSender(transport io.WriteCloser, queueSize int, pool *bufferPool) *sender {
 	sender := &sender{
 		transport:   transport,
 		pool:        pool,
