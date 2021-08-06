@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.0.0 / 
+
+## Breaking changes
+
+- `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
+
 # 4.8.2 / 2021-09-06
 
 * [BETA][BUGFIX] Fix race condition in aggregation where two sample could overwrite each other when sampled for the first time. See [#225][]

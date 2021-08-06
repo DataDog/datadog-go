@@ -231,11 +231,6 @@ func TestGroupClient(t *testing.T) {
 			sendAllMetrics,
 			func(*Client) {},
 		},
-		"DevMode": testCase{
-			[]Option{WithDevMode()},
-			sendOneMetrics,
-			func(*Client) {},
-		},
 		"BasicAggregation + Close": testCase{
 			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
 			sendBasicMetrics,
