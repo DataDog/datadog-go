@@ -6,7 +6,7 @@
 
 ## Breaking changes
 
-- 'WithDevMode' option has been removed. The extended telemetry it enabled is now part of the default telemetry.
+- `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
 
 # 4.8.1 / 2021-07-09
 
