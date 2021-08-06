@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.0.0 / 
+
+## Breaking changes
+
+- `WithDevMode` option has been removed. The extended telemetry it enabled is now part of the default telemetry.
+
 # 4.8.1 / 2021-07-09
 
 * [BUGFIX] Prevent telemetry from using the client global namespace. See [#205][]

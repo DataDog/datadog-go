@@ -27,7 +27,6 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.Aggregation, DefaultAggregation)
 	assert.Equal(t, options.ExtendedAggregation, DefaultExtendedAggregation)
 	assert.Zero(t, options.TelemetryAddr)
-	assert.False(t, options.DevMode)
 }
 
 func TestOptions(t *testing.T) {
@@ -60,7 +59,6 @@ func TestOptions(t *testing.T) {
 		WithAggregationInterval(testAggregationWindow),
 		WithClientSideAggregation(),
 		WithTelemetryAddr(testTelemetryAddr),
-		WithDevMode(),
 	})
 
 	assert.NoError(t, err)
@@ -80,7 +78,6 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.Aggregation, true)
 	assert.Equal(t, options.ExtendedAggregation, false)
 	assert.Equal(t, options.TelemetryAddr, testTelemetryAddr)
-	assert.True(t, options.DevMode)
 }
 
 func TestExtendedAggregation(t *testing.T) {

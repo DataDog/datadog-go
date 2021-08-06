@@ -27,36 +27,32 @@ type telemetryClient struct {
 	tagsByType map[metricType][]string
 	sender     *sender
 	worker     *worker
-	devMode    bool
 }
 
-func newTelemetryClient(c *Client, transport string, devMode bool) *telemetryClient {
+func newTelemetryClient(c *Client, transport string) *telemetryClient {
 	t := &telemetryClient{
 		c:          c,
 		tags:       append(c.Tags, clientTelemetryTag, clientVersionTelemetryTag, "client_transport:"+transport),
 		tagsByType: map[metricType][]string{},
-		devMode:    devMode,
 	}
 
-	if devMode {
-		t.tagsByType[gauge] = append(append([]string{}, t.tags...), "metrics_type:gauge")
-		t.tagsByType[count] = append(append([]string{}, t.tags...), "metrics_type:count")
-		t.tagsByType[set] = append(append([]string{}, t.tags...), "metrics_type:set")
-		t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
-		t.tagsByType[histogram] = append(append([]string{}, t.tags...), "metrics_type:histogram")
-		t.tagsByType[distribution] = append(append([]string{}, t.tags...), "metrics_type:distribution")
-		t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
-	}
+	t.tagsByType[gauge] = append(append([]string{}, t.tags...), "metrics_type:gauge")
+	t.tagsByType[count] = append(append([]string{}, t.tags...), "metrics_type:count")
+	t.tagsByType[set] = append(append([]string{}, t.tags...), "metrics_type:set")
+	t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
+	t.tagsByType[histogram] = append(append([]string{}, t.tags...), "metrics_type:histogram")
+	t.tagsByType[distribution] = append(append([]string{}, t.tags...), "metrics_type:distribution")
+	t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
 	return t
 }
 
-func newTelemetryClientWithCustomAddr(c *Client, transport string, devMode bool, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
+func newTelemetryClientWithCustomAddr(c *Client, transport string, telemetryAddr string, pool *bufferPool) (*telemetryClient, error) {
 	telemetryWriter, _, err := createWriter(telemetryAddr)
 	if err != nil {
 		return nil, fmt.Errorf("Could not resolve telemetry address: %v", err)
 	}
 
-	t := newTelemetryClient(c, transport, devMode)
+	t := newTelemetryClient(c, transport)
 
 	// Creating a custom sender/worker with 1 worker in mutex mode for the
 	// telemetry that share the same bufferPool.
@@ -112,14 +108,12 @@ func (t *telemetryClient) flush() []metric {
 
 	clientMetrics := t.c.FlushTelemetryMetrics()
 	telemetryCount("datadog.dogstatsd.client.metrics", int64(clientMetrics.TotalMetrics), t.tags)
-	if t.devMode {
-		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsGauge), t.tagsByType[gauge])
-		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsCount), t.tagsByType[count])
-		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsHistogram), t.tagsByType[histogram])
-		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsDistribution), t.tagsByType[distribution])
-		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsSet), t.tagsByType[set])
-		telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsTiming), t.tagsByType[timing])
-	}
+	telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsGauge), t.tagsByType[gauge])
+	telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsCount), t.tagsByType[count])
+	telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsHistogram), t.tagsByType[histogram])
+	telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsDistribution), t.tagsByType[distribution])
+	telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsSet), t.tagsByType[set])
+	telemetryCount("datadog.dogstatsd.client.metrics_by_type", int64(clientMetrics.TotalMetricsTiming), t.tagsByType[timing])
 
 	telemetryCount("datadog.dogstatsd.client.events", int64(clientMetrics.TotalEvents), t.tags)
 	telemetryCount("datadog.dogstatsd.client.service_checks", int64(clientMetrics.TotalServiceChecks), t.tags)
@@ -137,14 +131,12 @@ func (t *telemetryClient) flush() []metric {
 
 	if aggMetrics := t.c.agg.flushTelemetryMetrics(); aggMetrics != nil {
 		telemetryCount("datadog.dogstatsd.client.aggregated_context", int64(aggMetrics.nbContext), t.tags)
-		if t.devMode {
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextGauge), t.tagsByType[gauge])
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextSet), t.tagsByType[set])
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextCount), t.tagsByType[count])
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextHistogram), t.tagsByType[histogram])
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextDistribution), t.tagsByType[distribution])
-			telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextTiming), t.tagsByType[timing])
-		}
+		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextGauge), t.tagsByType[gauge])
+		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextSet), t.tagsByType[set])
+		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextCount), t.tagsByType[count])
+		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextHistogram), t.tagsByType[histogram])
+		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextDistribution), t.tagsByType[distribution])
+		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(aggMetrics.nbContextTiming), t.tagsByType[timing])
 	}
 
 	return m
