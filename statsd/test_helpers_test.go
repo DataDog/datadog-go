@@ -57,7 +57,6 @@ type testServer struct {
 	tags      string
 	namespace string
 
-	devMode             bool
 	aggregation         bool
 	extendedAggregation bool
 	telemetry           testTelemetryData
@@ -74,7 +73,6 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 		data:                []string{},
 		addr:                addr,
 		stopped:             make(chan struct{}),
-		devMode:             opt.DevMode,
 		aggregation:         opt.Aggregation,
 		extendedAggregation: opt.ExtendedAggregation,
 		telemetryEnabled:    opt.Telemetry,
@@ -163,16 +161,10 @@ func (ts *testServer) wait(t *testing.T, expected []string, timeout int) {
 	nbExpectedMetric := len(expected)
 	// compute how many read we're expecting
 	if ts.telemetryEnabled {
-		nbExpectedMetric += 12 // 12 metrics by default
-		if ts.devMode {
-			nbExpectedMetric += 6 // dev mode add 6
-		}
+		nbExpectedMetric += 18 // 18 metrics by default
 
 		if ts.aggregation {
-			nbExpectedMetric += 1
-			if ts.devMode {
-				nbExpectedMetric += 6
-			}
+			nbExpectedMetric += 7
 		}
 	}
 
@@ -234,31 +226,24 @@ func (ts *testServer) getTelemetry() []string {
 		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped:%d|c%s", ts.telemetry.bytes_dropped, tags),
 		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped_queue:%d|c%s", ts.telemetry.bytes_dropped_queue, tags),
 		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped_writer:%d|c%s", ts.telemetry.bytes_dropped_writer, tags),
-	}
-	if ts.devMode {
-		metrics = append(metrics, []string{
-			fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.gauge, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:count", ts.telemetry.count, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.histogram, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.distribution, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:set", ts.telemetry.set, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:timing", ts.telemetry.timing, tags),
-		}...)
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.gauge, tags),
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:count", ts.telemetry.count, tags),
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.histogram, tags),
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.distribution, tags),
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:set", ts.telemetry.set, tags),
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:timing", ts.telemetry.timing, tags),
 	}
 
 	if ts.aggregation {
-		metrics = append(metrics, fmt.Sprintf("datadog.dogstatsd.client.aggregated_context:%d|c%s", ts.telemetry.aggregated_context, tags))
-
-		if ts.devMode {
-			metrics = append(metrics, []string{
-				fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.aggregated_gauge, tags),
-				fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:count", ts.telemetry.aggregated_count, tags),
-				fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:set", ts.telemetry.aggregated_set, tags),
-				fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_distribution, tags),
-				fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_histogram, tags),
-				fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_timing, tags),
-			}...)
-		}
+		metrics = append(metrics, []string{
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context:%d|c%s", ts.telemetry.aggregated_context, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.aggregated_gauge, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:count", ts.telemetry.aggregated_count, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:set", ts.telemetry.aggregated_set, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_distribution, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_histogram, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_timing, tags),
+		}...)
 	}
 	return metrics
 }
