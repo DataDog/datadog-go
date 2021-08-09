@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -51,6 +52,7 @@ type testServer struct {
 	conn      io.ReadCloser
 	data      []string
 	errors    []string
+	nbRead    int
 	proto     string
 	addr      string
 	stopped   chan struct{}
@@ -93,7 +95,12 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 		require.NoError(t, err)
 		ts.conn = conn
 	case "uds":
-		conn, err := net.Dial("unix", addr[:7]) // we remove the 'unix://' prefix
+		socketPath := addr[7:]
+		address, err := net.ResolveUnixAddr("unixgram", socketPath)
+		require.NoError(t, err)
+		conn, err := net.ListenUnixgram("unixgram", address)
+		require.NoError(t, err)
+		err = os.Chmod(socketPath, 0722)
 		require.NoError(t, err)
 		ts.conn = conn
 	default:
@@ -121,6 +128,10 @@ func (ts *testServer) start() {
 		}
 		payload := strings.Split(string(buffer[:n]), "\n")
 
+		if n != 0 {
+			ts.nbRead++
+		}
+
 		ts.Lock()
 		for _, s := range payload {
 			if s != "" {
@@ -131,20 +142,30 @@ func (ts *testServer) start() {
 	}
 }
 
-func (ts *testServer) assertMetric(t *testing.T, expected []string) {
-	if ts.telemetryEnabled {
-		expected = append(expected, ts.getTelemetry()...)
-	}
+func (ts *testServer) assertMetric(t *testing.T, received []string, expected []string) {
 	sort.Strings(expected)
-	received := ts.getData()
+	sort.Strings(received)
 
 	assert.Equal(t, len(expected), len(received), fmt.Sprintf("expected %d metrics but got actual %d", len(expected), len(received)))
 
-	max := len(received)
-	if len(expected) > max {
-		max = len(expected)
+	if os.Getenv("PRINT_METRICS") != "" && len(expected) != len(received) {
+		fmt.Printf("received:\n")
+		for _, m := range received {
+			fmt.Printf("	%s\n", m)
+		}
+
+		fmt.Printf("\nexpected:\n")
+		for _, m := range expected {
+			fmt.Printf("	%s\n", m)
+		}
 	}
-	for idx := 0; idx < max; idx++ {
+
+	min := len(received)
+	if len(expected) < min {
+		min = len(expected)
+	}
+
+	for idx := 0; idx < min; idx++ {
 		if strings.HasPrefix(expected[idx], "datadog.dogstatsd.client.bytes_sent") {
 			continue
 		}
@@ -155,25 +176,21 @@ func (ts *testServer) assertMetric(t *testing.T, expected []string) {
 	}
 }
 
-func (ts *testServer) wait(t *testing.T, expected []string, timeout int) {
+func (ts *testServer) stop() {
+	ts.conn.Close()
+	close(ts.stopped)
+}
+
+func (ts *testServer) wait(t *testing.T, nbExpectedMetric int, timeout int, waitForTelemetry bool) {
 	start := time.Now()
-
-	nbExpectedMetric := len(expected)
-	// compute how many read we're expecting
-	if ts.telemetryEnabled {
-		nbExpectedMetric += 18 // 18 metrics by default
-
-		if ts.aggregation {
-			nbExpectedMetric += 7
-		}
-	}
-
 	for {
 		ts.Lock()
-		if nbExpectedMetric <= len(ts.data) || time.Now().Sub(start) > time.Duration(timeout)*time.Second {
+		if nbExpectedMetric <= len(ts.data) {
 			ts.Unlock()
-			ts.conn.Close()
-			close(ts.stopped)
+			return
+		} else if time.Now().Sub(start) > time.Duration(timeout)*time.Second {
+			ts.Unlock()
+			require.FailNowf(t, "timeout while waiting for metrics", "%d metrics expected but only %d were received after %s\n", nbExpectedMetric, len(ts.data), time.Now().Sub(start))
 			return
 		}
 		ts.Unlock()
@@ -181,13 +198,36 @@ func (ts *testServer) wait(t *testing.T, expected []string, timeout int) {
 	}
 }
 
-// meta helper: most test send all typy and thenn assert
+func (ts *testServer) assertNbRead(t *testing.T, expectedNbRead int) {
+	assert.Equal(t, expectedNbRead, ts.nbRead, "expected %d read but got %d", expectedNbRead, ts.nbRead)
+}
+
+// meta helper: take a list of expected metrics and assert
+func (ts *testServer) assert(t *testing.T, client *Client, expectedMetrics []string) {
+	// First wait for all the metrics to be sent. This is important when using channel mode + aggregation as we
+	// don't know when all the metrics will be fully aggregated
+	ts.wait(t, len(expectedMetrics), 5, false)
+
+	if ts.telemetryEnabled {
+		// Now that all the metrics have been handled we can flush the telemetry before the default interval of
+		// 10s
+		client.telemetryClient.sendTelemetry()
+		expectedMetrics = append(expectedMetrics, ts.getTelemetry()...)
+		// Wait for the telemetry to arrive
+		ts.wait(t, len(expectedMetrics), 5, true)
+	}
+
+	client.Close()
+	ts.stop()
+	received := ts.getData()
+	ts.assertMetric(t, received, expectedMetrics)
+	assert.Empty(t, ts.errors)
+}
+
+// meta helper: most test send all types and then assert
 func (ts *testServer) sendAllAndAssert(t *testing.T, client *Client) {
 	expectedMetrics := ts.sendAllType(client)
-	client.Flush()
-	client.telemetryClient.sendTelemetry()
-	ts.wait(t, expectedMetrics, 5)
-	ts.assertMetric(t, expectedMetrics)
+	ts.assert(t, client, expectedMetrics)
 }
 
 func (ts *testServer) getData() []string {
@@ -196,7 +236,6 @@ func (ts *testServer) getData() []string {
 
 	data := make([]string, len(ts.data))
 	copy(data, ts.data)
-	sort.Strings(data)
 	return data
 }
 
@@ -323,6 +362,114 @@ func (ts *testServer) sendAllMetrics(c *Client) []string {
 		ts.namespace + "Set:value|s" + finalTags,
 		ts.namespace + "Timing:5000.000000|ms" + finalTags,
 		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags,
+	}
+}
+
+func (ts *testServer) sendAllMetricsForBasicAggregation(c *Client) []string {
+	tags := []string{"custom:1", "custom:2"}
+	c.Gauge("Gauge", 1, tags, 1)
+	c.Gauge("Gauge", 2, tags, 1)
+	c.Count("Count", 2, tags, 1)
+	c.Count("Count", 2, tags, 1)
+	c.Histogram("Histogram", 3, tags, 1)
+	c.Distribution("Distribution", 4, tags, 1)
+	c.Decr("Decr", tags, 1)
+	c.Decr("Decr", tags, 1)
+	c.Incr("Incr", tags, 1)
+	c.Incr("Incr", tags, 1)
+	c.Set("Set", "value", tags, 1)
+	c.Set("Set", "value", tags, 1)
+	c.Timing("Timing", 5*time.Second, tags, 1)
+	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
+
+	ts.telemetry.gauge += 2
+	ts.telemetry.histogram += 1
+	ts.telemetry.distribution += 1
+	ts.telemetry.count += 6
+	ts.telemetry.set += 2
+	ts.telemetry.timing += 2
+
+	if ts.aggregation {
+		ts.telemetry.aggregated_context += 5
+		ts.telemetry.aggregated_gauge += 1
+		ts.telemetry.aggregated_count += 3
+		ts.telemetry.aggregated_set += 1
+	}
+	if ts.extendedAggregation {
+		ts.telemetry.aggregated_context += 4
+		ts.telemetry.aggregated_histogram += 1
+		ts.telemetry.aggregated_distribution += 1
+		ts.telemetry.aggregated_timing += 2
+	}
+
+	finalTags := ts.getFinalTags(tags...)
+
+	return []string{
+		ts.namespace + "Gauge:2|g" + finalTags,
+		ts.namespace + "Count:4|c" + finalTags,
+		ts.namespace + "Histogram:3|h" + finalTags,
+		ts.namespace + "Distribution:4|d" + finalTags,
+		ts.namespace + "Decr:-2|c" + finalTags,
+		ts.namespace + "Incr:2|c" + finalTags,
+		ts.namespace + "Set:value|s" + finalTags,
+		ts.namespace + "Timing:5000.000000|ms" + finalTags,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags,
+	}
+}
+
+func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client) []string {
+	tags := []string{"custom:1", "custom:2"}
+	c.Gauge("Gauge", 1, tags, 1)
+	c.Gauge("Gauge", 2, tags, 1)
+	c.Count("Count", 2, tags, 1)
+	c.Count("Count", 2, tags, 1)
+	c.Histogram("Histogram", 3, tags, 1)
+	c.Histogram("Histogram", 3, tags, 1)
+	c.Distribution("Distribution", 4, tags, 1)
+	c.Distribution("Distribution", 4, tags, 1)
+	c.Decr("Decr", tags, 1)
+	c.Decr("Decr", tags, 1)
+	c.Incr("Incr", tags, 1)
+	c.Incr("Incr", tags, 1)
+	c.Set("Set", "value", tags, 1)
+	c.Set("Set", "value", tags, 1)
+	c.Timing("Timing", 5*time.Second, tags, 1)
+	c.Timing("Timing", 5*time.Second, tags, 1)
+	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
+	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
+
+	ts.telemetry.gauge += 2
+	ts.telemetry.histogram += 2
+	ts.telemetry.distribution += 2
+	ts.telemetry.count += 6
+	ts.telemetry.set += 2
+	ts.telemetry.timing += 4
+
+	if ts.aggregation {
+		ts.telemetry.aggregated_context += 5
+		ts.telemetry.aggregated_gauge += 1
+		ts.telemetry.aggregated_count += 3
+		ts.telemetry.aggregated_set += 1
+	}
+	if ts.extendedAggregation {
+		ts.telemetry.aggregated_context += 4
+		ts.telemetry.aggregated_histogram += 1
+		ts.telemetry.aggregated_distribution += 1
+		ts.telemetry.aggregated_timing += 2
+	}
+
+	finalTags := ts.getFinalTags(tags...)
+
+	return []string{
+		ts.namespace + "Gauge:2|g" + finalTags,
+		ts.namespace + "Count:4|c" + finalTags,
+		ts.namespace + "Histogram:3:3|h" + finalTags,
+		ts.namespace + "Distribution:4:4|d" + finalTags,
+		ts.namespace + "Decr:-2|c" + finalTags,
+		ts.namespace + "Incr:2|c" + finalTags,
+		ts.namespace + "Set:value|s" + finalTags,
+		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags,
+		ts.namespace + "TimeInMilliseconds:6.000000:6.000000|ms" + finalTags,
 	}
 }
 
