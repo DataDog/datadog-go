@@ -57,7 +57,7 @@ func setupUDPClientServer(b *testing.B, options []statsd.Option) (*statsd.Client
 }
 
 func setupClient(b *testing.B, transport string, extraOptions []statsd.Option) (*statsd.Client, io.Closer) {
-	options := []statsd.Option{statsd.WithMaxMessagesPerPayload(1024), statsd.WithoutTelemetry()}
+	options := []statsd.Option{statsd.WithMaxMessagesPerPayload(1024)}
 	options = append(options, extraOptions...)
 
 	if transport == writerNameUDP {

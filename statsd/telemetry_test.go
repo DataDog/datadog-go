@@ -1,8 +1,9 @@
 package statsd
 
 import (
+	"fmt"
 	"io"
-	"os"
+	"net"
 	"sort"
 	"strings"
 	"testing"
@@ -12,92 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTelemetry(t *testing.T) {
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		nil,
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
-
-func TestTelemetryWithNamespace(t *testing.T) {
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		nil,
-		WithNamespace("test_namespace"),
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
-
-func TestTelemetryChannelMode(t *testing.T) {
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		nil,
-		WithChannelMode(),
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
-
-func TestTelemetryWithGlobalTags(t *testing.T) {
-	orig := os.Getenv("DD_ENV")
-	os.Setenv("DD_ENV", "test")
-	defer os.Setenv("DD_ENV", orig)
-
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		[]string{"tag1", "tag2", "env:test"},
-		WithTags([]string{"tag1", "tag2"}),
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
-
-func TestTelemetryWithAggregationBasic(t *testing.T) {
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		nil,
-		WithClientSideAggregation(),
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
-
-func TestTelemetryWithExtendedAggregation(t *testing.T) {
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		nil,
-		WithExtendedClientSideAggregation(),
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
-
-func TestTelemetryAllOptions(t *testing.T) {
-	orig := os.Getenv("DD_ENV")
-	os.Setenv("DD_ENV", "test")
-	defer os.Setenv("DD_ENV", orig)
-
-	ts, client := newClientAndTestServer(t,
-		"udp",
-		"localhost:8765",
-		[]string{"tag1", "tag2", "env:test"},
-		WithClientSideAggregation(),
-		WithExtendedClientSideAggregation(),
-		WithTags([]string{"tag1", "tag2"}),
-		WithNamespace("test_namespace"),
-	)
-
-	ts.sendAllAndAssert(t, client)
-}
+//
+// Most of the behavior of the telemetry is tested in the end_to_end_test.go file
+//
 
 func TestTelemetryCustomAddr(t *testing.T) {
 	telAddr := "localhost:8764"
@@ -109,7 +27,10 @@ func TestTelemetryCustomAddr(t *testing.T) {
 		WithNamespace("test_namespace"),
 	)
 
-	server := getTestServer(t, telAddr)
+	udpAddr, err := net.ResolveUDPAddr("udp", telAddr)
+	require.Nil(t, err, fmt.Sprintf("could not resolve udp '%s': %s", telAddr, err))
+	server, err := net.ListenUDP("udp", udpAddr)
+	require.Nil(t, err, fmt.Sprintf("Could not listen to UDP addr: %s", err))
 	defer server.Close()
 
 	expectedResult := []string{

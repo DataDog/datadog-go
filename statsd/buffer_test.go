@@ -61,14 +61,6 @@ func TestBufferServiceCheck(t *testing.T) {
 	assert.Equal(t, "_sc|name|0|#tag:tag\n", string(buffer.bytes()))
 }
 
-func TestBufferFullItems(t *testing.T) {
-	buffer := newStatsdBuffer(1024, 1)
-	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
-	assert.Nil(t, err)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
-	assert.Equal(t, errBufferFull, err)
-}
-
 func TestBufferFullSize(t *testing.T) {
 	buffer := newStatsdBuffer(30, 10)
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
@@ -106,7 +98,12 @@ func TestBufferAggregated(t *testing.T) {
 	pos, err = buffer.writeAggregated([]byte("h"), "namespace.", []string{"tag:tag"}, "metric", []float64{1, 2, 3, 4}, "", 12, -1)
 	assert.Equal(t, errBufferFull, err)
 
-	// not enought size to start serializing
+	// not enought size to start serializing (tags and header too big)
+	buffer = newStatsdBuffer(4, 1)
+	pos, err = buffer.writeAggregated([]byte("h"), "namespace.", []string{"tag:tag"}, "metric", []float64{1, 2, 3, 4}, "", 12, -1)
+	assert.Equal(t, errBufferFull, err)
+
+	// not enought size to serializing one message
 	buffer = newStatsdBuffer(29, 1)
 	pos, err = buffer.writeAggregated([]byte("h"), "namespace.", []string{"tag:tag"}, "metric", []float64{1, 2, 3, 4}, "", 12, -1)
 	assert.Equal(t, errBufferFull, err)
@@ -139,4 +136,35 @@ func TestBufferAggregated(t *testing.T) {
 	assert.Equal(t, errPartialWrite, err)
 	assert.Equal(t, 2, pos)
 	assert.Equal(t, "namespace.metric:1:2|h|#tag:tag\n", string(buffer.bytes()))
+}
+
+func TestBufferMaxElement(t *testing.T) {
+	buffer := newStatsdBuffer(1024, 1)
+
+	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1)
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"})
+	assert.Equal(t, errBufferFull, err)
+
+	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"})
+	assert.Equal(t, errBufferFull, err)
 }

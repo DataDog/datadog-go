@@ -212,7 +212,6 @@ type Client struct {
 
 // statsdTelemetry contains telemetry metrics about the client
 type statsdTelemetry struct {
-	totalMetrics             uint64
 	totalMetricsGauge        uint64
 	totalMetricsCount        uint64
 	totalMetricsHistogram    uint64
