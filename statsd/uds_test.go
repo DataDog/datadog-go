@@ -3,166 +3,82 @@
 package statsd
 
 import (
-	"io/ioutil"
+	"fmt"
+	"math/rand"
 	"net"
 	"os"
-	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/require"
 )
 
-type testUnixgramServer struct {
-	tmpDir string
-	*net.UnixConn
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
-// newUnixgramServer returns a unix:// addr as well as a *net.UnixConn
-// server. Any error will fail the test given in param.
-func newTestUnixgramServer(t *testing.T) *testUnixgramServer {
-	dir, err := ioutil.TempDir("", "socket")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	addr := filepath.Join(dir, "dsd.socket")
-
-	udsAddr, err := net.ResolveUnixAddr("unixgram", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	server, err := net.ListenUnixgram("unixgram", udsAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &testUnixgramServer{dir, server}
-}
-
-func (ts *testUnixgramServer) Cleanup() {
-	os.RemoveAll(ts.tmpDir) // clean up
-	ts.Close()
-}
-
-func (ts *testUnixgramServer) AddrString() string {
-	return UnixAddressPrefix + ts.LocalAddr().String()
-}
-
-// UdsTestSuite contains generic tests valid for both UDS implementations
-type UdsTestSuite struct {
-	suite.Suite
-	options []Option
-}
-
-func TestUdsBlocking(t *testing.T) {
-	suite.Run(t, &UdsTestSuite{})
-}
-
-func (suite *UdsTestSuite) TestClientUDS() {
-	server := newTestUnixgramServer(suite.T())
-	defer server.Cleanup()
-
-	client, err := New(server.AddrString(), suite.options...)
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	for _, tt := range dogstatsdTests {
-		client.namespace = tt.GlobalNamespace
-		client.tags = tt.GlobalTags
-		method := reflect.ValueOf(client).MethodByName(tt.Method)
-		e := method.Call([]reflect.Value{
-			reflect.ValueOf(tt.Metric),
-			reflect.ValueOf(tt.Value),
-			reflect.ValueOf(tt.Tags),
-			reflect.ValueOf(tt.Rate)})[0]
-		errInter := e.Interface()
-		if errInter != nil {
-			suite.T().Fatal(errInter.(error))
-		}
-
-		bytes := make([]byte, 1024)
-		n, err := server.Read(bytes)
-		if err != nil {
-			suite.T().Fatal(err)
-		}
-		message := bytes[:n]
-		if string(message) != tt.Expected {
-			suite.T().Errorf("Expected: %s. Actual: %s", tt.Expected, string(message))
-		}
-	}
-}
-
-func (suite *UdsTestSuite) TestClientUDSConcurrent() {
-	server := newTestUnixgramServer(suite.T())
-	defer server.Cleanup()
-
-	client, err := New(server.AddrString(), WithMaxMessagesPerPayload(1))
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	numWrites := 10
-	for i := 0; i < numWrites; i++ {
-		go func() {
-			err := client.Gauge("test.gauge", 1.0, []string{}, 1)
-			if err != nil {
-				suite.T().Errorf("error outputting gauge %s", err)
-			}
-		}()
-	}
-
-	expected := "test.gauge:1|g\n"
-	var msgs []string
-	for {
-		bytes := make([]byte, 1024)
-		server.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
-		n, err := server.Read(bytes)
-		if err, ok := err.(net.Error); ok && err.Timeout() {
-			break
-		}
-		if err != nil {
-			suite.T().Fatal(err)
-		}
-		message := string(bytes[:n])
-		msgs = append(msgs, message)
-		if message != expected {
-			suite.T().Errorf("Got %s, expected %s", message, expected)
-		}
-	}
-
-	if len(msgs) != numWrites {
-		suite.T().Errorf("Got %d writes, expected %d. Data: %v", len(msgs), numWrites, msgs)
-	}
-}
-
-func (suite *UdsTestSuite) TestClientUDSClose() {
-	ts := newTestUnixgramServer(suite.T())
-	defer ts.Cleanup()
-
-	// close the server ourselves and test code when nobody's listening
-	ts.Close()
-	client, err := New(ts.AddrString())
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	assert.NotPanics(suite.T(), func() { client.Close() })
-}
-
-func TestConnectionNotUnset(t *testing.T) {
-	ts := newTestUnixgramServer(t)
-	defer ts.Cleanup()
-
-	writer, err := newUDSWriter(ts.LocalAddr().String(), 100*time.Millisecond)
+func TestNewUDSWriter(t *testing.T) {
+	w, err := newUDSWriter("/tmp/test.socket", 100*time.Millisecond)
+	assert.NotNil(t, w)
 	assert.NoError(t, err)
+}
 
-	_, err = writer.Write([]byte("test.gauge:1|g"))
-	assert.NoError(t, err)
-	assert.NotNil(t, writer.conn)
+func TestUDSWrite(t *testing.T) {
+	socketPath := fmt.Sprintf("/tmp/dsd_%d.socket", rand.Int())
+	defer os.Remove(socketPath)
+
+	address, err := net.ResolveUnixAddr("unixgram", socketPath)
+	require.NoError(t, err)
+	conn, err := net.ListenUnixgram("unixgram", address)
+	require.NoError(t, err)
+	err = os.Chmod(socketPath, 0722)
+	require.NoError(t, err)
+
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond)
+	require.Nil(t, err)
+	require.NotNil(t, w)
+
+	// test 2 Write: the first one should setup the connection
+	for i := 0; i < 2; i++ {
+		n, err := w.Write([]byte("some data"))
+		require.NoError(t, err)
+		assert.Equal(t, 9, n)
+
+		buffer := make([]byte, 100)
+		n, err = conn.Read(buffer)
+		require.NoError(t, err)
+		assert.Equal(t, "some data", string(buffer[:n]))
+	}
+}
+
+func TestUDSWriteUnsetConnection(t *testing.T) {
+	socketPath := fmt.Sprintf("/tmp/dsd_%d.socket", rand.Int())
+	defer os.Remove(socketPath)
+
+	address, err := net.ResolveUnixAddr("unixgram", socketPath)
+	require.NoError(t, err)
+	conn, err := net.ListenUnixgram("unixgram", address)
+	require.NoError(t, err)
+	err = os.Chmod(socketPath, 0722)
+	require.NoError(t, err)
+
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond)
+	require.Nil(t, err)
+	require.NotNil(t, w)
+
+	// test 2 Write: the first one should setup the connection
+	for i := 0; i < 2; i++ {
+		n, err := w.Write([]byte("some data"))
+		require.NoError(t, err)
+		assert.Equal(t, 9, n)
+
+		buffer := make([]byte, 100)
+		n, err = conn.Read(buffer)
+		require.NoError(t, err)
+		assert.Equal(t, "some data", string(buffer[:n]))
+
+		// Unset connection for the next Read
+		w.unsetConnection()
+	}
 }
