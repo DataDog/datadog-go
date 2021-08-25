@@ -185,7 +185,7 @@ func (ts *testServer) wait(t *testing.T, expected []string, timeout int) {
 func (ts *testServer) sendAllAndAssert(t *testing.T, client *Client) {
 	expectedMetrics := ts.sendAllType(client)
 	client.Flush()
-	client.telemetry.sendTelemetry()
+	client.telemetryClient.sendTelemetry()
 	ts.wait(t, expectedMetrics, 5)
 	ts.assertMetric(t, expectedMetrics)
 }

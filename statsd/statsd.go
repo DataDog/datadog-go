@@ -194,34 +194,34 @@ type Client struct {
 	// namespace to prepend to all statsd calls
 	namespace string
 	// tags are global tags to be added to every statsd call
-	tags           []string
-	flushTime      time.Duration
-	metrics        *ClientMetrics
-	telemetry      *telemetryClient
-	stop           chan struct{}
-	wg             sync.WaitGroup
-	workers        []*worker
-	closerLock     sync.Mutex
-	workersMode    receivingMode
-	aggregatorMode receivingMode
-	agg            *aggregator
-	aggExtended    *aggregator
-	options        []Option
-	addrOption     string
+	tags            []string
+	flushTime       time.Duration
+	telemetry       *statsdTelemetry
+	telemetryClient *telemetryClient
+	stop            chan struct{}
+	wg              sync.WaitGroup
+	workers         []*worker
+	closerLock      sync.Mutex
+	workersMode     receivingMode
+	aggregatorMode  receivingMode
+	agg             *aggregator
+	aggExtended     *aggregator
+	options         []Option
+	addrOption      string
 }
 
-// ClientMetrics contains metrics about the client
-type ClientMetrics struct {
-	TotalMetrics             uint64
-	TotalMetricsGauge        uint64
-	TotalMetricsCount        uint64
-	TotalMetricsHistogram    uint64
-	TotalMetricsDistribution uint64
-	TotalMetricsSet          uint64
-	TotalMetricsTiming       uint64
-	TotalEvents              uint64
-	TotalServiceChecks       uint64
-	TotalDroppedOnReceive    uint64
+// statsdTelemetry contains telemetry metrics about the client
+type statsdTelemetry struct {
+	totalMetrics             uint64
+	totalMetricsGauge        uint64
+	totalMetricsCount        uint64
+	totalMetricsHistogram    uint64
+	totalMetricsDistribution uint64
+	totalMetricsSet          uint64
+	totalMetricsTiming       uint64
+	totalEvents              uint64
+	totalServiceChecks       uint64
+	totalDroppedOnReceive    uint64
 }
 
 // Verify that Client implements the ClientInterface.
@@ -318,7 +318,7 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 	c := Client{
 		namespace: o.namespace,
 		tags:      o.tags,
-		metrics:   &ClientMetrics{},
+		telemetry: &statsdTelemetry{},
 	}
 	// Inject values of DD_* environment variables as global tags.
 	for _, mapping := range ddEnvTagsMapping {
@@ -395,15 +395,15 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 
 	if o.telemetry {
 		if o.telemetryAddr == "" {
-			c.telemetry = newTelemetryClient(&c, writerName)
+			c.telemetryClient = newTelemetryClient(&c, writerName, c.agg != nil)
 		} else {
 			var err error
-			c.telemetry, err = newTelemetryClientWithCustomAddr(&c, writerName, o.telemetryAddr, bufferPool, o.writeTimeout)
+			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, writerName, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout)
 			if err != nil {
 				return nil, err
 			}
 		}
-		c.telemetry.run(&c.wg, c.stop)
+		c.telemetryClient.run(&c.wg, c.stop)
 	}
 
 	return &c, nil
@@ -447,24 +447,21 @@ func (c *Client) Flush() error {
 	return nil
 }
 
-func (c *Client) FlushTelemetryMetrics() ClientMetrics {
-	cm := ClientMetrics{
-		TotalMetricsGauge:        atomic.SwapUint64(&c.metrics.TotalMetricsGauge, 0),
-		TotalMetricsCount:        atomic.SwapUint64(&c.metrics.TotalMetricsCount, 0),
-		TotalMetricsSet:          atomic.SwapUint64(&c.metrics.TotalMetricsSet, 0),
-		TotalMetricsHistogram:    atomic.SwapUint64(&c.metrics.TotalMetricsHistogram, 0),
-		TotalMetricsDistribution: atomic.SwapUint64(&c.metrics.TotalMetricsDistribution, 0),
-		TotalMetricsTiming:       atomic.SwapUint64(&c.metrics.TotalMetricsTiming, 0),
-		TotalEvents:              atomic.SwapUint64(&c.metrics.TotalEvents, 0),
-		TotalServiceChecks:       atomic.SwapUint64(&c.metrics.TotalServiceChecks, 0),
-		TotalDroppedOnReceive:    atomic.SwapUint64(&c.metrics.TotalDroppedOnReceive, 0),
-	}
+func (c *Client) flushTelemetryMetrics(t *Telemetry) {
+	t.TotalMetricsGauge = atomic.LoadUint64(&c.telemetry.totalMetricsGauge)
+	t.TotalMetricsCount = atomic.LoadUint64(&c.telemetry.totalMetricsCount)
+	t.TotalMetricsSet = atomic.LoadUint64(&c.telemetry.totalMetricsSet)
+	t.TotalMetricsHistogram = atomic.LoadUint64(&c.telemetry.totalMetricsHistogram)
+	t.TotalMetricsDistribution = atomic.LoadUint64(&c.telemetry.totalMetricsDistribution)
+	t.TotalMetricsTiming = atomic.LoadUint64(&c.telemetry.totalMetricsTiming)
+	t.TotalEvents = atomic.LoadUint64(&c.telemetry.totalEvents)
+	t.TotalServiceChecks = atomic.LoadUint64(&c.telemetry.totalServiceChecks)
+	t.TotalDroppedOnReceive = atomic.LoadUint64(&c.telemetry.totalDroppedOnReceive)
+}
 
-	cm.TotalMetrics = cm.TotalMetricsGauge + cm.TotalMetricsCount +
-		cm.TotalMetricsSet + cm.TotalMetricsHistogram +
-		cm.TotalMetricsDistribution + cm.TotalMetricsTiming
-
-	return cm
+// GetTelemetry return the telemetry metrics for the client since it started.
+func (c *Client) GetTelemetry() Telemetry {
+	return c.telemetryClient.getTelemetry()
 }
 
 func (c *Client) send(m metric) error {
@@ -475,7 +472,7 @@ func (c *Client) send(m metric) error {
 		select {
 		case worker.inputMetrics <- m:
 		default:
-			atomic.AddUint64(&c.metrics.TotalDroppedOnReceive, 1)
+			atomic.AddUint64(&c.telemetry.totalDroppedOnReceive, 1)
 		}
 		return nil
 	}
@@ -497,7 +494,7 @@ func (c *Client) sendToAggregator(mType metricType, name string, value float64, 
 		select {
 		case c.aggExtended.inputMetrics <- metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}:
 		default:
-			atomic.AddUint64(&c.metrics.TotalDroppedOnReceive, 1)
+			atomic.AddUint64(&c.telemetry.totalDroppedOnReceive, 1)
 		}
 		return nil
 	}
@@ -509,7 +506,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetricsGauge, 1)
+	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
@@ -521,7 +518,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetricsCount, 1)
+	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
 	if c.agg != nil {
 		return c.agg.count(name, value, tags)
 	}
@@ -533,7 +530,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetricsHistogram, 1)
+	atomic.AddUint64(&c.telemetry.totalMetricsHistogram, 1)
 	if c.aggExtended != nil {
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
@@ -545,7 +542,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetricsDistribution, 1)
+	atomic.AddUint64(&c.telemetry.totalMetricsDistribution, 1)
 	if c.aggExtended != nil {
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
@@ -567,7 +564,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetricsSet, 1)
+	atomic.AddUint64(&c.telemetry.totalMetricsSet, 1)
 	if c.agg != nil {
 		return c.agg.set(name, value, tags)
 	}
@@ -585,7 +582,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalMetricsTiming, 1)
+	atomic.AddUint64(&c.telemetry.totalMetricsTiming, 1)
 	if c.aggExtended != nil {
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
@@ -597,7 +594,7 @@ func (c *Client) Event(e *Event) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalEvents, 1)
+	atomic.AddUint64(&c.telemetry.totalEvents, 1)
 	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace})
 }
 
@@ -612,7 +609,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	atomic.AddUint64(&c.metrics.TotalServiceChecks, 1)
+	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
 	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace})
 }
 
