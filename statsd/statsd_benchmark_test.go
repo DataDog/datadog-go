@@ -81,7 +81,7 @@ func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, extraOption
 		}
 	})
 	client.Flush()
-	t := client.FlushTelemetryMetrics()
+	t := client.GetTelemetry()
 	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
 
 	b.StopTimer()
@@ -100,7 +100,7 @@ func benchmarkStatsdSameMetrics(b *testing.B, transport string, extraOptions ...
 		}
 	})
 	client.Flush()
-	t := client.FlushTelemetryMetrics()
+	t := client.GetTelemetry()
 	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
 
 	b.StopTimer()
