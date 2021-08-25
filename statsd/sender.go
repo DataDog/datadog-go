@@ -5,23 +5,21 @@ import (
 	"sync/atomic"
 )
 
-// SenderMetrics contains metrics about the health of the sender
-type SenderMetrics struct {
-	TotalSentBytes                uint64
-	TotalSentPayloads             uint64
-	TotalDroppedPayloads          uint64
-	TotalDroppedBytes             uint64
-	TotalDroppedPayloadsQueueFull uint64
-	TotalDroppedBytesQueueFull    uint64
-	TotalDroppedPayloadsWriter    uint64
-	TotalDroppedBytesWriter       uint64
+// senderTelemetry contains telemetry about the health of the sender
+type senderTelemetry struct {
+	totalPayloadsSent             uint64
+	totalPayloadsDroppedQueueFull uint64
+	totalPayloadsDroppedWriter    uint64
+	totalBytesSent                uint64
+	totalBytesDroppedQueueFull    uint64
+	totalBytesDroppedWriter       uint64
 }
 
 type sender struct {
 	transport   io.WriteCloser
 	pool        *bufferPool
 	queue       chan *statsdBuffer
-	metrics     *SenderMetrics
+	telemetry   *senderTelemetry
 	stop        chan struct{}
 	flushSignal chan struct{}
 }
@@ -31,7 +29,7 @@ func newSender(transport io.WriteCloser, queueSize int, pool *bufferPool) *sende
 		transport:   transport,
 		pool:        pool,
 		queue:       make(chan *statsdBuffer, queueSize),
-		metrics:     &SenderMetrics{},
+		telemetry:   &senderTelemetry{},
 		stop:        make(chan struct{}),
 		flushSignal: make(chan struct{}),
 	}
@@ -44,10 +42,8 @@ func (s *sender) send(buffer *statsdBuffer) {
 	select {
 	case s.queue <- buffer:
 	default:
-		atomic.AddUint64(&s.metrics.TotalDroppedPayloads, 1)
-		atomic.AddUint64(&s.metrics.TotalDroppedBytes, uint64(len(buffer.bytes())))
-		atomic.AddUint64(&s.metrics.TotalDroppedPayloadsQueueFull, 1)
-		atomic.AddUint64(&s.metrics.TotalDroppedBytesQueueFull, uint64(len(buffer.bytes())))
+		atomic.AddUint64(&s.telemetry.totalPayloadsDroppedQueueFull, 1)
+		atomic.AddUint64(&s.telemetry.totalBytesDroppedQueueFull, uint64(len(buffer.bytes())))
 		s.pool.returnBuffer(buffer)
 	}
 }
@@ -55,28 +51,23 @@ func (s *sender) send(buffer *statsdBuffer) {
 func (s *sender) write(buffer *statsdBuffer) {
 	_, err := s.transport.Write(buffer.bytes())
 	if err != nil {
-		atomic.AddUint64(&s.metrics.TotalDroppedPayloads, 1)
-		atomic.AddUint64(&s.metrics.TotalDroppedBytes, uint64(len(buffer.bytes())))
-		atomic.AddUint64(&s.metrics.TotalDroppedPayloadsWriter, 1)
-		atomic.AddUint64(&s.metrics.TotalDroppedBytesWriter, uint64(len(buffer.bytes())))
+		atomic.AddUint64(&s.telemetry.totalPayloadsDroppedWriter, 1)
+		atomic.AddUint64(&s.telemetry.totalBytesDroppedWriter, uint64(len(buffer.bytes())))
 	} else {
-		atomic.AddUint64(&s.metrics.TotalSentPayloads, 1)
-		atomic.AddUint64(&s.metrics.TotalSentBytes, uint64(len(buffer.bytes())))
+		atomic.AddUint64(&s.telemetry.totalPayloadsSent, 1)
+		atomic.AddUint64(&s.telemetry.totalBytesSent, uint64(len(buffer.bytes())))
 	}
 	s.pool.returnBuffer(buffer)
 }
 
-func (s *sender) flushTelemetryMetrics() SenderMetrics {
-	return SenderMetrics{
-		TotalSentBytes:                atomic.SwapUint64(&s.metrics.TotalSentBytes, 0),
-		TotalSentPayloads:             atomic.SwapUint64(&s.metrics.TotalSentPayloads, 0),
-		TotalDroppedPayloads:          atomic.SwapUint64(&s.metrics.TotalDroppedPayloads, 0),
-		TotalDroppedBytes:             atomic.SwapUint64(&s.metrics.TotalDroppedBytes, 0),
-		TotalDroppedPayloadsQueueFull: atomic.SwapUint64(&s.metrics.TotalDroppedPayloadsQueueFull, 0),
-		TotalDroppedBytesQueueFull:    atomic.SwapUint64(&s.metrics.TotalDroppedBytesQueueFull, 0),
-		TotalDroppedPayloadsWriter:    atomic.SwapUint64(&s.metrics.TotalDroppedPayloadsWriter, 0),
-		TotalDroppedBytesWriter:       atomic.SwapUint64(&s.metrics.TotalDroppedBytesWriter, 0),
-	}
+func (s *sender) flushTelemetryMetrics(t *Telemetry) {
+	t.TotalPayloadsSent = atomic.LoadUint64(&s.telemetry.totalPayloadsSent)
+	t.TotalPayloadsDroppedQueueFull = atomic.LoadUint64(&s.telemetry.totalPayloadsDroppedQueueFull)
+	t.TotalPayloadsDroppedWriter = atomic.LoadUint64(&s.telemetry.totalPayloadsDroppedWriter)
+
+	t.TotalBytesSent = atomic.LoadUint64(&s.telemetry.totalBytesSent)
+	t.TotalBytesDroppedQueueFull = atomic.LoadUint64(&s.telemetry.totalBytesDroppedQueueFull)
+	t.TotalBytesDroppedWriter = atomic.LoadUint64(&s.telemetry.totalBytesDroppedWriter)
 }
 
 func (s *sender) sendLoop() {

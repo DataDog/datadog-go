@@ -2,7 +2,7 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.0.0 / 
+# 5.0.0 /
 
 ## Breaking changes
 
@@ -27,6 +27,16 @@ more easily in the future without breaking the public API of the client.
 - All `Options` internals outside of the public API. Only the part needed by the client app are left in the public API.
   This also improve/clarify the `Options` documentation and usage.
 - `statsdWriter` have been removed from the API, `io.WriteCloser` can now be used instead.
+- `SenderMetrics` and `ClientMetrics` structs as well as `FlushTelemetryMetrics` method have been removed from the
+  public API in favor of the `Telemetry` struct and the `GetTelemetry` method. The client telemetry is now cummulative
+  since the start of the client instead of being reset after being sent to the Agent. See `Telemetry` struct
+  documentation for more information on what each field represents. This allows customers apps to take action based on
+  the telemetry (ex: adapting sampling rate based on the number of packets dropped). The telemetry sent to the agent
+  hasn't changed so the same dashboard can be use for V4 and V5 apps.
+
+## Notes
+
+- [FEATURE] Adding public method `GetTelemetry` to retrieve the client internal telemetry since the start of the client.
 
 # 4.8.2 / 2021-09-06
 

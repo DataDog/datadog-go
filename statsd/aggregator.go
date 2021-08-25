@@ -15,9 +15,9 @@ type (
 )
 
 type aggregator struct {
-	nbContextGauge int32
-	nbContextCount int32
-	nbContextSet   int32
+	nbContextGauge uint64
+	nbContextCount uint64
+	nbContextSet   uint64
 
 	countsM sync.RWMutex
 	gaugesM sync.RWMutex
@@ -41,16 +41,6 @@ type aggregator struct {
 	inputMetrics    chan metric
 	stopChannelMode chan struct{}
 	wg              sync.WaitGroup
-}
-
-type aggregatorMetrics struct {
-	nbContext             int32
-	nbContextGauge        int32
-	nbContextCount        int32
-	nbContextSet          int32
-	nbContextHistogram    int32
-	nbContextDistribution int32
-	nbContextTiming       int32
 }
 
 func newAggregator(c *Client) *aggregator {
@@ -124,22 +114,18 @@ func (a *aggregator) flush() {
 	}
 }
 
-func (a *aggregator) flushTelemetryMetrics() *aggregatorMetrics {
+func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 	if a == nil {
-		return nil
+		// aggregation is disabled
+		return
 	}
 
-	am := &aggregatorMetrics{
-		nbContextGauge:        atomic.SwapInt32(&a.nbContextGauge, 0),
-		nbContextCount:        atomic.SwapInt32(&a.nbContextCount, 0),
-		nbContextSet:          atomic.SwapInt32(&a.nbContextSet, 0),
-		nbContextHistogram:    a.histograms.resetAndGetNbContext(),
-		nbContextDistribution: a.distributions.resetAndGetNbContext(),
-		nbContextTiming:       a.timings.resetAndGetNbContext(),
-	}
-
-	am.nbContext = am.nbContextGauge + am.nbContextCount + am.nbContextSet + am.nbContextHistogram + am.nbContextDistribution + am.nbContextTiming
-	return am
+	t.AggregationNbContextGauge = atomic.LoadUint64(&a.nbContextGauge)
+	t.AggregationNbContextCount = atomic.LoadUint64(&a.nbContextCount)
+	t.AggregationNbContextSet = atomic.LoadUint64(&a.nbContextSet)
+	t.AggregationNbContextHistogram = a.histograms.getNbContext()
+	t.AggregationNbContextDistribution = a.distributions.getNbContext()
+	t.AggregationNbContextTiming = a.timings.getNbContext()
 }
 
 func (a *aggregator) flushMetrics() []metric {
@@ -179,9 +165,9 @@ func (a *aggregator) flushMetrics() []metric {
 	metrics = a.distributions.flush(metrics)
 	metrics = a.timings.flush(metrics)
 
-	atomic.AddInt32(&a.nbContextCount, int32(len(counts)))
-	atomic.AddInt32(&a.nbContextGauge, int32(len(gauges)))
-	atomic.AddInt32(&a.nbContextSet, int32(len(sets)))
+	atomic.AddUint64(&a.nbContextCount, uint64(len(counts)))
+	atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
+	atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
 	return metrics
 }
 

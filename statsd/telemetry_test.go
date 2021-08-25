@@ -3,6 +3,8 @@ package statsd
 import (
 	"io"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,36 +112,43 @@ func TestTelemetryCustomAddr(t *testing.T) {
 	server := getTestServer(t, telAddr)
 	defer server.Close()
 
-	expectedPayload := "datadog.dogstatsd.client.metrics:9|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:gauge\n" +
-		"datadog.dogstatsd.client.metrics_by_type:3|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:count\n" +
-		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:histogram\n" +
-		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:distribution\n" +
-		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:set\n" +
-		"datadog.dogstatsd.client.metrics_by_type:2|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:timing\n" +
-		"datadog.dogstatsd.client.events:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.service_checks:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.metric_dropped_on_receive:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.packets_sent:10|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.bytes_sent:473|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.packets_dropped:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.bytes_dropped:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.packets_dropped_queue:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.bytes_dropped_queue:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.packets_dropped_writer:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n" +
-		"datadog.dogstatsd.client.bytes_dropped_writer:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp\n"
+	expectedResult := []string{
+		"datadog.dogstatsd.client.metrics:9|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:gauge",
+		"datadog.dogstatsd.client.metrics_by_type:3|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:count",
+		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:histogram",
+		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:distribution",
+		"datadog.dogstatsd.client.metrics_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:set",
+		"datadog.dogstatsd.client.metrics_by_type:2|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:timing",
+		"datadog.dogstatsd.client.events:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.service_checks:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.metric_dropped_on_receive:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.packets_sent:10|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.bytes_sent:473|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.packets_dropped:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.bytes_dropped:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.packets_dropped_queue:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.bytes_dropped_queue:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.packets_dropped_writer:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.bytes_dropped_writer:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+	}
+	expectedSize := 0
+	for _, s := range expectedResult {
+		expectedSize += len(s)
+	}
+	sort.Strings(expectedResult)
 
 	readDone := make(chan struct{})
 	buffer := make([]byte, 10000)
 	n := 0
 	go func() {
-		n, _ = io.ReadAtLeast(server, buffer, len(expectedPayload))
+		n, _ = io.ReadAtLeast(server, buffer, expectedSize)
 		close(readDone)
 	}()
 
 	ts.sendAllType(client)
 	client.Flush()
-	client.telemetry.sendTelemetry()
+	client.telemetryClient.sendTelemetry()
 
 	select {
 	case <-readDone:
@@ -147,7 +156,13 @@ func TestTelemetryCustomAddr(t *testing.T) {
 		require.Fail(t, "No data was flush on Close")
 	}
 
-	result := string(buffer[:n])
+	result := []string{}
+	for _, s := range strings.Split(string(buffer[:n]), "\n") {
+		if s != "" {
+			result = append(result, s)
+		}
+	}
+	sort.Strings(result)
 
-	assert.Equal(t, expectedPayload, result)
+	assert.Equal(t, expectedResult, result)
 }

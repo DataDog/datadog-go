@@ -451,3 +451,41 @@ func TestEnvTagsEmptyString(t *testing.T) {
 	assert.Len(t, client.tags, 0)
 	ts.sendAllAndAssert(t, client)
 }
+
+func TestGetTelemetry(t *testing.T) {
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		nil,
+		WithExtendedClientSideAggregation(),
+	)
+
+	ts.sendAllAndAssert(t, client)
+	tlm := client.GetTelemetry()
+
+	assert.Equal(t, uint64(9), tlm.TotalMetrics, "telmetry TotalMetrics was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsGauge, "telmetry TotalMetricsGauge was wrong")
+	assert.Equal(t, uint64(3), tlm.TotalMetricsCount, "telmetry TotalMetricsCount was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsHistogram, "telmetry TotalMetricsHistogram was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsDistribution, "telmetry TotalMetricsDistribution was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsSet, "telmetry TotalMetricsSet was wrong")
+	assert.Equal(t, uint64(2), tlm.TotalMetricsTiming, "telmetry TotalMetricsTiming was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalEvents, "telmetry TotalEvents was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalServiceChecks, "telmetry TotalServiceChecks was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalDroppedOnReceive, "telmetry TotalDroppedOnReceive was wrong")
+	assert.Equal(t, uint64(22), tlm.TotalPayloadsSent, "telmetry TotalPayloadsSent was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalPayloadsDropped, "telmetry TotalPayloadsDropped was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalPayloadsDroppedWriter, "telmetry TotalPayloadsDroppedWriter was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalPayloadsDroppedQueueFull, "telmetry TotalPayloadsDroppedQueueFull was wrong")
+	assert.Equal(t, uint64(3112), tlm.TotalBytesSent, "telmetry TotalBytesSent was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalBytesDropped, "telmetry TotalBytesDropped was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalBytesDroppedWriter, "telmetry TotalBytesDroppedWriter was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalBytesDroppedQueueFull, "telmetry TotalBytesDroppedQueueFull was wrong")
+	assert.Equal(t, uint64(9), tlm.AggregationNbContext, "telmetry AggregationNbContext was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextGauge, "telmetry AggregationNbContextGauge was wrong")
+	assert.Equal(t, uint64(3), tlm.AggregationNbContextCount, "telmetry AggregationNbContextCount was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextSet, "telmetry AggregationNbContextSet was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextHistogram, "telmetry AggregationNbContextHistogram was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextDistribution, "telmetry AggregationNbContextDistribution was wrong")
+	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
+}
