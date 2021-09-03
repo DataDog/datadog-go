@@ -56,6 +56,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	}
 
 	context, stringTags := getContextAndTags(name, tags)
+
 	bc.mutex.RLock()
 	if v, found := bc.values[context]; found {
 		v.sample(value)
@@ -65,6 +66,12 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	bc.mutex.RUnlock()
 
 	bc.mutex.Lock()
+	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
+	if v, found := bc.values[context]; found {
+		v.sample(value)
+		bc.mutex.Unlock()
+		return nil
+	}
 	bc.values[context] = bc.newMetric(name, value, stringTags)
 	bc.mutex.Unlock()
 	return nil
