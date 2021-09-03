@@ -82,6 +82,7 @@ func TestOptions(t *testing.T) {
 
 func TestExtendedAggregation(t *testing.T) {
 	options, err := resolveOptions([]Option{
+		WithoutClientSideAggregation(),
 		WithExtendedClientSideAggregation(),
 	})
 
@@ -94,13 +95,13 @@ func TestResetOptions(t *testing.T) {
 	options, err := resolveOptions([]Option{
 		WithChannelMode(),
 		WithMutexMode(),
-		WithClientSideAggregation(),
 		WithoutClientSideAggregation(),
 	})
 
 	assert.NoError(t, err)
 	assert.Equal(t, options.receiveMode, mutexMode)
 	assert.Equal(t, options.aggregation, false)
+	assert.Equal(t, options.extendedAggregation, false)
 }
 func TestOptionsNamespaceWithoutDot(t *testing.T) {
 	testNamespace := "datadog"

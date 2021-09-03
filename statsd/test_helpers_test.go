@@ -52,7 +52,7 @@ type testServer struct {
 	conn      io.ReadCloser
 	data      []string
 	errors    []string
-	nbRead    int
+	readData  []string
 	proto     string
 	addr      string
 	stopped   chan struct{}
@@ -126,12 +126,12 @@ func (ts *testServer) start() {
 			ts.errors = append(ts.errors, err.Error())
 			continue
 		}
-		payload := strings.Split(string(buffer[:n]), "\n")
-
+		readData := string(buffer[:n])
 		if n != 0 {
-			ts.nbRead++
+			ts.readData = append(ts.readData, readData)
 		}
 
+		payload := strings.Split(readData, "\n")
 		ts.Lock()
 		for _, s := range payload {
 			if s != "" {
@@ -199,7 +199,11 @@ func (ts *testServer) wait(t *testing.T, nbExpectedMetric int, timeout int, wait
 }
 
 func (ts *testServer) assertNbRead(t *testing.T, expectedNbRead int) {
-	assert.Equal(t, expectedNbRead, ts.nbRead, "expected %d read but got %d", expectedNbRead, ts.nbRead)
+	errorMsg := ""
+	for idx, s := range ts.readData {
+		errorMsg += fmt.Sprintf("read %d:\n%s\n\n", idx, s)
+	}
+	assert.Equal(t, expectedNbRead, len(ts.readData), "expected %d read but got %d:\n%s", expectedNbRead, len(ts.readData), errorMsg)
 }
 
 // meta helper: take a list of expected metrics and assert

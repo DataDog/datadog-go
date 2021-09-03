@@ -150,6 +150,14 @@ func getTestMap() map[string]testCase {
 				ts.sendAllAndAssert(t, client)
 			},
 		},
+		"Default without aggregation": testCase{
+			[]Option{
+				WithoutClientSideAggregation(),
+			},
+			func(t *testing.T, ts *testServer, client *Client) {
+				ts.sendAllAndAssert(t, client)
+			},
+		},
 		"With namespace": testCase{
 			[]Option{
 				WithNamespace("test_namespace"),
@@ -173,14 +181,30 @@ func getTestMap() map[string]testCase {
 			},
 			func(t *testing.T, ts *testServer, client *Client) {
 				ts.sendAllAndAssert(t, client)
-				// we send 11 messages, with a max of 5 per payload we expect 3 reads from the network.
-				// The telemetry is 18 metrics flushed at a different interval so 4 more payload for a
-				// total of 7 reads on the network
+				// We send 4 non aggregated metrics, 1 service_check and 1 event. So 2 reads (5 items per
+				// payload). Then we flush the aggregator that will send 5 metrics, so 1 read. Finally,
+				// the telemetry is 18 metrics flushed at a different time so 4 more payload for a
+				// total of 8 reads on the network
+				ts.assertNbRead(t, 8)
+			},
+		},
+		"With max messages per payload + WithoutClientSideAggregation": testCase{
+			[]Option{
+				WithMaxMessagesPerPayload(5),
+				WithoutClientSideAggregation(),
+				WithWorkersCount(1),
+			},
+			func(t *testing.T, ts *testServer, client *Client) {
+				ts.sendAllAndAssert(t, client)
+				// We send 9 non aggregated metrics, 1 service_check and 1 event. So 3 reads (5 items
+				// per payload). Then the telemetry is 18 metrics flushed at a different time so 4 more
+				// payload for a total of 8 reads on the network
 				ts.assertNbRead(t, 7)
 			},
 		},
-		"ChannelMode": testCase{
+		"ChannelMode without client side aggregation": testCase{
 			[]Option{
+				WithoutClientSideAggregation(),
 				WithChannelMode(),
 			},
 			func(t *testing.T, ts *testServer, client *Client) {
@@ -188,9 +212,7 @@ func getTestMap() map[string]testCase {
 			},
 		},
 		"Basic client side aggregation": testCase{
-			[]Option{
-				WithClientSideAggregation(),
-			},
+			[]Option{},
 			func(t *testing.T, ts *testServer, client *Client) {
 				expectedMetrics := ts.sendAllMetricsForBasicAggregation(client)
 				ts.assert(t, client, expectedMetrics)
@@ -207,7 +229,6 @@ func getTestMap() map[string]testCase {
 		},
 		"Basic client side aggregation + ChannelMode": testCase{
 			[]Option{
-				WithClientSideAggregation(),
 				WithChannelMode(),
 			},
 			func(t *testing.T, ts *testServer, client *Client) {
