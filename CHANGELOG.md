@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 4.8.2 / 2021-09-06
+
+* [BETA][BUGFIX] Fix race condition in aggregation where two sample could overwrite each other when sampled for the first time. See [#225][]
+
 # 4.8.1 / 2021-07-09
 
 * [BUGFIX] Prevent telemetry from using the client global namespace. See [#205][]
@@ -313,6 +317,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#199]: https://github.com/DataDog/datadog-go/pull/199
 [#204]: https://github.com/DataDog/datadog-go/pull/204
 [#205]: https://github.com/DataDog/datadog-go/pull/205
+[#225]: https://github.com/DataDog/datadog-go/pull/225
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
