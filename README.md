@@ -4,14 +4,14 @@
 [![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/DataDog/datadog-go/statsd)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](http://opensource.org/licenses/MIT)
 
-`datadog-go` is a library that provides a [DogStatsD](https://docs.datadoghq.com/developers/dogstatsd/?tab=go) client in Golang.
+`datadog-go` is a library that provides a [DogStatsD](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go) client in Golang.
 
 Go 1.12+ is officially supported. Older versions might work but are not tested.
 
 The following documentation is available:
 
 * [GoDoc documentation for Datadog Go](http://godoc.org/github.com/DataDog/datadog-go/statsd)
-* [Official Datadog DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?tab=go).
+* [Official Datadog DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go).
 
 ## Installation
 
@@ -39,7 +39,7 @@ func main() {
 }
 ```
 
-Find a list of all the available options for your DogStatsD Client in the [Datadog-go godoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option) or in [Datadog public DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?tab=go#client-instantiation-parameters).
+Find a list of all the available options for your DogStatsD Client in the [Datadog-go godoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Option) or in [Datadog public DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go#client-instantiation-parameters).
 
 ### Supported environment variables
 
@@ -65,29 +65,29 @@ Agent v6+ accepts packets through a Unix Socket datagram connection. Details abo
 
 ## Usage
 
-In order to use DogStatsD metrics, events, and Service Checks, the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/?tab=go).
+In order to use DogStatsD metrics, events, and Service Checks, the Agent must be [running and available](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go).
 
 ### Metrics
 
-After the client is created, you can start sending custom metrics to Datadog. See the dedicated [Metric Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go) to see how to submit all supported metric types to Datadog with working code examples:
+After the client is created, you can start sending custom metrics to Datadog. See the dedicated [Metric Submission: DogStatsD documentation](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go) to see how to submit all supported metric types to Datadog with working code examples:
 
-* [Submit a COUNT metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#count).
-* [Submit a GAUGE metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#gauge).
-* [Submit a SET metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#set)
-* [Submit a HISTOGRAM metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#histogram)
-* [Submit a DISTRIBUTION metric](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#distribution)
+* [Submit a COUNT metric](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#count).
+* [Submit a GAUGE metric](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#gauge).
+* [Submit a SET metric](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#set)
+* [Submit a HISTOGRAM metric](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#histogram)
+* [Submit a DISTRIBUTION metric](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#distribution)
 
 Metric names must only contain ASCII alphanumerics, underscores, and periods. The client will not replace nor check for invalid characters.
 
-Some options are suppported when submitting metrics, like [applying a sample rate to your metrics](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-submission-options) or [tagging your metrics with your custom tags](https://docs.datadoghq.com/developers/metrics/dogstatsd_metrics_submission/?tab=go#metric-tagging). Find all the available functions to report metrics [in the Datadog Go client GoDoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
+Some options are suppported when submitting metrics, like [applying a sample rate to your metrics](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#metric-submission-options) or [tagging your metrics with your custom tags](https://docs.datadoghq.com/metrics/dogstatsd_metrics_submission/?code-lang=go#metric-tagging). Find all the available functions to report metrics [in the Datadog Go client GoDoc documentation](https://godoc.org/github.com/DataDog/datadog-go/statsd#Client).
 
 ### Events
 
-After the client is created, you can start sending events to your Datadog Event Stream. See the dedicated [Event Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/events/dogstatsd/?tab=go) to see how to submit an event to your Datadog Event Stream.
+After the client is created, you can start sending events to your Datadog Event Stream. See the dedicated [Event Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/events/dogstatsd/?code-lang=go) to see how to submit an event to your Datadog Event Stream.
 
 ### Service Checks
 
-After the client is created, you can start sending Service Checks to Datadog. See the dedicated [Service Check Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/service_checks/dogstatsd_service_checks_submission/?tab=go) to see how to submit a Service Check to Datadog.
+After the client is created, you can start sending Service Checks to Datadog. See the dedicated [Service Check Submission: DogStatsD documentation](https://docs.datadoghq.com/developers/service_checks/dogstatsd_service_checks_submission/?code-lang=go) to see how to submit a Service Check to Datadog.
 
 ## Performance / Metric drops
 
@@ -96,7 +96,7 @@ After the client is created, you can start sending Service Checks to Datadog. Se
 This client automatically injects telemetry about itself in the DogStatsD stream.
 Those metrics will not be counted as custom and will not be billed. This feature can be disabled using the `WithoutTelemetry` option.
 
-See [Telemetry documentation](https://docs.datadoghq.com/developers/dogstatsd/high_throughput/?tab=go#client-side-telemetry) to learn more about it.
+See [Telemetry documentation](https://docs.datadoghq.com/developers/dogstatsd/high_throughput/?code-lang=go#client-side-telemetry) to learn more about it.
 
 ### Tweaking kernel options
 
