@@ -41,7 +41,7 @@ more easily in the future without breaking the public API of the client.
 - [FEATURE] Adding public method `GetTelemetry` to retrieve the client internal telemetry since the start of the client.
 - [FEATURE] Client side aggregation for Counts, Gauges and Sets is enabled by default.
   `WithExtendedClientSideAggregation()` for Timings, Histograms and Distributions is still disabled by default. Both
-  feature are no longer considered BETA.
+  features are no longer considered BETA.
 
 # 4.8.1 / 2021-07-09
 
