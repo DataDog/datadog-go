@@ -30,7 +30,7 @@ func TestTelemetryCustomAddr(t *testing.T) {
 	udpAddr, err := net.ResolveUDPAddr("udp", telAddr)
 	require.Nil(t, err, fmt.Sprintf("could not resolve udp '%s': %s", telAddr, err))
 	server, err := net.ListenUDP("udp", udpAddr)
-	require.Nil(t, err, fmt.Sprintf("Could not listen to UDP addr: %s", err))
+	require.Nil(t, err, fmt.Sprintf("could not listen to UDP addr: %s", err))
 	defer server.Close()
 
 	expectedResult := []string{
@@ -52,6 +52,13 @@ func TestTelemetryCustomAddr(t *testing.T) {
 		"datadog.dogstatsd.client.bytes_dropped_queue:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
 		"datadog.dogstatsd.client.packets_dropped_writer:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
 		"datadog.dogstatsd.client.bytes_dropped_writer:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.aggregated_context:5|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp",
+		"datadog.dogstatsd.client.aggregated_context_by_type:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:distribution",
+		"datadog.dogstatsd.client.aggregated_context_by_type:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:histogram",
+		"datadog.dogstatsd.client.aggregated_context_by_type:0|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:timing",
+		"datadog.dogstatsd.client.aggregated_context_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:gauge",
+		"datadog.dogstatsd.client.aggregated_context_by_type:1|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:set",
+		"datadog.dogstatsd.client.aggregated_context_by_type:3|c|#client:go," + clientVersionTelemetryTag + ",client_transport:udp,metrics_type:count",
 	}
 	expectedSize := 0
 	for _, s := range expectedResult {
