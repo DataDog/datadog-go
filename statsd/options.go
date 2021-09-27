@@ -21,7 +21,7 @@ var (
 	defaultReceivingMode            = mutexMode
 	defaultChannelModeBufferSize    = 4096
 	defaultAggregationFlushInterval = 2 * time.Second
-	defaultAggregation              = false
+	defaultAggregation              = true
 	defaultExtendedAggregation      = false
 )
 
