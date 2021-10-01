@@ -2,7 +2,7 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.0.0 /
+# 5.0.0 / 2021-10-01
 
 ## Breaking changes
 
