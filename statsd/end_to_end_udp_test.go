@@ -4,6 +4,7 @@ import (
 	"os"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -177,6 +178,8 @@ func getTestMap() map[string]testCase {
 		"With max messages per payload": testCase{
 			[]Option{
 				WithMaxMessagesPerPayload(5),
+				// Make sure we hit the maxMessagesPerPayload before hitting the flush timeout
+				WithBufferFlushInterval(1 * time.Second),
 				WithWorkersCount(1),
 			},
 			func(t *testing.T, ts *testServer, client *Client) {
@@ -191,6 +194,8 @@ func getTestMap() map[string]testCase {
 		"With max messages per payload + WithoutClientSideAggregation": testCase{
 			[]Option{
 				WithMaxMessagesPerPayload(5),
+				// Make sure we hit the maxMessagesPerPayload before hitting the flush timeout
+				WithBufferFlushInterval(1 * time.Second),
 				WithoutClientSideAggregation(),
 				WithWorkersCount(1),
 			},
