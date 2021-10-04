@@ -13,12 +13,26 @@ The following documentation is available:
 * [GoDoc documentation for Datadog Go](http://godoc.org/github.com/DataDog/datadog-go/statsd)
 * [Official Datadog DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go).
 
+## New major version
+
+The new major version `v5` is now the default. All new features will be added to this version and only bugfixes will be
+backported to `v4` (see `v4` branch).
+
+`v5` introduce a number of breaking changes compare to `v4`, see the
+[CHANGELOG](https://github.com/DataDog/datadog-go/blob/master/CHANGELOG.md#500--2021-10-01) for more information.
+
+Note that the import path for `v5` and `v4` are different:
+- `v5`: github.com/DataDog/datadog-go/v5/statsd
+- `v4`: github.com/DataDog/datadog-go/statsd
+
+When migrating to the `v5` you will need to upgrade your imports.
+
 ## Installation
 
 Get the code with:
 
 ```shell
-$ go get github.com/DataDog/datadog-go/statsd
+$ go get github.com/DataDog/datadog-go/v5/statsd
 ```
 
 Then create a new DogStatsD client:
