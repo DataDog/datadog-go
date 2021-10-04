@@ -1,4 +1,4 @@
-module github.com/DataDog/datadog-go
+module github.com/DataDog/datadog-go/v5
 
 go 1.13
 
