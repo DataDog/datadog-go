@@ -28,7 +28,7 @@ package main
 
 import (
     "log"
-    "github.com/DataDog/datadog-go/statsd"
+    "github.com/DataDog/datadog-go/v5/statsd"
 )
 
 func main() {
