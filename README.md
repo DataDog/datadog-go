@@ -21,7 +21,7 @@ backported to `v4` (see `v4` branch).
 `v5` introduce a number of breaking changes compare to `v4`, see the
 [CHANGELOG](https://github.com/DataDog/datadog-go/blob/master/CHANGELOG.md#500--2021-10-01) for more information.
 
-Note that the import path for `v5` and `v4` are different:
+Note that the import paths for `v5` and `v4` are different:
 - `v5`: github.com/DataDog/datadog-go/v5/statsd
 - `v4`: github.com/DataDog/datadog-go/statsd
 
