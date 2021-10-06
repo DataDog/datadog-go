@@ -136,7 +136,6 @@ func newTelemetryClient(c *Client, transport string, aggregationEnabled bool) *t
 	t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
 	t.tagsByType[histogram] = append(append([]string{}, t.tags...), "metrics_type:histogram")
 	t.tagsByType[distribution] = append(append([]string{}, t.tags...), "metrics_type:distribution")
-	t.tagsByType[timing] = append(append([]string{}, t.tags...), "metrics_type:timing")
 	return t
 }
 
