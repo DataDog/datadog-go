@@ -152,6 +152,8 @@ been introduced. See the [Monitoring this client](#monitoring-this-client) secti
 
 Enabled by default, the client will aggregate `gauge, `count` and `set`.
 
+This can be disabled with the `WithoutClientSideAggregation()` option.
+
 ### "Extended" aggregation
 
 This feature is only compatible with Agent's version >=6.25.0 && <7.0.0 or Agent's versions >=7.25.0.
