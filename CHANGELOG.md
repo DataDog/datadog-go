@@ -25,16 +25,16 @@ more easily in the future without breaking the public API of the client.
 - Method `NewBuffered` has been removed in favor of the `WithMaxMessagesPerPayload()` option.
   Instead of `statsd.NewBuffered(add, bufferLength)` please use `statsd.New(addr, statsd.WithMaxMessagesPerPayload(bufferLength))`
 - `Encode` method for `Event` and `ServiceCheck` have been removed.
-- The `Check` method for Events and ServiceChecks methods now use pointer receivers.
+- The `Check` method for `Event` and `ServiceCheck` now uses pointer receivers.
 - All `Options` internals are no longer part of the public API. Only the part needed by the client app is left in the
-  public API. This also improve/clarify the `Options` documentation and usage.
+  public API. This also improves/clarifies the `Options` documentation and usage.
 - `statsdWriter` have been removed from the API, `io.WriteCloser` can now be used instead.
 - `SenderMetrics` and `ClientMetrics` structs as well as `FlushTelemetryMetrics` method have been removed from the
   public API in favor of the `Telemetry` struct and the `GetTelemetry` method. The client telemetry is now cummulative
   since the start of the client instead of being reset after being sent to the Agent. See `Telemetry` struct
-  documentation for more information on what each field represents. This allows customers apps to take action based on
+  documentation for more information on what each field represents. This allows client apps to take action based on
   the telemetry (ex: adapting sampling rate based on the number of packets dropped). The telemetry sent to the agent
-  hasn't changed so the same dashboard can be use for V4 and V5 apps.
+  hasn't changed so the same dashboard can be used for V4 and V5 apps.
 - Client side aggregation for Counts, Gauges and Sets is enabled by default. See `WithoutClientSideAggregation()` option
   to disable it.
 
