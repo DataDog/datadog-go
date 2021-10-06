@@ -138,7 +138,7 @@ This feature aims at reducing both the number of packets sent to the Agent and t
 scenarios.
 
 The aggregation window is 2s by default and can be changed through `WithAggregationInterval()` option. Note that the
-aggregation window on the Agent side is 10s for DogStatsD metrics. So for example, setting a aggregation window of 3s on
+aggregation window on the Agent side is 10s for DogStatsD metrics. So for example, setting an aggregation window of 3s in
 the client will produce a spike in your dashboard every 30 second for counts metrics (as the third 10s bucket on the
 Agent will receive 4 samples from the client).
 
