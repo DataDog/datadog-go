@@ -160,8 +160,7 @@ Disabled by default, the client can also pack multiple values for `histogram`, `
 message. Real aggregation is not possible for those types since the Agent also aggregates and two aggregation levels
 would change the final value sent to Datadog.
 
-When this option is enabled, the agent will buffer the metrics by context (unique combination of metrics name and tag
-set), and flush them in the fewest number of messages.
+When this option is enabled, the agent will buffer the metrics by combination of metric name and tags, and send them in the fewest number of messages.
 
 For example, if we sample 3 times the same metric. Instead of sending on the network:
 
