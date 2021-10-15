@@ -47,13 +47,6 @@ func TestNewEventTitleMissing(t *testing.T) {
 	assert.Equal(t, "statsd.Event title is required", err.Error())
 }
 
-func TestNewEventTextMissing(t *testing.T) {
-	e := NewEvent("hi", "")
-	_, err := e.Encode()
-	require.Error(t, err)
-	assert.Equal(t, "statsd.Event text is required", err.Error())
-}
-
 func TestNewEvent(t *testing.T) {
 	e := NewEvent("hello", "world")
 	eventEncoded, err := e.Encode("tag1", "tag2")
@@ -68,5 +61,14 @@ func TestNewEventTags(t *testing.T) {
 	eventEncoded, err := e.Encode("tag3", "tag4")
 	require.NoError(t, err)
 	assert.Equal(t, "_e{5,5}:hello|world|#tag3,tag4,tag1,tag2", eventEncoded)
+	assert.Len(t, e.Tags, 2)
+}
+
+func TestNewEventEmptyText(t *testing.T) {
+	e := NewEvent("hello", "")
+	e.Tags = append(e.Tags, "tag1", "tag2")
+	eventEncoded, err := e.Encode()
+	require.NoError(t, err)
+	assert.Equal(t, "_e{5,0}:hello||#tag1,tag2", eventEncoded)
 	assert.Len(t, e.Tags, 2)
 }
