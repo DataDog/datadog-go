@@ -57,7 +57,7 @@ commands:
         type: string
     steps:
       - checkout
-      # TODO: remove this once we have go.mod
+      - run: git config --global http.sslVerify false
       - run: go get github.com/stretchr/testify
       - run: go vet ./statsd/...
       - run: go fmt ./statsd/...
