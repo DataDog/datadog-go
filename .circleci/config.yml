@@ -57,8 +57,6 @@ commands:
         type: string
     steps:
       - checkout
-      # TODO: remove this once we have go.mod
-      - run: go get github.com/stretchr/testify
       - run: go vet ./statsd/...
       - run: go fmt ./statsd/...
       - run:
