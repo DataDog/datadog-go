@@ -179,7 +179,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithMaxMessagesPerPayload(5),
 				// Make sure we hit the maxMessagesPerPayload before hitting the flush timeout
-				WithBufferFlushInterval(1 * time.Second),
+				WithBufferFlushInterval(3 * time.Second),
 				WithWorkersCount(1),
 			},
 			func(t *testing.T, ts *testServer, client *Client) {
@@ -195,7 +195,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithMaxMessagesPerPayload(5),
 				// Make sure we hit the maxMessagesPerPayload before hitting the flush timeout
-				WithBufferFlushInterval(1 * time.Second),
+				WithBufferFlushInterval(3 * time.Second),
 				WithoutClientSideAggregation(),
 				WithWorkersCount(1),
 			},
