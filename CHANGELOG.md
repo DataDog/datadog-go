@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.0.1 / 2021-10-18
+
+* [BUGFIX] Fix Event.Check method: text is no longer required. See [#235][].
+
 # 5.0.0 / 2021-10-01
 
 ## Breaking changes
@@ -361,6 +365,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#204]: https://github.com/DataDog/datadog-go/pull/204
 [#205]: https://github.com/DataDog/datadog-go/pull/205
 [#225]: https://github.com/DataDog/datadog-go/pull/225
+[#235]: https://github.com/DataDog/datadog-go/pull/235
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
