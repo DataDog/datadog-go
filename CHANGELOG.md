@@ -41,6 +41,7 @@ more easily in the future without breaking the public API of the client.
   hasn't changed so the same dashboard can be used for V4 and V5 apps.
 - Client side aggregation for Counts, Gauges and Sets is enabled by default. See `WithoutClientSideAggregation()` option
   to disable it.
+- `WithBufferShardCount` option has been renamed `WithWorkersCount`.
 
 ## Notes
 
