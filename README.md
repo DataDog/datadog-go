@@ -150,7 +150,7 @@ been introduced. See the [Monitoring this client](#monitoring-this-client) secti
 
 ### "Basic" aggregation
 
-Enabled by default, the client will aggregate `gauge, `count` and `set`.
+Enabled by default, the client will aggregate `gauge`, `count` and `set`.
 
 This can be disabled with the `WithoutClientSideAggregation()` option.
 
