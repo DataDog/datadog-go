@@ -2,7 +2,10 @@
 
 package statsd
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 // newUDSWriter is disable on windows as unix sockets are not available
 func newUDSWriter(addr string) (io.WriteCloser, error) {
