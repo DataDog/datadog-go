@@ -87,6 +87,7 @@ func TestPipeWriterReconnect(t *testing.T) {
 
 	out := make(chan string)
 	go acceptOne(t, ln, out)
+
 	client, err := New(pipepath)
 	require.Nil(t, err)
 
@@ -94,7 +95,7 @@ func TestPipeWriterReconnect(t *testing.T) {
 	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
 	require.Nil(t, err, "Failed to send gauge: %s", err)
 
-	timeout := time.After(1 * time.Second)
+	timeout := time.After(5 * time.Second)
 	select {
 	case got := <-out:
 		assert.Equal(t, got, "metric:1|g|#key:val\n")
@@ -120,7 +121,7 @@ func TestPipeWriterReconnect(t *testing.T) {
 		err = client.Gauge("metric", 3, []string{"key:val"}, 1)
 		require.Nil(t, err, "Failed to send second gauge: %s", err)
 
-		timeout = time.After(500 * time.Millisecond)
+		timeout = time.After(3 * time.Second)
 		select {
 		case got := <-out:
 			assert.Equal(t, got, "metric:3|g|#key:val\n")
