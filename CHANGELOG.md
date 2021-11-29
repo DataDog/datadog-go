@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.0.2 / 2021-11-29
+
+* [BUGFIX] Fix Windows erroneous import. See [#242][], thanks [@programmer04][].
+
 # 5.0.1 / 2021-10-18
 
 * [BUGFIX] Fix Event.Check method: text is no longer required. See [#235][].
@@ -367,6 +371,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#205]: https://github.com/DataDog/datadog-go/pull/205
 [#225]: https://github.com/DataDog/datadog-go/pull/225
 [#235]: https://github.com/DataDog/datadog-go/pull/235
+[#242]: https://github.com/DataDog/datadog-go/pull/242
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -399,3 +404,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@chrisleavoy]: https://github.com/chrisleavoy
 [@cyx]: https://github.com/cyx
 [@matthewdale]: https://github.com/matthewdale
+[@programmer04]: https://github.com/programmer04
