@@ -20,31 +20,40 @@ func TestPipelineWithGlobalTags(t *testing.T) {
 	ts.sendAllAndAssert(t, client)
 }
 
-func TestKownEnvTags(t *testing.T) {
+func TestKnownEnvTags(t *testing.T) {
 	entityIDEnvName := "DD_ENTITY_ID"
 	ddEnvName := "DD_ENV"
 	ddServiceName := "DD_SERVICE"
 	ddVersionName := "DD_VERSION"
+	ddTagsName := "DD_TAGS"
 
 	defer func() { os.Unsetenv(entityIDEnvName) }()
 	defer func() { os.Unsetenv(ddEnvName) }()
 	defer func() { os.Unsetenv(ddServiceName) }()
 	defer func() { os.Unsetenv(ddVersionName) }()
+	defer func() { os.Unsetenv(ddTagsName) }()
 
 	os.Setenv(entityIDEnvName, "test_id")
 	os.Setenv(ddEnvName, "test_env")
 	os.Setenv(ddServiceName, "test_service")
 	os.Setenv(ddVersionName, "test_version")
+	os.Setenv(ddTagsName, "custom_tag:foo other_tag:bar")
 
-	expectedTags := []string{"dd.internal.entity_id:test_id", "env:test_env", "service:test_service", "version:test_version"}
+	expectedTags := []string{
+		"dd.internal.entity_id:test_id",
+		"env:test_env",
+		"service:test_service",
+		"version:test_version",
+		"custom_tag:foo",
+		"other_tag:bar",
+	}
 	ts, client := newClientAndTestServer(t,
 		"udp",
 		"localhost:8765",
 		expectedTags,
 	)
 
-	sort.Strings(client.tags)
-	assert.Equal(t, expectedTags, client.tags)
+	assert.EqualValues(t, expectedTags, client.tags)
 	ts.sendAllAndAssert(t, client)
 }
 

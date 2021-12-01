@@ -63,6 +63,8 @@ traffic instead of UDP.
 */
 const WindowsPipeAddressPrefix = `\\.\pipe\`
 
+const ddTagsEnvVar = "DD_TAGS"
+
 const (
 	agentHostEnvVarName = "DD_AGENT_HOST"
 	agentPortEnvVarName = "DD_DOGSTATSD_PORT"
@@ -324,6 +326,12 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		if value := os.Getenv(mapping.envName); value != "" {
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
+	}
+
+	ddTags := os.Getenv(ddTagsEnvVar)
+	if ddTags != "" {
+		const whiteSpaceSeparator = " "
+		c.tags = append(c.tags, strings.Split(ddTags, whiteSpaceSeparator)...)
 	}
 
 	if o.maxBytesPerPayload == 0 {
