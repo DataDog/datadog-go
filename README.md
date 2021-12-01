@@ -99,6 +99,7 @@ env:
 ```
 
 * `DD_ENV`, `DD_SERVICE`, and `DD_VERSION` can be used by the statsd client to set `{env, service, version}` as global tags for all data emitted.
+* `DD_TAGS`: you can use this env var to send tags globally in all the emitted metrics. The value must be space separated (e.g. `DD_TAGS=custom_tag:foo other_tag:bar`).
 
 ### Unix Domain Sockets Client
 
