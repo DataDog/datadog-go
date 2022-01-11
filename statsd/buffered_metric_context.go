@@ -11,7 +11,7 @@ import (
 // and Timing. Since those 3 metric types behave the same way and are sampled
 // with the same type they're represented by the same class.
 type bufferedMetricContexts struct {
-	nbContext int32
+	nbContext uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
 	newMetric func(string, float64, string) *bufferedMetric
@@ -46,7 +46,7 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	for _, d := range values {
 		metrics = append(metrics, d.flushUnsafe())
 	}
-	atomic.AddInt32(&bc.nbContext, int32(len(values)))
+	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
 	return metrics
 }
 
@@ -56,6 +56,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	}
 
 	context, stringTags := getContextAndTags(name, tags)
+
 	bc.mutex.RLock()
 	if v, found := bc.values[context]; found {
 		v.sample(value)
@@ -65,11 +66,17 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	bc.mutex.RUnlock()
 
 	bc.mutex.Lock()
+	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
+	if v, found := bc.values[context]; found {
+		v.sample(value)
+		bc.mutex.Unlock()
+		return nil
+	}
 	bc.values[context] = bc.newMetric(name, value, stringTags)
 	bc.mutex.Unlock()
 	return nil
 }
 
-func (bc *bufferedMetricContexts) resetAndGetNbContext() int32 {
-	return atomic.SwapInt32(&bc.nbContext, 0)
+func (bc *bufferedMetricContexts) getNbContext() uint64 {
+	return atomic.LoadUint64(&bc.nbContext)
 }

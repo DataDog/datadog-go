@@ -72,7 +72,7 @@ func (w *worker) processMetric(m metric) error {
 	return err
 }
 
-func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte) error {
+func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte, precision int) error {
 	globalPos := 0
 
 	// first check how much data we can write to the buffer:
@@ -84,7 +84,7 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte) erro
 	}
 
 	for {
-		pos, err := w.buffer.writeAggregated(metricSymbol, m.namespace, m.globalTags, m.name, m.fvalues[globalPos:], m.stags, tagsSize)
+		pos, err := w.buffer.writeAggregated(metricSymbol, m.namespace, m.globalTags, m.name, m.fvalues[globalPos:], m.stags, tagsSize, precision)
 		if err == errPartialWrite {
 			// We successfully wrote part of the histogram metrics.
 			// We flush the current buffer and finish the histogram
@@ -112,15 +112,15 @@ func (w *worker) writeMetricUnsafe(m metric) error {
 	case timing:
 		return w.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate)
 	case event:
-		return w.buffer.writeEvent(*m.evalue, m.globalTags)
+		return w.buffer.writeEvent(m.evalue, m.globalTags)
 	case serviceCheck:
-		return w.buffer.writeServiceCheck(*m.scvalue, m.globalTags)
+		return w.buffer.writeServiceCheck(m.scvalue, m.globalTags)
 	case histogramAggregated:
-		return w.writeAggregatedMetricUnsafe(m, histogramSymbol)
+		return w.writeAggregatedMetricUnsafe(m, histogramSymbol, -1)
 	case distributionAggregated:
-		return w.writeAggregatedMetricUnsafe(m, distributionSymbol)
+		return w.writeAggregatedMetricUnsafe(m, distributionSymbol, -1)
 	case timingAggregated:
-		return w.writeAggregatedMetricUnsafe(m, timingSymbol)
+		return w.writeAggregatedMetricUnsafe(m, timingSymbol, 6)
 	default:
 		return nil
 	}

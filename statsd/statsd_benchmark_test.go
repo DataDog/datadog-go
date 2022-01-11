@@ -9,8 +9,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/DataDog/datadog-go/statsd"
+	"github.com/DataDog/datadog-go/v5/statsd"
 )
+
+const writerNameUDP = "udp"
+const writerNameUDS = "uds"
 
 func setupUDSClientServer(b *testing.B, options []statsd.Option) (*statsd.Client, net.Listener) {
 	sockAddr := "/tmp/test.sock"
@@ -54,10 +57,10 @@ func setupUDPClientServer(b *testing.B, options []statsd.Option) (*statsd.Client
 }
 
 func setupClient(b *testing.B, transport string, extraOptions []statsd.Option) (*statsd.Client, io.Closer) {
-	options := []statsd.Option{statsd.WithMaxMessagesPerPayload(1024), statsd.WithoutTelemetry()}
+	options := []statsd.Option{statsd.WithMaxMessagesPerPayload(1024)}
 	options = append(options, extraOptions...)
 
-	if transport == statsd.WriterNameUDP {
+	if transport == writerNameUDP {
 		return setupUDPClientServer(b, options)
 	}
 	return setupUDSClientServer(b, options)
@@ -78,7 +81,7 @@ func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, extraOption
 		}
 	})
 	client.Flush()
-	t := client.FlushTelemetryMetrics()
+	t := client.GetTelemetry()
 	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
 
 	b.StopTimer()
@@ -97,7 +100,7 @@ func benchmarkStatsdSameMetrics(b *testing.B, transport string, extraOptions ...
 		}
 	})
 	client.Flush()
-	t := client.FlushTelemetryMetrics()
+	t := client.GetTelemetry()
 	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
 
 	b.StopTimer()
@@ -110,22 +113,22 @@ UDP with the same metric
 
 // blocking + no aggregation
 func BenchmarkStatsdUDPSameMetricMutex(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDP, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
 }
 
 // dropping + no aggregation
 func BenchmarkStatsdUDPSameMetricChannel(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDP, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
 }
 
 // blocking + aggregation
 func BenchmarkStatsdUDPSameMetricMutexAggregation(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDP, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
 }
 
 // dropping + aggregation
 func BenchmarkStatsdUDPSameMetricChannelAggregation(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
 /*
@@ -134,22 +137,22 @@ UDP with the different metrics
 
 // blocking + no aggregation
 func BenchmarkStatsdUDPDifferentMetricMutex(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDP, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
 }
 
 // dropping + no aggregation
 func BenchmarkStatsdUDPDifferentMetricChannel(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDP, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
 }
 
 // blocking + aggregation
 func BenchmarkStatsdUDPDifferentMetricMutexAggregation(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDP, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
 }
 
 // dropping + aggregation
 func BenchmarkStatsdUDPDifferentMetricChannelAggregation(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
 /*
@@ -157,22 +160,22 @@ UDS with the same metric
 */
 // blocking + no aggregation
 func BenchmarkStatsdUDSSameMetricMutex(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDS, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
 }
 
 // dropping + no aggregation
 func BenchmarkStatsdUDSSameMetricChannel(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDS, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
 }
 
 // blocking + aggregation
 func BenchmarkStatsdUDSSameMetricMutexAggregation(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDS, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
 }
 
 // dropping + aggregation
 func BenchmarkStatsdUDSSameMetricChannelAggregation(b *testing.B) {
-	benchmarkStatsdSameMetrics(b, statsd.WriterNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
 /*
@@ -180,20 +183,20 @@ UDS with different metrics
 */
 // blocking + no aggregation
 func BenchmarkStatsdUDPSifferentMetricMutex(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDS, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
 }
 
 // dropping + no aggregation
 func BenchmarkStatsdUDSDifferentMetricChannel(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDS, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
 }
 
 // blocking + aggregation
 func BenchmarkStatsdUDPSifferentMetricMutexAggregation(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDS, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
 }
 
 // dropping + aggregation
 func BenchmarkStatsdUDSDifferentMetricChannelAggregation(b *testing.B) {
-	benchmarkStatsdDifferentMetrics(b, statsd.WriterNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }

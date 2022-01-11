@@ -1,0 +1,75 @@
+# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
+#
+version: 2.1
+
+orbs:
+  os-detect: circleci/os-detect@0.2
+
+executors:
+  linux_arm64:
+    description: "arm64"
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+
+commands:
+  install_go_linux:
+    parameters:
+      version:
+        type: string
+    steps:
+      - os-detect/init # this setup the '$SUDO' variable
+      - run:
+          name: "install Golang linux"
+          command: |
+            if command -v go >/dev/null; then
+              if go version | grep -q -F "go<< parameters.version >> "; then
+                echo "Binary already exists, skipping download."
+                exit 0
+              fi
+              echo "Error different version of Go already installed: '`go version`' when requested was '<< parameters.version >>'"
+
+              $SUDO rm -rf /usr/local/go
+              $SUDO install "--owner=${USER}" -d /usr/local/go
+            fi
+
+            echo "Installing the requested version of Go."
+
+            curl --fail --location -sS "https://dl.google.com/go/go<<parameters.version >>.linux-arm64.tar.gz" \
+            | sudo tar --no-same-owner --strip-components=1 --gunzip -x -C /usr/local/go/
+
+            echo "export PATH=$PATH:/usr/local/go/bin" >> $BASH_ENV
+            $SUDO chown -R "$(whoami):" /usr/local/go
+
+            go version
+
+  run_tests:
+    steps:
+      - checkout
+      - run: go vet ./statsd/...
+      - run: go fmt ./statsd/...
+      - run: go test -v ./statsd/...
+
+jobs:
+  # Those allow us to have the os name in the job name. 'matrix' don't add static parameters to the name in the circleci
+  # UI.
+  tests_arm64:
+    working_directory: /home/circleci/.go_workspace/src/github.com/DataDog/datadog-go
+    environment:
+      GO111MODULE: auto
+    executor: linux_arm64
+    parameters:
+      go-version:
+        type: string
+    steps:
+      - install_go_linux:
+          version: << parameters.go-version >>
+      - run_tests
+
+workflows:
+  all-tests:
+    jobs:
+      - tests_arm64:
+          matrix:
+            parameters:
+              go-version: ["1.13", "1.14", "1.15", "1.16", "1.17"]

@@ -15,9 +15,9 @@ type (
 )
 
 type aggregator struct {
-	nbContextGauge int32
-	nbContextCount int32
-	nbContextSet   int32
+	nbContextGauge uint64
+	nbContextCount uint64
+	nbContextSet   uint64
 
 	countsM sync.RWMutex
 	gaugesM sync.RWMutex
@@ -34,23 +34,13 @@ type aggregator struct {
 
 	client *Client
 
-	// aggregator implements ChannelMode mechanism to receive histograms,
+	// aggregator implements channelMode mechanism to receive histograms,
 	// distributions and timings. Since they need sampling they need to
-	// lock for random. When using both ChannelMode and ExtendedAggregation
+	// lock for random. When using both channelMode and ExtendedAggregation
 	// we don't want goroutine to fight over the lock.
 	inputMetrics    chan metric
 	stopChannelMode chan struct{}
 	wg              sync.WaitGroup
-}
-
-type aggregatorMetrics struct {
-	nbContext             int32
-	nbContextGauge        int32
-	nbContextCount        int32
-	nbContextSet          int32
-	nbContextHistogram    int32
-	nbContextDistribution int32
-	nbContextTiming       int32
 }
 
 func newAggregator(c *Client) *aggregator {
@@ -124,22 +114,18 @@ func (a *aggregator) flush() {
 	}
 }
 
-func (a *aggregator) flushTelemetryMetrics() *aggregatorMetrics {
+func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 	if a == nil {
-		return nil
+		// aggregation is disabled
+		return
 	}
 
-	am := &aggregatorMetrics{
-		nbContextGauge:        atomic.SwapInt32(&a.nbContextGauge, 0),
-		nbContextCount:        atomic.SwapInt32(&a.nbContextCount, 0),
-		nbContextSet:          atomic.SwapInt32(&a.nbContextSet, 0),
-		nbContextHistogram:    a.histograms.resetAndGetNbContext(),
-		nbContextDistribution: a.distributions.resetAndGetNbContext(),
-		nbContextTiming:       a.timings.resetAndGetNbContext(),
-	}
-
-	am.nbContext = am.nbContextGauge + am.nbContextCount + am.nbContextSet + am.nbContextHistogram + am.nbContextDistribution + am.nbContextTiming
-	return am
+	t.AggregationNbContextGauge = atomic.LoadUint64(&a.nbContextGauge)
+	t.AggregationNbContextCount = atomic.LoadUint64(&a.nbContextCount)
+	t.AggregationNbContextSet = atomic.LoadUint64(&a.nbContextSet)
+	t.AggregationNbContextHistogram = a.histograms.getNbContext()
+	t.AggregationNbContextDistribution = a.distributions.getNbContext()
+	t.AggregationNbContextTiming = a.timings.getNbContext()
 }
 
 func (a *aggregator) flushMetrics() []metric {
@@ -179,9 +165,9 @@ func (a *aggregator) flushMetrics() []metric {
 	metrics = a.distributions.flush(metrics)
 	metrics = a.timings.flush(metrics)
 
-	atomic.AddInt32(&a.nbContextCount, int32(len(counts)))
-	atomic.AddInt32(&a.nbContextGauge, int32(len(gauges)))
-	atomic.AddInt32(&a.nbContextSet, int32(len(sets)))
+	atomic.AddUint64(&a.nbContextCount, uint64(len(counts)))
+	atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
+	atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
 	return metrics
 }
 
@@ -205,6 +191,13 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 	a.countsM.RUnlock()
 
 	a.countsM.Lock()
+	// Check if another goroutines hasn't created the value betwen the RUnlock and 'Lock'
+	if count, found := a.counts[context]; found {
+		count.sample(value)
+		a.countsM.Unlock()
+		return nil
+	}
+
 	a.counts[context] = newCountMetric(name, value, tags)
 	a.countsM.Unlock()
 	return nil
@@ -223,6 +216,12 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	gauge := newGaugeMetric(name, value, tags)
 
 	a.gaugesM.Lock()
+	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
+	if gauge, found := a.gauges[context]; found {
+		gauge.sample(value)
+		a.gaugesM.Unlock()
+		return nil
+	}
 	a.gauges[context] = gauge
 	a.gaugesM.Unlock()
 	return nil
@@ -239,6 +238,12 @@ func (a *aggregator) set(name string, value string, tags []string) error {
 	a.setsM.RUnlock()
 
 	a.setsM.Lock()
+	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
+	if set, found := a.sets[context]; found {
+		set.sample(value)
+		a.setsM.Unlock()
+		return nil
+	}
 	a.sets[context] = newSetMetric(name, value, tags)
 	a.setsM.Unlock()
 	return nil

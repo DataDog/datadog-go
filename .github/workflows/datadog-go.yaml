@@ -1,0 +1,24 @@
+# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
+
+name: datadog-go
+on:
+  pull_request:
+
+jobs:
+  native:
+    strategy:
+      matrix:
+        go-version: [ 1.17, 1.16, 1.15, 1.14, 1.13]
+        runs-on: [ ubuntu-latest, windows-latest, macos-latest ]
+      fail-fast: false
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - run: go vet ./statsd/...
+      - run: go fmt ./statsd/...
+      - run: go test -race -v ./statsd/...

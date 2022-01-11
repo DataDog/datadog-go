@@ -2,9 +2,8 @@ package statsd
 
 import (
 	"fmt"
-	"io"
-	"net"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,32 +12,81 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	defaultAddr = "localhost:1201"
-)
+func assertNotPanics(t *testing.T, f func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatal(r)
+		}
+	}()
+	f()
+}
 
-type statsdWriterWrapper struct{}
+func TestNilError(t *testing.T) {
+	var c *Client
+	tests := []func() error{
+		func() error { return c.Flush() },
+		func() error { return c.Close() },
+		func() error { return c.Count("", 0, nil, 1) },
+		func() error { return c.Incr("", nil, 1) },
+		func() error { return c.Decr("", nil, 1) },
+		func() error { return c.Histogram("", 0, nil, 1) },
+		func() error { return c.Distribution("", 0, nil, 1) },
+		func() error { return c.Gauge("", 0, nil, 1) },
+		func() error { return c.Set("", "", nil, 1) },
+		func() error { return c.Timing("", time.Second, nil, 1) },
+		func() error { return c.TimeInMilliseconds("", 1, nil, 1) },
+		func() error { return c.Event(NewEvent("", "")) },
+		func() error { return c.SimpleEvent("", "") },
+		func() error { return c.ServiceCheck(NewServiceCheck("", Ok)) },
+		func() error { return c.SimpleServiceCheck("", Ok) },
+		func() error {
+			_, err := CloneWithExtraOptions(nil, WithChannelMode())
+			return err
+		},
+	}
+	for i, f := range tests {
+		var err error
+		assertNotPanics(t, func() { err = f() })
+		if err != ErrNoClient {
+			t.Errorf("Test case %d: expected ErrNoClient, got %#v", i, err)
+		}
+	}
+}
 
-func (statsdWriterWrapper) SetWriteTimeout(time.Duration) error {
+func TestDoubleClosePanic(t *testing.T) {
+	c, err := New("localhost:8125")
+	assert.NoError(t, err)
+	c.Close()
+	c.Close()
+}
+
+type statsdWriterWrapper struct {
+	data []string
+}
+
+func (s *statsdWriterWrapper) Close() error {
 	return nil
 }
 
-func (statsdWriterWrapper) Close() error {
-	return nil
+func (s *statsdWriterWrapper) Write(p []byte) (n int, err error) {
+	for _, m := range strings.Split(string(p), "\n") {
+		if m != "" {
+			s.data = append(s.data, m)
+		}
+	}
+	return len(p), nil
 }
 
-func (statsdWriterWrapper) Write(p []byte) (n int, err error) {
-	return 0, nil
-}
-
-func TestCustomWriterBufferConfiguration(t *testing.T) {
-	client, err := NewWithWriter(statsdWriterWrapper{})
+func TestNewWithWriter(t *testing.T) {
+	w := statsdWriterWrapper{}
+	client, err := NewWithWriter(&w, WithoutTelemetry())
 	require.Nil(t, err)
-	defer client.Close()
 
-	assert.Equal(t, OptimalUDPPayloadSize, client.sender.pool.bufferMaxSize)
-	assert.Equal(t, DefaultUDPBufferPoolSize, cap(client.sender.pool.pool))
-	assert.Equal(t, DefaultUDPBufferPoolSize, cap(client.sender.queue))
+	ts := &testServer{}
+	expected := ts.sendAllType(client)
+	client.Close()
+
+	ts.assertMetric(t, w.data, expected)
 }
 
 // TestConcurrentSend sends various metric types in separate goroutines to
@@ -97,194 +145,44 @@ func TestConcurrentSend(t *testing.T) {
 	}
 }
 
-func getTestServer(t *testing.T, addr string) *net.UDPConn {
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	require.Nil(t, err, fmt.Sprintf("could not resolve udp '%s': %s", addr, err))
-
-	server, err := net.ListenUDP("udp", udpAddr)
-	require.Nil(t, err, fmt.Sprintf("Could not listen to UDP addr: %s", err))
-	return server
+// TestCloseRace close the client multiple times in separate goroutines to
+// trigger any possible data races. It is intended to be run with the data race
+// detector enabled.
+func TestCloseRace(t *testing.T) {
+	c, err := New("localhost:8125")
+	assert.NoError(t, err)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for j := 0; j < 100; j++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			c.Close()
+		}()
+	}
+	close(start)
+	wg.Wait()
 }
 
 func TestCloneWithExtraOptions(t *testing.T) {
-	client, err := New(defaultAddr, WithTags([]string{"tag1", "tag2"}))
+	client, err := New("localhost:1201", WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
 
-	assert.Equal(t, client.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, client.Namespace, "")
-	assert.Equal(t, client.workersMode, MutexMode)
-	assert.Equal(t, client.addrOption, defaultAddr)
+	assert.Equal(t, client.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, client.namespace, "")
+	assert.Equal(t, client.workersMode, mutexMode)
+	assert.Equal(t, "localhost:1201", client.addrOption)
 	assert.Len(t, client.options, 1)
 
 	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"), WithChannelMode())
 	require.Nil(t, err, fmt.Sprintf("failed to clone client: %s", err))
 
-	assert.Equal(t, cloneClient.Tags, []string{"tag1", "tag2"})
-	assert.Equal(t, cloneClient.Namespace, "test.")
-	assert.Equal(t, cloneClient.workersMode, ChannelMode)
-	assert.Equal(t, cloneClient.addrOption, defaultAddr)
+	assert.Equal(t, cloneClient.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, cloneClient.namespace, "test.")
+	assert.Equal(t, cloneClient.workersMode, channelMode)
+	assert.Equal(t, "localhost:1201", cloneClient.addrOption)
 	assert.Len(t, cloneClient.options, 3)
-}
-
-func sendOneMetrics(client *Client) string {
-	client.Count("name", 1, []string{"tag"}, 1)
-	return "name:1|c|#tag\n"
-}
-
-func sendBasicMetrics(client *Client) string {
-	client.Gauge("gauge", 1, []string{"tag"}, 1)
-	client.Gauge("gauge", 21, []string{"tag"}, 1)
-	client.Count("count", 1, []string{"tag"}, 1)
-	client.Count("count", 3, []string{"tag"}, 1)
-	client.Set("set", "my_id", []string{"tag"}, 1)
-	client.Set("set", "my_id", []string{"tag"}, 1)
-
-	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\n"
-}
-
-func sendAllMetrics(client *Client) string {
-	client.Gauge("gauge", 1, []string{"tag"}, 1)
-	client.Count("count", 2, []string{"tag"}, 1)
-	client.Set("set", "3_id", []string{"tag"}, 1)
-	client.Histogram("histo", 4, []string{"tag"}, 1)
-	client.Distribution("distro", 5, []string{"tag"}, 1)
-	client.Timing("timing", 6*time.Second, []string{"tag"}, 1)
-
-	return "gauge:1|g|#tag\ncount:2|c|#tag\nset:3_id|s|#tag\nhisto:4|h|#tag\ndistro:5|d|#tag\ntiming:6000.000000|ms|#tag\n"
-}
-
-func sendAllMetricsWithBasicAggregation(client *Client) string {
-	client.Gauge("gauge", 1, []string{"tag"}, 1)
-	client.Gauge("gauge", 21, []string{"tag"}, 1)
-	client.Count("count", 1, []string{"tag"}, 1)
-	client.Count("count", 3, []string{"tag"}, 1)
-	client.Set("set", "my_id", []string{"tag"}, 1)
-	client.Set("set", "my_id", []string{"tag"}, 1)
-	client.Histogram("histo", 3, []string{"tag"}, 1)
-	client.Histogram("histo", 31, []string{"tag"}, 1)
-	client.Distribution("distro", 3, []string{"tag"}, 1)
-	client.Distribution("distro", 22, []string{"tag"}, 1)
-	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
-	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
-
-	return "histo:3|h|#tag\nhisto:31|h|#tag\ndistro:3|d|#tag\ndistro:22|d|#tag\ntiming:3000.000000|ms|#tag\ntiming:12000.000000|ms|#tag\nset:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\n"
-}
-
-func sendExtendedMetricsWithExtentedAggregation(client *Client) string {
-	client.Gauge("gauge", 1, []string{"tag"}, 1)
-	client.Gauge("gauge", 21, []string{"tag"}, 1)
-	client.Count("count", 1, []string{"tag"}, 1)
-	client.Count("count", 3, []string{"tag"}, 1)
-	client.Set("set", "my_id", []string{"tag"}, 1)
-	client.Set("set", "my_id", []string{"tag"}, 1)
-	client.Histogram("histo", 3, []string{"tag"}, 1)
-	client.Histogram("histo", 31, []string{"tag"}, 1)
-	client.Distribution("distro", 3, []string{"tag"}, 1)
-	client.Distribution("distro", 22, []string{"tag"}, 1)
-	client.Timing("timing", 3*time.Second, []string{"tag"}, 1)
-	client.Timing("timing", 12*time.Second, []string{"tag"}, 1)
-
-	return "set:my_id|s|#tag\ngauge:21|g|#tag\ncount:4|c|#tag\nhisto:3:31|h|#tag\ndistro:3:22|d|#tag\ntiming:3000:12000|ms|#tag\n"
-}
-
-func testStatsdPipeline(t *testing.T, client *Client, genMetric func(*Client) string, flush func(*Client)) {
-	server := getTestServer(t, defaultAddr)
-	defer server.Close()
-
-	readDone := make(chan struct{})
-	buffer := make([]byte, 4096)
-	n := 0
-	go func() {
-		n, _ = io.ReadAtLeast(server, buffer, 1)
-		close(readDone)
-	}()
-
-	expectedResults := genMetric(client)
-
-	flush(client)
-
-	select {
-	case <-readDone:
-	case <-time.After(2 * time.Second):
-		require.Fail(t, "No data was flush on Close")
-	}
-
-	assert.Equal(t, expectedResults, string(buffer[:n]))
-}
-
-func TestGroupClient(t *testing.T) {
-	type testCase struct {
-		opt       []Option
-		genMetric func(*Client) string
-		flushFunc func(*Client)
-	}
-
-	testMap := map[string]testCase{
-		"MutexMode": testCase{
-			[]Option{WithBufferShardCount(1)},
-			sendAllMetrics,
-			func(*Client) {},
-		},
-		"ChannelMode": testCase{
-			[]Option{WithChannelMode(), WithBufferShardCount(1)},
-			sendAllMetrics,
-			func(*Client) {},
-		},
-		"DevMode": testCase{
-			[]Option{WithDevMode()},
-			sendOneMetrics,
-			func(*Client) {},
-		},
-		"BasicAggregation + Close": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
-			sendBasicMetrics,
-			func(c *Client) { c.Close() },
-		},
-		"BasicAggregation all metric + Close": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
-			sendAllMetricsWithBasicAggregation,
-			func(c *Client) { c.Close() },
-		},
-		"BasicAggregation + Flush": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1)},
-			sendBasicMetrics,
-			func(c *Client) { c.Flush() },
-		},
-		"BasicAggregationChannelMode + Close": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
-			sendBasicMetrics,
-			func(c *Client) { c.Close() },
-		},
-		"BasicAggregationChannelMode + Flush": testCase{
-			[]Option{WithClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
-			sendBasicMetrics,
-			func(c *Client) { c.Flush() },
-		},
-		"ExtendedAggregation + Close": testCase{
-			[]Option{WithExtendedClientSideAggregation(), WithBufferShardCount(1)},
-			sendExtendedMetricsWithExtentedAggregation,
-			func(c *Client) { c.Close() },
-		},
-		"ExtendedAggregation + Close + ChannelMode": testCase{
-			[]Option{WithExtendedClientSideAggregation(), WithBufferShardCount(1), WithChannelMode()},
-			sendExtendedMetricsWithExtentedAggregation,
-			func(c *Client) {
-				// since we're using ChannelMode we give a second to the worker to
-				// empty the channel. A second should be more than enough to pull 6
-				// items from a channel.
-				time.Sleep(1 * time.Second)
-				c.Close()
-			},
-		},
-	}
-
-	for testName, c := range testMap {
-		t.Run(testName, func(t *testing.T) {
-			client, err := New(defaultAddr, c.opt...)
-			require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
-			testStatsdPipeline(t, client, c.genMetric, c.flushFunc)
-		})
-	}
 }
 
 func TestResolveAddressFromEnvironment(t *testing.T) {
@@ -332,4 +230,42 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 			assert.Equal(t, tc.expectedAddr, addr)
 		})
 	}
+}
+
+func TestGetTelemetry(t *testing.T) {
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		nil,
+		WithExtendedClientSideAggregation(),
+	)
+
+	ts.sendAllAndAssert(t, client)
+	tlm := client.GetTelemetry()
+
+	assert.Equal(t, uint64(9), tlm.TotalMetrics, "telmetry TotalMetrics was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsGauge, "telmetry TotalMetricsGauge was wrong")
+	assert.Equal(t, uint64(3), tlm.TotalMetricsCount, "telmetry TotalMetricsCount was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsHistogram, "telmetry TotalMetricsHistogram was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsDistribution, "telmetry TotalMetricsDistribution was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalMetricsSet, "telmetry TotalMetricsSet was wrong")
+	assert.Equal(t, uint64(2), tlm.TotalMetricsTiming, "telmetry TotalMetricsTiming was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalEvents, "telmetry TotalEvents was wrong")
+	assert.Equal(t, uint64(1), tlm.TotalServiceChecks, "telmetry TotalServiceChecks was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalDroppedOnReceive, "telmetry TotalDroppedOnReceive was wrong")
+	assert.Equal(t, uint64(22), tlm.TotalPayloadsSent, "telmetry TotalPayloadsSent was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalPayloadsDropped, "telmetry TotalPayloadsDropped was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalPayloadsDroppedWriter, "telmetry TotalPayloadsDroppedWriter was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalPayloadsDroppedQueueFull, "telmetry TotalPayloadsDroppedQueueFull was wrong")
+	assert.Equal(t, uint64(3112), tlm.TotalBytesSent, "telmetry TotalBytesSent was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalBytesDropped, "telmetry TotalBytesDropped was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalBytesDroppedWriter, "telmetry TotalBytesDroppedWriter was wrong")
+	assert.Equal(t, uint64(0), tlm.TotalBytesDroppedQueueFull, "telmetry TotalBytesDroppedQueueFull was wrong")
+	assert.Equal(t, uint64(9), tlm.AggregationNbContext, "telmetry AggregationNbContext was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextGauge, "telmetry AggregationNbContextGauge was wrong")
+	assert.Equal(t, uint64(3), tlm.AggregationNbContextCount, "telmetry AggregationNbContextCount was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextSet, "telmetry AggregationNbContextSet was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextHistogram, "telmetry AggregationNbContextHistogram was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbContextDistribution, "telmetry AggregationNbContextDistribution was wrong")
+	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
 }

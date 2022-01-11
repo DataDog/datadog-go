@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/DataDog/datadog-go/statsd"
+	"github.com/DataDog/datadog-go/v5/statsd"
 )
 
 func main() {
@@ -14,6 +14,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	client.Gauge("my.metrics", 21, []string{"tag1", "tag2:value"}, 1)
+	client.Histogram("my.metrics", 21, []string{"tag1", "tag2:value"}, 1)
 	client.Close()
 }
