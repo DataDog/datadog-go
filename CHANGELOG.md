@@ -54,6 +54,10 @@ more easily in the future without breaking the public API of the client.
   `WithExtendedClientSideAggregation()` for Timings, Histograms and Distributions is still disabled by default. Both
   features are no longer considered BETA.
 
+# 4.8.3 / 2021-10-27
+
+* [BUGFIX] Fix `Event.Check` method: text is no longer required. See [#237][].
+
 # 4.8.2 / 2021-09-06
 
 * [BETA][BUGFIX] Fix race condition in aggregation where two sample could overwrite each other when sampled for the first time. See [#225][]
@@ -371,6 +375,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#205]: https://github.com/DataDog/datadog-go/pull/205
 [#225]: https://github.com/DataDog/datadog-go/pull/225
 [#235]: https://github.com/DataDog/datadog-go/pull/235
+[#237]: https://github.com/DataDog/datadog-go/pull/237
 [#242]: https://github.com/DataDog/datadog-go/pull/242
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
