@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -69,15 +70,29 @@ const (
 	defaultUDPPort      = "8125"
 )
 
+const (
+	// ddEntityID specifies client-side user-specified entity ID injection.
+	// This env var can be set to the Pod UID on Kubernetes via the downward API.
+	// Docs: https://docs.datadoghq.com/developers/dogstatsd/?tab=kubernetes#origin-detection-over-udp
+	ddEntityID = "DD_ENTITY_ID"
+
+	// ddEntityIDTag specifies the tag name for the client-side entity ID injection
+	// The Agent expects this tag to contain a non-prefixed Kubernetes Pod UID.
+	ddEntityIDTag = "dd.internal.entity_id"
+
+	// originDetectionEnabled specifies the env var to enable/disable sending the container ID field.
+	originDetectionEnabled = "DD_ORIGIN_DETECTION_ENABLED"
+)
+
 /*
 ddEnvTagsMapping is a mapping of each "DD_" prefixed environment variable
 to a specific tag name. We use a slice to keep the order and simplify tests.
 */
 var ddEnvTagsMapping = []struct{ envName, tagName string }{
-	{"DD_ENTITY_ID", "dd.internal.entity_id"}, // Client-side entity ID injection for container tagging.
-	{"DD_ENV", "env"},                         // The name of the env in which the service runs.
-	{"DD_SERVICE", "service"},                 // The name of the running service.
-	{"DD_VERSION", "version"},                 // The current version of the running service.
+	{ddEntityID, ddEntityIDTag}, // Client-side entity ID injection for container tagging.
+	{"DD_ENV", "env"},           // The name of the env in which the service runs.
+	{"DD_SERVICE", "service"},   // The name of the running service.
+	{"DD_VERSION", "version"},   // The current version of the running service.
 }
 
 type metricType int
@@ -110,19 +125,20 @@ const (
 )
 
 type metric struct {
-	metricType metricType
-	namespace  string
-	globalTags []string
-	name       string
-	fvalue     float64
-	fvalues    []float64
-	ivalue     int64
-	svalue     string
-	evalue     *Event
-	scvalue    *ServiceCheck
-	tags       []string
-	stags      string
-	rate       float64
+	metricType  metricType
+	namespace   string
+	globalTags  []string
+	name        string
+	fvalue      float64
+	fvalues     []float64
+	ivalue      int64
+	svalue      string
+	evalue      *Event
+	scvalue     *ServiceCheck
+	tags        []string
+	stags       string
+	rate        float64
+	containerID string
 }
 
 type noClientErr string
@@ -208,6 +224,8 @@ type Client struct {
 	aggExtended     *aggregator
 	options         []Option
 	addrOption      string
+	// containerID is the container ID of the application sending the metric
+	containerID string
 }
 
 // statsdTelemetry contains telemetry metrics about the client
@@ -319,10 +337,21 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		tags:      o.tags,
 		telemetry: &statsdTelemetry{},
 	}
+
+	hasEntityID := false
 	// Inject values of DD_* environment variables as global tags.
 	for _, mapping := range ddEnvTagsMapping {
 		if value := os.Getenv(mapping.envName); value != "" {
+			if mapping.envName == ddEntityID {
+				hasEntityID = true
+			}
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
+		}
+	}
+
+	if isOriginDetectionEnabled(o, hasEntityID) {
+		if cID := getContainerID(); cID != "" {
+			c.containerID = cID
 		}
 	}
 
@@ -482,6 +511,7 @@ func (c *Client) send(m metric) error {
 func (c *Client) sendBlocking(m metric) error {
 	m.globalTags = c.tags
 	m.namespace = c.namespace
+	m.containerID = c.containerID
 
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
@@ -509,7 +539,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // Count tracks how many times something happened per second.
@@ -521,7 +551,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c.agg != nil {
 		return c.agg.count(name, value, tags)
 	}
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -533,7 +563,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.aggExtended != nil {
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
-	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -545,7 +575,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.aggExtended != nil {
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
-	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // Decr is just Count of -1
@@ -567,7 +597,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c.agg != nil {
 		return c.agg.set(name, value, tags)
 	}
-	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -585,7 +615,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c.aggExtended != nil {
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
-	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // Event sends the provided Event.
@@ -594,7 +624,7 @@ func (c *Client) Event(e *Event) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalEvents, 1)
-	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -609,7 +639,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
-	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace})
+	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -655,4 +685,33 @@ func (c *Client) Close() error {
 
 	c.Flush()
 	return c.sender.close()
+}
+
+// isOriginDetectionEnabled returns whether the clients should fill the container field.
+//
+// If DD_ENTITY_ID is set, we don't send the container ID
+// as dd.internal.entity_id is prioritized over the container field for backward compatibility.
+// If DD_ENTITY_ID is not set, we try to fill the container field automatically unless
+// DD_ORIGIN_DETECTION_ENABLED is explicitly set to false.
+func isOriginDetectionEnabled(o *Options, hasEntityID bool) bool {
+	if !o.originDetection || hasEntityID {
+		// originDetection is explicitly disabled or DD_ENTITY_ID was found
+		return false
+	}
+
+	envVarValue := os.Getenv(originDetectionEnabled)
+	if envVarValue == "" {
+		// DD_ORIGIN_DETECTION_ENABLED is not set
+		// default to true
+		return true
+	}
+
+	enabled, err := strconv.ParseBool(envVarValue)
+	if err != nil {
+		// Error due to an unsupported DD_ORIGIN_DETECTION_ENABLED value
+		// default to true
+		return true
+	}
+
+	return enabled
 }

@@ -23,6 +23,7 @@ var (
 	defaultAggregationFlushInterval = 2 * time.Second
 	defaultAggregation              = true
 	defaultExtendedAggregation      = false
+	defaultOriginDetection          = true
 )
 
 // Options contains the configuration options for a client.
@@ -43,6 +44,7 @@ type Options struct {
 	aggregation              bool
 	extendedAggregation      bool
 	telemetryAddr            string
+	originDetection          bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -62,6 +64,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		aggregationFlushInterval: defaultAggregationFlushInterval,
 		aggregation:              defaultAggregation,
 		extendedAggregation:      defaultExtendedAggregation,
+		originDetection:          defaultOriginDetection,
 	}
 
 	for _, option := range options {
@@ -294,6 +297,18 @@ func WithoutTelemetry() Option {
 func WithTelemetryAddr(addr string) Option {
 	return func(o *Options) error {
 		o.telemetryAddr = addr
+		return nil
+	}
+}
+
+// WithoutOriginDetection disables the client origin detection.
+// When enabled, the client tries to discover its container ID and sends it to the Agent
+// to enrich the metrics with container tags.
+//
+// More on this here: https://docs.datadoghq.com/developers/dogstatsd/?tab=kubernetes#origin-detection-over-udp
+func WithoutOriginDetection() Option {
+	return func(o *Options) error {
+		o.originDetection = false
 		return nil
 	}
 }

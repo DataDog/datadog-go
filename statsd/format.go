@@ -94,58 +94,61 @@ func appendTagsAggregated(buffer []byte, globalTags []string, tags string) []byt
 	return buffer
 }
 
-func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64, precision int) []byte {
+func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace, name, containerID string, globalTags []string, value float64, tags []string, rate float64, precision int) []byte {
 	buffer = appendHeader(buffer, namespace, name)
 	buffer = strconv.AppendFloat(buffer, value, 'f', precision, 64)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
 	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
+	buffer = appendContainerID(buffer, containerID)
 	return buffer
 }
 
-func appendIntegerMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value int64, tags []string, rate float64) []byte {
+func appendIntegerMetric(buffer []byte, typeSymbol []byte, namespace, name, containerID string, globalTags []string, value int64, tags []string, rate float64) []byte {
 	buffer = appendHeader(buffer, namespace, name)
 	buffer = strconv.AppendInt(buffer, value, 10)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
 	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
+	buffer = appendContainerID(buffer, containerID)
 	return buffer
 }
 
-func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value string, tags []string, rate float64) []byte {
+func appendStringMetric(buffer []byte, typeSymbol []byte, namespace, name, containerID string, globalTags []string, value string, tags []string, rate float64) []byte {
 	buffer = appendHeader(buffer, namespace, name)
 	buffer = append(buffer, value...)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
 	buffer = appendRate(buffer, rate)
 	buffer = appendTags(buffer, globalTags, tags)
+	buffer = appendContainerID(buffer, containerID)
 	return buffer
 }
 
-func appendGauge(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, gaugeSymbol, namespace, globalTags, name, value, tags, rate, -1)
+func appendGauge(buffer []byte, namespace, name, containerID string, globalTags []string, value float64, tags []string, rate float64) []byte {
+	return appendFloatMetric(buffer, gaugeSymbol, namespace, name, containerID, globalTags, value, tags, rate, -1)
 }
 
-func appendCount(buffer []byte, namespace string, globalTags []string, name string, value int64, tags []string, rate float64) []byte {
-	return appendIntegerMetric(buffer, countSymbol, namespace, globalTags, name, value, tags, rate)
+func appendCount(buffer []byte, namespace, name, containerID string, globalTags []string, value int64, tags []string, rate float64) []byte {
+	return appendIntegerMetric(buffer, countSymbol, namespace, name, containerID, globalTags, value, tags, rate)
 }
 
-func appendHistogram(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, histogramSymbol, namespace, globalTags, name, value, tags, rate, -1)
+func appendHistogram(buffer []byte, namespace, name, containerID string, globalTags []string, value float64, tags []string, rate float64) []byte {
+	return appendFloatMetric(buffer, histogramSymbol, namespace, name, containerID, globalTags, value, tags, rate, -1)
 }
 
-func appendDistribution(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, distributionSymbol, namespace, globalTags, name, value, tags, rate, -1)
+func appendDistribution(buffer []byte, namespace, name, containerID string, globalTags []string, value float64, tags []string, rate float64) []byte {
+	return appendFloatMetric(buffer, distributionSymbol, namespace, name, containerID, globalTags, value, tags, rate, -1)
 }
 
-func appendSet(buffer []byte, namespace string, globalTags []string, name string, value string, tags []string, rate float64) []byte {
-	return appendStringMetric(buffer, setSymbol, namespace, globalTags, name, value, tags, rate)
+func appendSet(buffer []byte, namespace, name, containerID string, globalTags []string, value string, tags []string, rate float64) []byte {
+	return appendStringMetric(buffer, setSymbol, namespace, name, containerID, globalTags, value, tags, rate)
 }
 
-func appendTiming(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
-	return appendFloatMetric(buffer, timingSymbol, namespace, globalTags, name, value, tags, rate, 6)
+func appendTiming(buffer []byte, namespace, name, containerID string, globalTags []string, value float64, tags []string, rate float64) []byte {
+	return appendFloatMetric(buffer, timingSymbol, namespace, name, containerID, globalTags, value, tags, rate, 6)
 }
 
 func escapedEventTextLen(text string) int {
@@ -163,7 +166,7 @@ func appendEscapedEventText(buffer []byte, text string) []byte {
 	return buffer
 }
 
-func appendEvent(buffer []byte, event *Event, globalTags []string) []byte {
+func appendEvent(buffer []byte, event *Event, globalTags []string, containerID string) []byte {
 	escapedTextLen := escapedEventTextLen(event.Text)
 
 	buffer = append(buffer, "_e{"...)
@@ -210,6 +213,7 @@ func appendEvent(buffer []byte, event *Event, globalTags []string) []byte {
 	}
 
 	buffer = appendTags(buffer, globalTags, event.Tags)
+	buffer = appendContainerID(buffer, containerID)
 	return buffer
 }
 
@@ -227,7 +231,7 @@ func appendEscapedServiceCheckText(buffer []byte, text string) []byte {
 	return buffer
 }
 
-func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []string) []byte {
+func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []string, containerID string) []byte {
 	buffer = append(buffer, "_sc|"...)
 	buffer = append(buffer, serviceCheck.Name...)
 	buffer = append(buffer, '|')
@@ -249,9 +253,19 @@ func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []
 		buffer = append(buffer, "|m:"...)
 		buffer = appendEscapedServiceCheckText(buffer, serviceCheck.Message)
 	}
+
+	buffer = appendContainerID(buffer, containerID)
 	return buffer
 }
 
 func appendSeparator(buffer []byte) []byte {
 	return append(buffer, '\n')
+}
+
+func appendContainerID(buffer []byte, containerID string) []byte {
+	if len(containerID) > 0 {
+		buffer = append(buffer, "|c:"...)
+		buffer = append(buffer, containerID...)
+	}
+	return buffer
 }

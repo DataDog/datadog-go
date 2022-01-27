@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func resetGetContainerID() {
+	getContainerID = func() string {
+		return readContainerID(cgroupPath)
+	}
+}
+
 func TestPipelineWithGlobalTags(t *testing.T) {
 	ts, client := newClientAndTestServer(t,
 		"udp",
@@ -103,6 +109,88 @@ func TestKnownEnvTagsEmptyString(t *testing.T) {
 	)
 
 	assert.Len(t, client.tags, 0)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestContainerIDWithEntityID(t *testing.T) {
+	entityIDEnvName := "DD_ENTITY_ID"
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	os.Setenv(entityIDEnvName, "pod-uid")
+
+	getContainerID = func() string { return "fake-container-id" }
+	defer resetGetContainerID()
+
+	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		expectedTags,
+	)
+
+	sort.Strings(client.tags)
+	assert.Equal(t, expectedTags, client.tags)
+	assert.Equal(t, "", client.containerID)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestContainerIDWithoutEntityID(t *testing.T) {
+	os.Unsetenv("DD_ENTITY_ID")
+
+	getContainerID = func() string { return "fake-container-id" }
+	defer resetGetContainerID()
+
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		[]string{},
+	)
+
+	assert.Equal(t, "fake-container-id", client.containerID)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestOriginDetectionDisabled(t *testing.T) {
+	os.Unsetenv("DD_ENTITY_ID")
+
+	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
+	defer func() { os.Unsetenv(originDetectionEnvName) }()
+	os.Setenv(originDetectionEnvName, "false")
+
+	getContainerID = func() string { return "fake-container-id" }
+	defer resetGetContainerID()
+
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		[]string{},
+	)
+
+	assert.Equal(t, "", client.containerID)
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
+	entityIDEnvName := "DD_ENTITY_ID"
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	os.Setenv(entityIDEnvName, "pod-uid")
+
+	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
+	defer func() { os.Unsetenv(originDetectionEnvName) }()
+	os.Setenv(originDetectionEnvName, "true")
+
+	getContainerID = func() string { return "fake-container-id" }
+	defer resetGetContainerID()
+
+	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		expectedTags,
+	)
+
+	sort.Strings(client.tags)
+	assert.Equal(t, expectedTags, client.tags)
+	assert.Equal(t, "", client.containerID)
 	ts.sendAllAndAssert(t, client)
 }
 

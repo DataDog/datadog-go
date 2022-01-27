@@ -49,15 +49,16 @@ type testTelemetryData struct {
 type testServer struct {
 	sync.Mutex
 
-	conn      io.ReadCloser
-	data      []string
-	errors    []string
-	readData  []string
-	proto     string
-	addr      string
-	stopped   chan struct{}
-	tags      string
-	namespace string
+	conn        io.ReadCloser
+	data        []string
+	errors      []string
+	readData    []string
+	proto       string
+	addr        string
+	stopped     chan struct{}
+	tags        string
+	namespace   string
+	containerID string
 
 	aggregation         bool
 	extendedAggregation bool
@@ -109,6 +110,8 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 
 	client, err := New(addr, options...)
 	require.NoError(t, err)
+
+	ts.containerID = client.containerID
 
 	go ts.start()
 	return ts, client
@@ -312,6 +315,13 @@ func (ts *testServer) getFinalTags(t ...string) string {
 	return res
 }
 
+func (ts *testServer) getContainerID() string {
+	if ts.containerID == "" {
+		return ""
+	}
+	return "|c:" + ts.containerID
+}
+
 func (ts *testServer) getFinalTelemetryTags() string {
 	base := "|#"
 	if ts.tags != "" {
@@ -355,17 +365,18 @@ func (ts *testServer) sendAllMetrics(c *Client) []string {
 	}
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 
 	return []string{
-		ts.namespace + "Gauge:1|g" + finalTags,
-		ts.namespace + "Count:2|c" + finalTags,
-		ts.namespace + "Histogram:3|h" + finalTags,
-		ts.namespace + "Distribution:4|d" + finalTags,
-		ts.namespace + "Decr:-1|c" + finalTags,
-		ts.namespace + "Incr:1|c" + finalTags,
-		ts.namespace + "Set:value|s" + finalTags,
-		ts.namespace + "Timing:5000.000000|ms" + finalTags,
-		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags,
+		ts.namespace + "Gauge:1|g" + finalTags + containerID,
+		ts.namespace + "Count:2|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3|h" + finalTags + containerID,
+		ts.namespace + "Distribution:4|d" + finalTags + containerID,
+		ts.namespace + "Decr:-1|c" + finalTags + containerID,
+		ts.namespace + "Incr:1|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
 	}
 }
 
@@ -407,17 +418,18 @@ func (ts *testServer) sendAllMetricsForBasicAggregation(c *Client) []string {
 	}
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 
 	return []string{
-		ts.namespace + "Gauge:2|g" + finalTags,
-		ts.namespace + "Count:4|c" + finalTags,
-		ts.namespace + "Histogram:3|h" + finalTags,
-		ts.namespace + "Distribution:4|d" + finalTags,
-		ts.namespace + "Decr:-2|c" + finalTags,
-		ts.namespace + "Incr:2|c" + finalTags,
-		ts.namespace + "Set:value|s" + finalTags,
-		ts.namespace + "Timing:5000.000000|ms" + finalTags,
-		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags,
+		ts.namespace + "Gauge:2|g" + finalTags + containerID,
+		ts.namespace + "Count:4|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3|h" + finalTags + containerID,
+		ts.namespace + "Distribution:4|d" + finalTags + containerID,
+		ts.namespace + "Decr:-2|c" + finalTags + containerID,
+		ts.namespace + "Incr:2|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
 	}
 }
 
@@ -463,17 +475,18 @@ func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client) []string {
 	}
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 
 	return []string{
-		ts.namespace + "Gauge:2|g" + finalTags,
-		ts.namespace + "Count:4|c" + finalTags,
-		ts.namespace + "Histogram:3:3|h" + finalTags,
-		ts.namespace + "Distribution:4:4|d" + finalTags,
-		ts.namespace + "Decr:-2|c" + finalTags,
-		ts.namespace + "Incr:2|c" + finalTags,
-		ts.namespace + "Set:value|s" + finalTags,
-		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags,
-		ts.namespace + "TimeInMilliseconds:6.000000:6.000000|ms" + finalTags,
+		ts.namespace + "Gauge:2|g" + finalTags + containerID,
+		ts.namespace + "Count:4|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3:3|h" + finalTags + containerID,
+		ts.namespace + "Distribution:4:4|d" + finalTags + containerID,
+		ts.namespace + "Decr:-2|c" + finalTags + containerID,
+		ts.namespace + "Incr:2|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000:6.000000|ms" + finalTags + containerID,
 	}
 }
 
@@ -486,11 +499,12 @@ func (ts *testServer) sendAllType(c *Client) []string {
 	ts.telemetry.service_check += 1
 
 	finalTags := ts.getFinalTags()
+	containerID := ts.getContainerID()
 
 	return append(
 		res,
-		"_e{5,5}:hello|world"+finalTags,
-		"_sc|hello|1"+finalTags,
+		"_e{5,5}:hello|world"+finalTags+containerID,
+		"_sc|hello|1"+finalTags+containerID,
 	)
 }
 
@@ -504,10 +518,11 @@ func (ts *testServer) sendBasicAggregationMetrics(client *Client) []string {
 	client.Set("set", "my_id", tags, 1)
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 	return []string{
-		ts.namespace + "set:my_id|s" + finalTags,
-		ts.namespace + "gauge:21|g" + finalTags,
-		ts.namespace + "count:4|c" + finalTags,
+		ts.namespace + "set:my_id|s" + finalTags + containerID,
+		ts.namespace + "gauge:21|g" + finalTags + containerID,
+		ts.namespace + "count:4|c" + finalTags + containerID,
 	}
 }
 
@@ -521,12 +536,13 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 	client.Timing("timing", 6*time.Second, tags, 1)
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 	return []string{
-		ts.namespace + "gauge:1|g" + finalTags,
-		ts.namespace + "count:2|c" + finalTags,
-		ts.namespace + "set:3_id|s" + finalTags,
-		ts.namespace + "histo:4|h" + finalTags,
-		ts.namespace + "distro:5|d" + finalTags,
-		ts.namespace + "timing:6000.000000|ms" + finalTags,
+		ts.namespace + "gauge:1|g" + finalTags + containerID,
+		ts.namespace + "count:2|c" + finalTags + containerID,
+		ts.namespace + "set:3_id|s" + finalTags + containerID,
+		ts.namespace + "histo:4|h" + finalTags + containerID,
+		ts.namespace + "distro:5|d" + finalTags + containerID,
+		ts.namespace + "timing:6000.000000|ms" + finalTags + containerID,
 	}
 }
