@@ -23,6 +23,7 @@ var (
 	defaultAggregationFlushInterval = 2 * time.Second
 	defaultAggregation              = true
 	defaultExtendedAggregation      = false
+	defaultOriginDetection          = true
 )
 
 // Options contains the configuration options for a client.
@@ -43,6 +44,8 @@ type Options struct {
 	aggregation              bool
 	extendedAggregation      bool
 	telemetryAddr            string
+	originDetection          bool
+	containerID              string
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -62,6 +65,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		aggregationFlushInterval: defaultAggregationFlushInterval,
 		aggregation:              defaultAggregation,
 		extendedAggregation:      defaultExtendedAggregation,
+		originDetection:          defaultOriginDetection,
 	}
 
 	for _, option := range options {
@@ -294,6 +298,48 @@ func WithoutTelemetry() Option {
 func WithTelemetryAddr(addr string) Option {
 	return func(o *Options) error {
 		o.telemetryAddr = addr
+		return nil
+	}
+}
+
+// WithoutOriginDetection disables the client origin detection.
+// When enabled, the client tries to discover its container ID and sends it to the Agent
+// to enrich the metrics with container tags.
+// Origin detection can also be disabled by configuring the environment variabe DD_ORIGIN_DETECTION_ENABLED=false
+// The client tries to read the container ID by parsing the file /proc/self/cgroup, this is not supported on Windows.
+// The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
+//
+// More on this here: https://docs.datadoghq.com/developers/dogstatsd/?tab=kubernetes#origin-detection-over-udp
+func WithoutOriginDetection() Option {
+	return func(o *Options) error {
+		o.originDetection = false
+		return nil
+	}
+}
+
+// WithOriginDetection enables the client origin detection.
+// This feature requires Datadog Agent version >=6.35.0 && <7.0.0 or Agent versions >=7.35.0.
+// When enabled, the client tries to discover its container ID and sends it to the Agent
+// to enrich the metrics with container tags.
+// Origin detection can be disabled by configuring the environment variabe DD_ORIGIN_DETECTION_ENABLED=false
+// The client tries to read the container ID by parsing the file /proc/self/cgroup, this is not supported on Windows.
+// The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
+//
+// More on this here: https://docs.datadoghq.com/developers/dogstatsd/?tab=kubernetes#origin-detection-over-udp
+func WithOriginDetection() Option {
+	return func(o *Options) error {
+		o.originDetection = true
+		return nil
+	}
+}
+
+// WithContainerID allows passing the container ID, this will be used by the Agent to enrich metrics with container tags.
+// This feature requires Datadog Agent version >=6.35.0 && <7.0.0 or Agent versions >=7.35.0.
+// When configured, the provided container ID is prioritized over the container ID discovered via Origin Detection.
+// The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
+func WithContainerID(id string) Option {
+	return func(o *Options) error {
+		o.containerID = id
 		return nil
 	}
 }

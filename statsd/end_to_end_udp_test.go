@@ -106,6 +106,85 @@ func TestKnownEnvTagsEmptyString(t *testing.T) {
 	ts.sendAllAndAssert(t, client)
 }
 
+func TestContainerIDWithEntityID(t *testing.T) {
+	resetContainerID()
+
+	entityIDEnvName := "DD_ENTITY_ID"
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	os.Setenv(entityIDEnvName, "pod-uid")
+
+	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		expectedTags,
+		WithContainerID("fake-container-id"),
+	)
+
+	sort.Strings(client.tags)
+	assert.Equal(t, expectedTags, client.tags)
+	ts.assertContainerID(t, "")
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestContainerIDWithoutEntityID(t *testing.T) {
+	resetContainerID()
+	os.Unsetenv("DD_ENTITY_ID")
+
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		[]string{},
+		WithContainerID("fake-container-id"),
+	)
+
+	ts.assertContainerID(t, "fake-container-id")
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestOriginDetectionDisabled(t *testing.T) {
+	resetContainerID()
+	os.Unsetenv("DD_ENTITY_ID")
+
+	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
+	defer func() { os.Unsetenv(originDetectionEnvName) }()
+	os.Setenv(originDetectionEnvName, "false")
+
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		[]string{},
+	)
+
+	ts.assertContainerID(t, "")
+	ts.sendAllAndAssert(t, client)
+}
+
+func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
+	resetContainerID()
+
+	entityIDEnvName := "DD_ENTITY_ID"
+	defer func() { os.Unsetenv(entityIDEnvName) }()
+	os.Setenv(entityIDEnvName, "pod-uid")
+
+	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
+	defer func() { os.Unsetenv(originDetectionEnvName) }()
+	os.Setenv(originDetectionEnvName, "true")
+
+	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
+	ts, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		expectedTags,
+		WithContainerID("fake-container-id"),
+	)
+
+	sort.Strings(client.tags)
+	assert.Equal(t, expectedTags, client.tags)
+	ts.assertContainerID(t, "")
+	ts.sendAllAndAssert(t, client)
+}
+
 func TestPipelineWithGlobalTagsAndEnv(t *testing.T) {
 	orig := os.Getenv("DD_ENV")
 	os.Setenv("DD_ENV", "test")

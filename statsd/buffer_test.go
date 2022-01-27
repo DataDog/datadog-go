@@ -11,6 +11,15 @@ func TestBufferGauge(t *testing.T) {
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferCount(t *testing.T) {
@@ -18,6 +27,15 @@ func TestBufferCount(t *testing.T) {
 	err := buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferHistogram(t *testing.T) {
@@ -25,6 +43,15 @@ func TestBufferHistogram(t *testing.T) {
 	err := buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|h|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferDistribution(t *testing.T) {
@@ -32,12 +59,30 @@ func TestBufferDistribution(t *testing.T) {
 	err := buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|d|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 func TestBufferSet(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:value|s|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:value|s|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferTiming(t *testing.T) {
@@ -45,6 +90,15 @@ func TestBufferTiming(t *testing.T) {
 	err := buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferEvent(t *testing.T) {
@@ -52,6 +106,15 @@ func TestBufferEvent(t *testing.T) {
 	err := buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"})
 	assert.Nil(t, err)
 	assert.Equal(t, "_e{5,4}:title|text|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"})
+	assert.Nil(t, err)
+	assert.Equal(t, "_e{5,4}:title|text|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferServiceCheck(t *testing.T) {
@@ -59,6 +122,15 @@ func TestBufferServiceCheck(t *testing.T) {
 	err := buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"})
 	assert.Nil(t, err)
 	assert.Equal(t, "_sc|name|0|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"})
+	assert.Nil(t, err)
+	assert.Equal(t, "_sc|name|0|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferFullSize(t *testing.T) {
@@ -136,6 +208,16 @@ func TestBufferAggregated(t *testing.T) {
 	assert.Equal(t, errPartialWrite, err)
 	assert.Equal(t, 2, pos)
 	assert.Equal(t, "namespace.metric:1:2|h|#tag:tag\n", string(buffer.bytes()))
+
+	// with a container ID field
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	buffer = newStatsdBuffer(1024, 1)
+	pos, err = buffer.writeAggregated([]byte("h"), "namespace.", []string{"tag:tag"}, "metric", []float64{1}, "", 12, -1)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, pos)
+	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id\n", string(buffer.bytes()))
 }
 
 func TestBufferMaxElement(t *testing.T) {

@@ -49,15 +49,16 @@ type testTelemetryData struct {
 type testServer struct {
 	sync.Mutex
 
-	conn      io.ReadCloser
-	data      []string
-	errors    []string
-	readData  []string
-	proto     string
-	addr      string
-	stopped   chan struct{}
-	tags      string
-	namespace string
+	conn        io.ReadCloser
+	data        []string
+	errors      []string
+	readData    []string
+	proto       string
+	addr        string
+	stopped     chan struct{}
+	tags        string
+	namespace   string
+	containerID string
 
 	aggregation         bool
 	extendedAggregation bool
@@ -109,6 +110,8 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 
 	client, err := New(addr, options...)
 	require.NoError(t, err)
+
+	ts.containerID = getContainerID()
 
 	go ts.start()
 	return ts, client
@@ -228,6 +231,10 @@ func (ts *testServer) assert(t *testing.T, client *Client, expectedMetrics []str
 	assert.Empty(t, ts.errors)
 }
 
+func (ts *testServer) assertContainerID(t *testing.T, expected string) {
+	assert.Equal(t, expected, ts.containerID)
+}
+
 // meta helper: most test send all types and then assert
 func (ts *testServer) sendAllAndAssert(t *testing.T, client *Client) {
 	expectedMetrics := ts.sendAllType(client)
@@ -256,36 +263,38 @@ func (ts *testServer) getTelemetry() []string {
 		ts.telemetry.set +
 		ts.telemetry.timing
 
+	containerID := ts.getContainerID()
+
 	metrics := []string{
-		fmt.Sprintf("datadog.dogstatsd.client.metrics:%d|c%s", totalMetrics, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.events:%d|c%s", ts.telemetry.event, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.service_checks:%d|c%s", ts.telemetry.service_check, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metric_dropped_on_receive:%d|c%s", ts.telemetry.metric_dropped_on_receive, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.packets_sent:%d|c%s", ts.telemetry.packets_sent, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.packets_dropped:%d|c%s", ts.telemetry.packets_dropped, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.packets_dropped_queue:%d|c%s", ts.telemetry.packets_dropped_queue, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.packets_dropped_writer:%d|c%s", ts.telemetry.packets_dropped_writer, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.bytes_sent:%d|c%s", ts.telemetry.bytes_sent, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped:%d|c%s", ts.telemetry.bytes_dropped, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped_queue:%d|c%s", ts.telemetry.bytes_dropped_queue, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped_writer:%d|c%s", ts.telemetry.bytes_dropped_writer, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.gauge, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:count", ts.telemetry.count, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.histogram, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.distribution, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:set", ts.telemetry.set, tags),
-		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:timing", ts.telemetry.timing, tags),
+		fmt.Sprintf("datadog.dogstatsd.client.metrics:%d|c%s", totalMetrics, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.events:%d|c%s", ts.telemetry.event, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.service_checks:%d|c%s", ts.telemetry.service_check, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metric_dropped_on_receive:%d|c%s", ts.telemetry.metric_dropped_on_receive, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.packets_sent:%d|c%s", ts.telemetry.packets_sent, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.packets_dropped:%d|c%s", ts.telemetry.packets_dropped, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.packets_dropped_queue:%d|c%s", ts.telemetry.packets_dropped_queue, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.packets_dropped_writer:%d|c%s", ts.telemetry.packets_dropped_writer, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.bytes_sent:%d|c%s", ts.telemetry.bytes_sent, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped:%d|c%s", ts.telemetry.bytes_dropped, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped_queue:%d|c%s", ts.telemetry.bytes_dropped_queue, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.bytes_dropped_writer:%d|c%s", ts.telemetry.bytes_dropped_writer, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.gauge, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:count", ts.telemetry.count, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.histogram, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.distribution, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:set", ts.telemetry.set, tags) + containerID,
+		fmt.Sprintf("datadog.dogstatsd.client.metrics_by_type:%d|c%s,metrics_type:timing", ts.telemetry.timing, tags) + containerID,
 	}
 
 	if ts.aggregation {
 		metrics = append(metrics, []string{
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context:%d|c%s", ts.telemetry.aggregated_context, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.aggregated_gauge, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:count", ts.telemetry.aggregated_count, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:set", ts.telemetry.aggregated_set, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_distribution, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_histogram, tags),
-			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_timing, tags),
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context:%d|c%s", ts.telemetry.aggregated_context, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.aggregated_gauge, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:count", ts.telemetry.aggregated_count, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:set", ts.telemetry.aggregated_set, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_distribution, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_histogram, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_timing, tags) + containerID,
 		}...)
 	}
 	return metrics
@@ -310,6 +319,13 @@ func (ts *testServer) getFinalTags(t ...string) string {
 		res += strings.Join(t, ",")
 	}
 	return res
+}
+
+func (ts *testServer) getContainerID() string {
+	if ts.containerID == "" {
+		return ""
+	}
+	return "|c:" + ts.containerID
 }
 
 func (ts *testServer) getFinalTelemetryTags() string {
@@ -355,17 +371,18 @@ func (ts *testServer) sendAllMetrics(c *Client) []string {
 	}
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 
 	return []string{
-		ts.namespace + "Gauge:1|g" + finalTags,
-		ts.namespace + "Count:2|c" + finalTags,
-		ts.namespace + "Histogram:3|h" + finalTags,
-		ts.namespace + "Distribution:4|d" + finalTags,
-		ts.namespace + "Decr:-1|c" + finalTags,
-		ts.namespace + "Incr:1|c" + finalTags,
-		ts.namespace + "Set:value|s" + finalTags,
-		ts.namespace + "Timing:5000.000000|ms" + finalTags,
-		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags,
+		ts.namespace + "Gauge:1|g" + finalTags + containerID,
+		ts.namespace + "Count:2|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3|h" + finalTags + containerID,
+		ts.namespace + "Distribution:4|d" + finalTags + containerID,
+		ts.namespace + "Decr:-1|c" + finalTags + containerID,
+		ts.namespace + "Incr:1|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
 	}
 }
 
@@ -407,17 +424,18 @@ func (ts *testServer) sendAllMetricsForBasicAggregation(c *Client) []string {
 	}
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 
 	return []string{
-		ts.namespace + "Gauge:2|g" + finalTags,
-		ts.namespace + "Count:4|c" + finalTags,
-		ts.namespace + "Histogram:3|h" + finalTags,
-		ts.namespace + "Distribution:4|d" + finalTags,
-		ts.namespace + "Decr:-2|c" + finalTags,
-		ts.namespace + "Incr:2|c" + finalTags,
-		ts.namespace + "Set:value|s" + finalTags,
-		ts.namespace + "Timing:5000.000000|ms" + finalTags,
-		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags,
+		ts.namespace + "Gauge:2|g" + finalTags + containerID,
+		ts.namespace + "Count:4|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3|h" + finalTags + containerID,
+		ts.namespace + "Distribution:4|d" + finalTags + containerID,
+		ts.namespace + "Decr:-2|c" + finalTags + containerID,
+		ts.namespace + "Incr:2|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
 	}
 }
 
@@ -463,17 +481,18 @@ func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client) []string {
 	}
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 
 	return []string{
-		ts.namespace + "Gauge:2|g" + finalTags,
-		ts.namespace + "Count:4|c" + finalTags,
-		ts.namespace + "Histogram:3:3|h" + finalTags,
-		ts.namespace + "Distribution:4:4|d" + finalTags,
-		ts.namespace + "Decr:-2|c" + finalTags,
-		ts.namespace + "Incr:2|c" + finalTags,
-		ts.namespace + "Set:value|s" + finalTags,
-		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags,
-		ts.namespace + "TimeInMilliseconds:6.000000:6.000000|ms" + finalTags,
+		ts.namespace + "Gauge:2|g" + finalTags + containerID,
+		ts.namespace + "Count:4|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3:3|h" + finalTags + containerID,
+		ts.namespace + "Distribution:4:4|d" + finalTags + containerID,
+		ts.namespace + "Decr:-2|c" + finalTags + containerID,
+		ts.namespace + "Incr:2|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000:6.000000|ms" + finalTags + containerID,
 	}
 }
 
@@ -486,11 +505,12 @@ func (ts *testServer) sendAllType(c *Client) []string {
 	ts.telemetry.service_check += 1
 
 	finalTags := ts.getFinalTags()
+	containerID := ts.getContainerID()
 
 	return append(
 		res,
-		"_e{5,5}:hello|world"+finalTags,
-		"_sc|hello|1"+finalTags,
+		"_e{5,5}:hello|world"+finalTags+containerID,
+		"_sc|hello|1"+finalTags+containerID,
 	)
 }
 
@@ -504,10 +524,11 @@ func (ts *testServer) sendBasicAggregationMetrics(client *Client) []string {
 	client.Set("set", "my_id", tags, 1)
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 	return []string{
-		ts.namespace + "set:my_id|s" + finalTags,
-		ts.namespace + "gauge:21|g" + finalTags,
-		ts.namespace + "count:4|c" + finalTags,
+		ts.namespace + "set:my_id|s" + finalTags + containerID,
+		ts.namespace + "gauge:21|g" + finalTags + containerID,
+		ts.namespace + "count:4|c" + finalTags + containerID,
 	}
 }
 
@@ -521,12 +542,20 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 	client.Timing("timing", 6*time.Second, tags, 1)
 
 	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
 	return []string{
-		ts.namespace + "gauge:1|g" + finalTags,
-		ts.namespace + "count:2|c" + finalTags,
-		ts.namespace + "set:3_id|s" + finalTags,
-		ts.namespace + "histo:4|h" + finalTags,
-		ts.namespace + "distro:5|d" + finalTags,
-		ts.namespace + "timing:6000.000000|ms" + finalTags,
+		ts.namespace + "gauge:1|g" + finalTags + containerID,
+		ts.namespace + "count:2|c" + finalTags + containerID,
+		ts.namespace + "set:3_id|s" + finalTags + containerID,
+		ts.namespace + "histo:4|h" + finalTags + containerID,
+		ts.namespace + "distro:5|d" + finalTags + containerID,
+		ts.namespace + "timing:6000.000000|ms" + finalTags + containerID,
 	}
+}
+
+func patchContainerID(id string) { containerID = id }
+
+func resetContainerID() {
+	containerID = ""
+	initOnce = sync.Once{}
 }
