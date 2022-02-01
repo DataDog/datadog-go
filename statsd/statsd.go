@@ -346,10 +346,8 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		}
 	}
 
-	if !hasEntityID && o.containerID != "" {
-		setUserProvidedContainerID(o.containerID)
-	} else if isOriginDetectionEnabled(o, hasEntityID) {
-		setCgroupContainerID()
+	if !hasEntityID {
+		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID))
 	}
 
 	if o.maxBytesPerPayload == 0 {

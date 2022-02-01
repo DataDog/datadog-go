@@ -553,5 +553,9 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 	}
 }
 
-func patchContainerID(id string) { userProvidedContainerID = id }
-func resetContainerID()          { userProvidedContainerID = "" }
+func patchContainerID(id string) { containerID = id }
+
+func resetContainerID() {
+	containerID = ""
+	initOnce = sync.Once{}
+}
