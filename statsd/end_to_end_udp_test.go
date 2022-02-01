@@ -9,9 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func patchContainerID(id string) { userProvidedContainerID = id }
-func resetContainerID()          { userProvidedContainerID = "" }
-
 func TestPipelineWithGlobalTags(t *testing.T) {
 	ts, client := newClientAndTestServer(t,
 		"udp",

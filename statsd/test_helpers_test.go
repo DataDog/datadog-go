@@ -552,3 +552,6 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 		ts.namespace + "timing:6000.000000|ms" + finalTags + containerID,
 	}
 }
+
+func patchContainerID(id string) { userProvidedContainerID = id }
+func resetContainerID()          { userProvidedContainerID = "" }
