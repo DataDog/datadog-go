@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sync"
 )
 
 const (
@@ -25,6 +26,9 @@ var (
 
 	// expContainerID matches contained IDs and sources. Source: https://github.com/Qard/container-info/blob/master/index.js
 	expContainerID = regexp.MustCompile(fmt.Sprintf(`(%s|%s|%s)(?:.scope)?$`, uuidSource, containerSource, taskSource))
+
+	userProvidedContainerID = ""
+	cgroupContainerID       = ""
 )
 
 // parseContainerID finds the first container ID reading from r and returns it.
@@ -53,7 +57,26 @@ func readContainerID(fpath string) string {
 	return parseContainerID(f)
 }
 
-// getContainerID attempts to return the container ID from /proc/self/cgroup or empty on failure.
-var getContainerID func() string = func() string {
-	return readContainerID(cgroupPath)
+// getContainerID returns the container ID configured at the client creation
+// It can either be auto-discovered with origin detection or provided by the user.
+// User-defined container ID is prioritized.
+func getContainerID() string {
+	if userProvidedContainerID != "" {
+		return userProvidedContainerID
+	}
+	return cgroupContainerID
+}
+
+var readOnce sync.Once
+
+// setCgroupContainerID attempts to read the container ID from /proc/self/cgroup.
+func setCgroupContainerID() {
+	readOnce.Do(func() {
+		cgroupContainerID = readContainerID(cgroupPath)
+	})
+}
+
+// setUserProvidedContainerID stores the container ID provided by the user.
+func setUserProvidedContainerID(id string) {
+	userProvidedContainerID = id
 }

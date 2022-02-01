@@ -45,6 +45,7 @@ type Options struct {
 	extendedAggregation      bool
 	telemetryAddr            string
 	originDetection          bool
+	containerID              string
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -304,11 +305,39 @@ func WithTelemetryAddr(addr string) Option {
 // WithoutOriginDetection disables the client origin detection.
 // When enabled, the client tries to discover its container ID and sends it to the Agent
 // to enrich the metrics with container tags.
+// Origin detection can also be disabled by configuring the environment variabe DD_ORIGIN_DETECTION_ENABLED=false
+// The client tries to read the container ID by parsing the file /proc/self/cgroup, this is not supported on Windows.
+// The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
 //
 // More on this here: https://docs.datadoghq.com/developers/dogstatsd/?tab=kubernetes#origin-detection-over-udp
 func WithoutOriginDetection() Option {
 	return func(o *Options) error {
 		o.originDetection = false
+		return nil
+	}
+}
+
+// WithOriginDetection enables the client origin detection.
+// When enabled, the client tries to discover its container ID and sends it to the Agent
+// to enrich the metrics with container tags.
+// Origin detection can be disabled by configuring the environment variabe DD_ORIGIN_DETECTION_ENABLED=false
+// The client tries to read the container ID by parsing the file /proc/self/cgroup, this is not supported on Windows.
+// The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
+//
+// More on this here: https://docs.datadoghq.com/developers/dogstatsd/?tab=kubernetes#origin-detection-over-udp
+func WithOriginDetection() Option {
+	return func(o *Options) error {
+		o.originDetection = true
+		return nil
+	}
+}
+
+// WithContainerID allows passing the container ID, this will be used by the Agent to enrich metrics with container tags.
+// When configured, the provided container ID is prioritized over the container ID discovered via Origin Detection.
+// The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
+func WithContainerID(id string) Option {
+	return func(o *Options) error {
+		o.containerID = id
 		return nil
 	}
 }

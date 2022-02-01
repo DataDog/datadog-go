@@ -9,11 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func resetGetContainerID() {
-	getContainerID = func() string {
-		return readContainerID(cgroupPath)
-	}
-}
+func patchContainerID(id string) { userProvidedContainerID = id }
+func resetContainerID()          { userProvidedContainerID = "" }
 
 func TestPipelineWithGlobalTags(t *testing.T) {
 	ts, client := newClientAndTestServer(t,
@@ -113,63 +110,62 @@ func TestKnownEnvTagsEmptyString(t *testing.T) {
 }
 
 func TestContainerIDWithEntityID(t *testing.T) {
+	resetContainerID()
+
 	entityIDEnvName := "DD_ENTITY_ID"
 	defer func() { os.Unsetenv(entityIDEnvName) }()
 	os.Setenv(entityIDEnvName, "pod-uid")
-
-	getContainerID = func() string { return "fake-container-id" }
-	defer resetGetContainerID()
 
 	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
 	ts, client := newClientAndTestServer(t,
 		"udp",
 		"localhost:8765",
 		expectedTags,
+		WithContainerID("fake-container-id"),
 	)
 
 	sort.Strings(client.tags)
 	assert.Equal(t, expectedTags, client.tags)
-	assert.Equal(t, "", client.containerID)
+	ts.assertContainerID(t, "")
 	ts.sendAllAndAssert(t, client)
 }
 
 func TestContainerIDWithoutEntityID(t *testing.T) {
+	resetContainerID()
 	os.Unsetenv("DD_ENTITY_ID")
-
-	getContainerID = func() string { return "fake-container-id" }
-	defer resetGetContainerID()
 
 	ts, client := newClientAndTestServer(t,
 		"udp",
 		"localhost:8765",
 		[]string{},
+		WithContainerID("fake-container-id"),
 	)
 
-	assert.Equal(t, "fake-container-id", client.containerID)
+	ts.assertContainerID(t, "fake-container-id")
 	ts.sendAllAndAssert(t, client)
 }
 
 func TestOriginDetectionDisabled(t *testing.T) {
+	resetContainerID()
 	os.Unsetenv("DD_ENTITY_ID")
 
 	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
 	defer func() { os.Unsetenv(originDetectionEnvName) }()
 	os.Setenv(originDetectionEnvName, "false")
 
-	getContainerID = func() string { return "fake-container-id" }
-	defer resetGetContainerID()
-
 	ts, client := newClientAndTestServer(t,
 		"udp",
 		"localhost:8765",
 		[]string{},
 	)
 
-	assert.Equal(t, "", client.containerID)
+	ts.assertContainerID(t, "")
 	ts.sendAllAndAssert(t, client)
 }
 
 func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
+	resetContainerID()
+
 	entityIDEnvName := "DD_ENTITY_ID"
 	defer func() { os.Unsetenv(entityIDEnvName) }()
 	os.Setenv(entityIDEnvName, "pod-uid")
@@ -178,19 +174,17 @@ func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
 	defer func() { os.Unsetenv(originDetectionEnvName) }()
 	os.Setenv(originDetectionEnvName, "true")
 
-	getContainerID = func() string { return "fake-container-id" }
-	defer resetGetContainerID()
-
 	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
 	ts, client := newClientAndTestServer(t,
 		"udp",
 		"localhost:8765",
 		expectedTags,
+		WithContainerID("fake-container-id"),
 	)
 
 	sort.Strings(client.tags)
 	assert.Equal(t, expectedTags, client.tags)
-	assert.Equal(t, "", client.containerID)
+	ts.assertContainerID(t, "")
 	ts.sendAllAndAssert(t, client)
 }
 

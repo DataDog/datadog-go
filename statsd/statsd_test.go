@@ -293,6 +293,13 @@ func Test_isOriginDetectionEnabled(t *testing.T) {
 			want:              false,
 		},
 		{
+			name:              "has user-provided container ID",
+			o:                 &Options{containerID: "user-provided"},
+			hasEntityID:       true,
+			configEnvVarValue: "",
+			want:              false,
+		},
+		{
 			name:              "originDetection option disabled",
 			o:                 &Options{originDetection: false},
 			hasEntityID:       false,

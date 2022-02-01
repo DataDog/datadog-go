@@ -125,20 +125,19 @@ const (
 )
 
 type metric struct {
-	metricType  metricType
-	namespace   string
-	globalTags  []string
-	name        string
-	fvalue      float64
-	fvalues     []float64
-	ivalue      int64
-	svalue      string
-	evalue      *Event
-	scvalue     *ServiceCheck
-	tags        []string
-	stags       string
-	rate        float64
-	containerID string
+	metricType metricType
+	namespace  string
+	globalTags []string
+	name       string
+	fvalue     float64
+	fvalues    []float64
+	ivalue     int64
+	svalue     string
+	evalue     *Event
+	scvalue    *ServiceCheck
+	tags       []string
+	stags      string
+	rate       float64
 }
 
 type noClientErr string
@@ -224,8 +223,6 @@ type Client struct {
 	aggExtended     *aggregator
 	options         []Option
 	addrOption      string
-	// containerID is the container ID of the application sending the metric
-	containerID string
 }
 
 // statsdTelemetry contains telemetry metrics about the client
@@ -349,10 +346,10 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		}
 	}
 
-	if isOriginDetectionEnabled(o, hasEntityID) {
-		if cID := getContainerID(); cID != "" {
-			c.containerID = cID
-		}
+	if !hasEntityID && o.containerID != "" {
+		setUserProvidedContainerID(o.containerID)
+	} else if isOriginDetectionEnabled(o, hasEntityID) {
+		setCgroupContainerID()
 	}
 
 	if o.maxBytesPerPayload == 0 {
@@ -511,7 +508,6 @@ func (c *Client) send(m metric) error {
 func (c *Client) sendBlocking(m metric) error {
 	m.globalTags = c.tags
 	m.namespace = c.namespace
-	m.containerID = c.containerID
 
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
@@ -539,7 +535,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Count tracks how many times something happened per second.
@@ -551,7 +547,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c.agg != nil {
 		return c.agg.count(name, value, tags)
 	}
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -563,7 +559,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.aggExtended != nil {
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
-	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -575,7 +571,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.aggExtended != nil {
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
-	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Decr is just Count of -1
@@ -597,7 +593,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c.agg != nil {
 		return c.agg.set(name, value, tags)
 	}
-	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -615,7 +611,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c.aggExtended != nil {
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
-	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
 // Event sends the provided Event.
@@ -624,7 +620,7 @@ func (c *Client) Event(e *Event) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalEvents, 1)
-	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -639,7 +635,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
-	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace, containerID: c.containerID})
+	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -690,12 +686,15 @@ func (c *Client) Close() error {
 // isOriginDetectionEnabled returns whether the clients should fill the container field.
 //
 // If DD_ENTITY_ID is set, we don't send the container ID
+// If a user-defined container ID is provided, we don't ignore origin detection
 // as dd.internal.entity_id is prioritized over the container field for backward compatibility.
 // If DD_ENTITY_ID is not set, we try to fill the container field automatically unless
 // DD_ORIGIN_DETECTION_ENABLED is explicitly set to false.
 func isOriginDetectionEnabled(o *Options, hasEntityID bool) bool {
-	if !o.originDetection || hasEntityID {
-		// originDetection is explicitly disabled or DD_ENTITY_ID was found
+	if !o.originDetection || hasEntityID || o.containerID != "" {
+		// originDetection is explicitly disabled
+		// or DD_ENTITY_ID was found
+		// or a user-defined container ID was provided
 		return false
 	}
 
