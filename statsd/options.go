@@ -303,7 +303,6 @@ func WithTelemetryAddr(addr string) Option {
 }
 
 // WithoutOriginDetection disables the client origin detection.
-// This feature requires Datadog Agent 7.35.0+
 // When enabled, the client tries to discover its container ID and sends it to the Agent
 // to enrich the metrics with container tags.
 // Origin detection can also be disabled by configuring the environment variabe DD_ORIGIN_DETECTION_ENABLED=false
@@ -319,6 +318,7 @@ func WithoutOriginDetection() Option {
 }
 
 // WithOriginDetection enables the client origin detection.
+// This feature requires Datadog Agent version >=6.35.0 && <7.0.0 or Agent versions >=7.35.0.
 // When enabled, the client tries to discover its container ID and sends it to the Agent
 // to enrich the metrics with container tags.
 // Origin detection can be disabled by configuring the environment variabe DD_ORIGIN_DETECTION_ENABLED=false
@@ -334,7 +334,7 @@ func WithOriginDetection() Option {
 }
 
 // WithContainerID allows passing the container ID, this will be used by the Agent to enrich metrics with container tags.
-// This feature requires Datadog Agent 7.35.0+
+// This feature requires Datadog Agent version >=6.35.0 && <7.0.0 or Agent versions >=7.35.0.
 // When configured, the provided container ID is prioritized over the container ID discovered via Origin Detection.
 // The client prioritizes the value passed via DD_ENTITY_ID (if set) over the container ID.
 func WithContainerID(id string) Option {
