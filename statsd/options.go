@@ -117,10 +117,13 @@ func WithMaxMessagesPerPayload(maxMessagesPerPayload int) Option {
 	}
 }
 
-// WithMaxBytesPerPayload sets the maximum number of bytes a single payload can contain.
+// WithMaxBytesPerPayload sets the maximum number of bytes a single payload can contain. Each sample, even and service
+// check must be lower than this value once serialized or an `MessageTooLongError` is returned.
 //
-// The deault value 0 which will set the option to the optimal size for the transport protocol used: 1432 for UDP and
-// named pipe and 8192 for UDS.
+// The default value 0 which will set the option to the optimal size for the transport protocol used: 1432 for UDP and
+// named pipe and 8192 for UDS. Those values offer the best performances.
+// Be careful when changing this option, see
+// https://docs.datadoghq.com/developers/dogstatsd/high_throughput/#ensure-proper-packet-sizes.
 func WithMaxBytesPerPayload(MaxBytesPerPayload int) Option {
 	return func(o *Options) error {
 		o.maxBytesPerPayload = MaxBytesPerPayload
