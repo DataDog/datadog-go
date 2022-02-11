@@ -226,3 +226,42 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestGetContextAndTags(t *testing.T) {
+	tests := []struct {
+		testName    string
+		name        string
+		tags        []string
+		wantContext string
+		wantTags    string
+	}{
+		{
+			testName:    "no tags",
+			name:        "name",
+			tags:        nil,
+			wantContext: "name:",
+			wantTags:    "",
+		},
+		{
+			testName:    "one tag",
+			name:        "name",
+			tags:        []string{"tag1"},
+			wantContext: "name:tag1",
+			wantTags:    "tag1",
+		},
+		{
+			testName:    "two tags",
+			name:        "name",
+			tags:        []string{"tag1", "tag2"},
+			wantContext: "name:tag1,tag2",
+			wantTags:    "tag1,tag2",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+			gotContext, gotTags := getContextAndTags(test.name, test.tags)
+			assert.Equal(t, test.wantContext, gotContext)
+			assert.Equal(t, test.wantTags, gotTags)
+		})
+	}
+}
