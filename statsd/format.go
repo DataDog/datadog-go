@@ -6,13 +6,14 @@ import (
 )
 
 var (
-	gaugeSymbol        = []byte("g")
-	countSymbol        = []byte("c")
-	histogramSymbol    = []byte("h")
-	distributionSymbol = []byte("d")
-	setSymbol          = []byte("s")
-	timingSymbol       = []byte("ms")
-	tagSeparatorSymbol = ","
+	gaugeSymbol         = []byte("g")
+	countSymbol         = []byte("c")
+	histogramSymbol     = []byte("h")
+	distributionSymbol  = []byte("d")
+	setSymbol           = []byte("s")
+	timingSymbol        = []byte("ms")
+	tagSeparatorSymbol  = ","
+	nameSeparatorSymbol = ":"
 )
 
 func appendHeader(buffer []byte, namespace string, name string) []byte {
