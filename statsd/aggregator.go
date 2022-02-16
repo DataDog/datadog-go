@@ -177,6 +177,9 @@ func getContext(name string, tags []string) string {
 }
 
 func getContextAndTags(name string, tags []string) (string, string) {
+	if len(tags) == 0 {
+		return name + nameSeparatorSymbol, ""
+	}
 	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
 	for _, s := range tags {
 		n += len(s)
