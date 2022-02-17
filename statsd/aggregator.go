@@ -189,12 +189,10 @@ func getContextAndTags(name string, tags []string) (string, string) {
 	sb.Grow(n)
 	sb.WriteString(name)
 	sb.WriteString(nameSeparatorSymbol)
-	if len(tags) > 0 {
-		sb.WriteString(tags[0])
-		for _, s := range tags[1:] {
-			sb.WriteString(tagSeparatorSymbol)
-			sb.WriteString(s)
-		}
+	sb.WriteString(tags[0])
+	for _, s := range tags[1:] {
+		sb.WriteString(tagSeparatorSymbol)
+		sb.WriteString(s)
 	}
 
 	s := sb.String()
