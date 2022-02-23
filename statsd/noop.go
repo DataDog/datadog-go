@@ -81,6 +81,11 @@ func (n *NoOpClient) Flush() error {
 	return nil
 }
 
+// IsClosed does nothing and return false
+func (n *NoOpClient) IsClosed() bool {
+	return false
+}
+
 // Verify that NoOpClient implements the ClientInterface.
 // https://golang.org/doc/faq#guarantee_satisfies_interface
 var _ ClientInterface = &NoOpClient{}

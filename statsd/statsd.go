@@ -199,6 +199,9 @@ type ClientInterface interface {
 
 	// Flush forces a flush of all the queued dogstatsd payloads.
 	Flush() error
+
+	// IsClosed returns if the client connection is already closed
+	IsClosed() bool
 }
 
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
@@ -223,6 +226,7 @@ type Client struct {
 	aggExtended     *aggregator
 	options         []Option
 	addrOption      string
+	isClosed        bool
 }
 
 // statsdTelemetry contains telemetry metrics about the client
@@ -470,6 +474,11 @@ func (c *Client) Flush() error {
 	return nil
 }
 
+// IsClosed returns if the cliente connection is closed.
+func (c *Client) IsClosed() bool {
+	return c.isClosed
+}
+
 func (c *Client) flushTelemetryMetrics(t *Telemetry) {
 	t.TotalMetricsGauge = atomic.LoadUint64(&c.telemetry.totalMetricsGauge)
 	t.TotalMetricsCount = atomic.LoadUint64(&c.telemetry.totalMetricsCount)
@@ -648,6 +657,10 @@ func (c *Client) Close() error {
 		return ErrNoClient
 	}
 
+	if c.isClosed {
+		return nil
+	}
+
 	// Acquire closer lock to ensure only one thread can close the stop channel
 	c.closerLock.Lock()
 	defer c.closerLock.Unlock()
@@ -678,7 +691,13 @@ func (c *Client) Close() error {
 	c.wg.Wait()
 
 	c.Flush()
-	return c.sender.close()
+
+	if err := c.sender.close(); err != nil {
+		return err
+	}
+
+	c.isClosed = true
+	return nil
 }
 
 // isOriginDetectionEnabled returns whether the clients should fill the container field.
