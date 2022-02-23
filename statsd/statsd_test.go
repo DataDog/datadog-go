@@ -165,6 +165,27 @@ func TestCloseRace(t *testing.T) {
 	wg.Wait()
 }
 
+func TestCloseWithClientAlreadyClosed(t *testing.T) {
+	c, err := New("localhost:8125")
+	assert.NoError(t, err)
+	assert.False(t, c.IsClosed())
+
+	assert.NoError(t, c.Close())
+	assert.True(t, c.IsClosed())
+
+	assert.NoError(t, c.Close())
+	assert.True(t, c.IsClosed())
+}
+
+func TestIsClosed(t *testing.T) {
+	c, err := New("localhost:8125")
+	assert.NoError(t, err)
+	assert.False(t, c.IsClosed())
+
+	assert.NoError(t, c.Close())
+	assert.True(t, c.IsClosed())
+}
+
 func TestCloneWithExtraOptions(t *testing.T) {
 	client, err := New("localhost:1201", WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
