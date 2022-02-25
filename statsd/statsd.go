@@ -200,7 +200,7 @@ type ClientInterface interface {
 	// Flush forces a flush of all the queued dogstatsd payloads.
 	Flush() error
 
-	// IsClosed returns if the client connection is already closed
+	// IsClosed returns if the client has been closed.
 	IsClosed() bool
 }
 
@@ -474,7 +474,7 @@ func (c *Client) Flush() error {
 	return nil
 }
 
-// IsClosed returns if the cliente connection is closed.
+// IsClosed returns if the client has been closed.
 func (c *Client) IsClosed() bool {
 	return c.isClosed
 }
@@ -657,13 +657,13 @@ func (c *Client) Close() error {
 		return ErrNoClient
 	}
 
-	if c.isClosed {
-		return nil
-	}
-
 	// Acquire closer lock to ensure only one thread can close the stop channel
 	c.closerLock.Lock()
 	defer c.closerLock.Unlock()
+
+	if c.isClosed {
+		return nil
+	}
 
 	// Notify all other threads that they should stop
 	select {
@@ -692,12 +692,8 @@ func (c *Client) Close() error {
 
 	c.Flush()
 
-	if err := c.sender.close(); err != nil {
-		return err
-	}
-
 	c.isClosed = true
-	return nil
+	return c.sender.close()
 }
 
 // isOriginDetectionEnabled returns whether the clients should fill the container field.
