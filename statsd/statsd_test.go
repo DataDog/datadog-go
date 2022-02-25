@@ -167,18 +167,22 @@ func TestCloseRace(t *testing.T) {
 
 func TestCloseWithClientAlreadyClosed(t *testing.T) {
 	c, err := New("localhost:8125")
-	c.isClosed = true
 	assert.NoError(t, err)
-	c.Close()
+	assert.False(t, c.IsClosed())
+
+	assert.NoError(t, c.Close())
 	assert.True(t, c.IsClosed())
-	c.sender.close()
+
+	assert.NoError(t, c.Close())
+	assert.True(t, c.IsClosed())
 }
 
 func TestIsClosed(t *testing.T) {
 	c, err := New("localhost:8125")
 	assert.NoError(t, err)
 	assert.False(t, c.IsClosed())
-	c.Close()
+
+	assert.NoError(t, c.Close())
 	assert.True(t, c.IsClosed())
 }
 
