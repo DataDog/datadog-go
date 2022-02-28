@@ -476,6 +476,8 @@ func (c *Client) Flush() error {
 
 // IsClosed returns if the client has been closed.
 func (c *Client) IsClosed() bool {
+	c.closerLock.Lock()
+	defer c.closerLock.Unlock()
 	return c.isClosed
 }
 
