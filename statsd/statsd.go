@@ -202,6 +202,9 @@ type ClientInterface interface {
 
 	// IsClosed returns if the client has been closed.
 	IsClosed() bool
+
+	// GetTelemetry return the telemetry metrics for the client since it started.
+	GetTelemetry() Telemetry
 }
 
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
