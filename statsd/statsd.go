@@ -10,6 +10,8 @@ statsd is based on go-statsd-client.
 */
 package statsd
 
+//go:generate mockgen -source=statsd.go -destination=mocks/statsd.go
+
 import (
 	"errors"
 	"fmt"
