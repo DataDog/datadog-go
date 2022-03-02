@@ -2,6 +2,16 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.1.0 / 2022-03-02
+
+* [FEATURE] Adding support for container origin detection. See [#250][].
+* [FEATURE] Adding `IsClosed` method the client. See [#254][], thanks [@lucassscaravelli][].
+* [FEATURE] Adding a mock for the `Client` interface to ease testing from users. See [#255][].
+* [IMPROVEMENT] Optimize `getContext` and `getContextAndTags` functions. See [#253][], thanks [@martin-sucha][].
+* [IMPROVEMENT] Export error `MessageTooLongError` to catch error when sending message that can't fit in a buffer. See
+  [#252][].
+* [BUGFIX] Add missing `GetTelemetry` from the `Client` Interface. See [#255][].
+
 # 5.0.2 / 2021-11-29
 
 * [BUGFIX] Fix Windows erroneous import. See [#242][], thanks [@programmer04][].
@@ -377,6 +387,11 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#235]: https://github.com/DataDog/datadog-go/pull/235
 [#237]: https://github.com/DataDog/datadog-go/pull/237
 [#242]: https://github.com/DataDog/datadog-go/pull/242
+[#250]: https://github.com/DataDog/datadog-go/pull/250
+[#252]: https://github.com/DataDog/datadog-go/pull/252
+[#253]: https://github.com/DataDog/datadog-go/pull/253
+[#254]: https://github.com/DataDog/datadog-go/pull/254
+[#255]: https://github.com/DataDog/datadog-go/pull/255
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -410,3 +425,5 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@cyx]: https://github.com/cyx
 [@matthewdale]: https://github.com/matthewdale
 [@programmer04]: https://github.com/programmer04
+[@martin-sucha]: https://github.com/martin-sucha
+[@lucassscaravelli]: https://github.com/lucassscaravelli
