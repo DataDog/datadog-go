@@ -236,7 +236,7 @@ func (a *aggregator) newSet(name string, tags []string) *Set {
 
 func (a *aggregator) newHistogram(name string, tags []string) *Histogram {
 	_, stringTags := getContextAndTags(name, tags)
-	m := &histogramMetric{
+	m := &Histogram{
 		data:  []float64{},
 		name:  name,
 		tags:  stringTags,
@@ -247,7 +247,7 @@ func (a *aggregator) newHistogram(name string, tags []string) *Histogram {
 }
 func (a *aggregator) newDistribution(name string, tags []string) *Distribution {
 	_, stringTags := getContextAndTags(name, tags)
-	m := &distributionMetric{
+	m := &Distribution{
 		data:  []float64{},
 		name:  name,
 		tags:  stringTags,
@@ -258,7 +258,7 @@ func (a *aggregator) newDistribution(name string, tags []string) *Distribution {
 }
 func (a *aggregator) newTiming(name string, tags []string) *Timing {
 	_, stringTags := getContextAndTags(name, tags)
-	m := &timingMetric{
+	m := &Timing{
 		data:  []float64{},
 		name:  name,
 		tags:  stringTags,

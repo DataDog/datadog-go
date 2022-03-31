@@ -145,21 +145,21 @@ type directBufferedMetric struct {
 	name string
 	// Histograms and Distributions store tags as one string since we need
 	// to compute its size multiple time when serializing.
-	tags  []string
+	tags  string
 	mtype metricType
 }
-type Histogram = bufferedMetric
-type Distribution = bufferedMetric
-type Timing = bufferedMetric
+type Histogram = directBufferedMetric
+type Distribution = directBufferedMetric
+type Timing = directBufferedMetric
 
 // Sample samples the metric
-func (s *bufferedMetric) Sample(v float64) {
+func (s *directBufferedMetric) Sample(v float64) {
 	s.Lock()
 	defer s.Unlock()
 	s.data = append(s.data, v)
 }
 
-func (s *bufferedMetric) flush() []metric {
+func (s *directBufferedMetric) flush() []metric {
 	s.Lock()
 	defer s.Unlock()
 	if len(s.data) == 0 {
