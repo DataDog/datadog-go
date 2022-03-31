@@ -30,6 +30,8 @@ type aggregator struct {
 	distributions bufferedMetricContexts
 	timings       bufferedMetricContexts
 
+	directMetrics []directMetric
+
 	closed chan struct{}
 
 	client *Client
@@ -131,6 +133,10 @@ func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 func (a *aggregator) flushMetrics() []metric {
 	metrics := []metric{}
 
+	for _, m := range a.directMetrics {
+		metrics = append(metrics, m.flush()...)
+	}
+
 	// We reset the values to avoid sending 'zero' values for metrics not
 	// sampled during this flush interval
 
@@ -198,6 +204,68 @@ func getContextAndTags(name string, tags []string) (string, string) {
 	s := sb.String()
 
 	return s, s[len(name)+len(nameSeparatorSymbol):]
+}
+
+func (a *aggregator) newGauge(name string, tags []string) *Gauge {
+	m := &Gauge{
+		name: name,
+		tags: tags,
+	}
+	a.directMetrics = append(a.directMetrics, m)
+	return m
+}
+
+func (a *aggregator) newCount(name string, tags []string) *Count {
+	m := &Count{
+		name: name,
+		tags: tags,
+	}
+	a.directMetrics = append(a.directMetrics, m)
+	return m
+}
+
+func (a *aggregator) newSet(name string, tags []string) *Set {
+	m := &Set{
+		data: map[string]struct{}{},
+		name: name,
+		tags: tags,
+	}
+	a.directMetrics = append(a.directMetrics, m)
+	return m
+}
+
+func (a *aggregator) newHistogram(name string, tags []string) *Histogram {
+	_, stringTags := getContextAndTags(name, tags)
+	m := &histogramMetric{
+		data:  []float64{},
+		name:  name,
+		tags:  stringTags,
+		mtype: histogramAggregated,
+	}
+	a.directMetrics = append(a.directMetrics, m)
+	return m
+}
+func (a *aggregator) newDistribution(name string, tags []string) *Distribution {
+	_, stringTags := getContextAndTags(name, tags)
+	m := &distributionMetric{
+		data:  []float64{},
+		name:  name,
+		tags:  stringTags,
+		mtype: distributionAggregated,
+	}
+	a.directMetrics = append(a.directMetrics, m)
+	return m
+}
+func (a *aggregator) newTiming(name string, tags []string) *Timing {
+	_, stringTags := getContextAndTags(name, tags)
+	m := &timingMetric{
+		data:  []float64{},
+		name:  name,
+		tags:  stringTags,
+		mtype: timingAggregated,
+	}
+	a.directMetrics = append(a.directMetrics, m)
+	return m
 }
 
 func (a *aggregator) count(name string, value int64, tags []string) error {

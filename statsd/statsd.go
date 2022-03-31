@@ -703,6 +703,26 @@ func (c *Client) Close() error {
 	return c.sender.close()
 }
 
+func (c *Client) NewCount(name string, tags []string) (*Count, error) {
+	if c == nil {
+		return nil, ErrNoClient
+	}
+	if c.aggExtended != nil {
+		return c.agg.newCount(name, tags), nil
+	}
+	return nil, fmt.Errorf("ExtendedAggregation not enabled, see WithExtendedClientSideAggregation option.")
+}
+
+func (c *Client) NewDistribution(name string, tags []string) (*Distribution, error) {
+	if c == nil {
+		return nil, ErrNoClient
+	}
+	if c.aggExtended != nil {
+		return c.agg.newDistribution(name, tags), nil
+	}
+	return nil, fmt.Errorf("ExtendedAggregation not enabled, see WithExtendedClientSideAggregation option.")
+}
+
 // isOriginDetectionEnabled returns whether the clients should fill the container field.
 //
 // If DD_ENTITY_ID is set, we don't send the container ID
