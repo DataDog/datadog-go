@@ -708,7 +708,7 @@ func (c *Client) NewCount(name string, tags []string) (*Count, error) {
 		return nil, ErrNoClient
 	}
 	if c.aggExtended != nil {
-		return c.agg.newCount(name, tags), nil
+		return c.agg.newCount(name, tags, c.telemetry), nil
 	}
 	return nil, fmt.Errorf("ExtendedAggregation not enabled, see WithExtendedClientSideAggregation option.")
 }
@@ -718,7 +718,7 @@ func (c *Client) NewDistribution(name string, tags []string) (*Distribution, err
 		return nil, ErrNoClient
 	}
 	if c.aggExtended != nil {
-		return c.agg.newDistribution(name, tags), nil
+		return c.agg.newDistribution(name, tags, c.telemetry), nil
 	}
 	return nil, fmt.Errorf("ExtendedAggregation not enabled, see WithExtendedClientSideAggregation option.")
 }

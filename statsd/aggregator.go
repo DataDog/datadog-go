@@ -206,63 +206,69 @@ func getContextAndTags(name string, tags []string) (string, string) {
 	return s, s[len(name)+len(nameSeparatorSymbol):]
 }
 
-func (a *aggregator) newGauge(name string, tags []string) *Gauge {
+func (a *aggregator) newGauge(name string, tags []string, tlm *statsdTelemetry) *Gauge {
 	m := &Gauge{
-		name: name,
-		tags: tags,
+		name:      name,
+		tags:      tags,
+		telemetry: tlm,
 	}
 	a.directMetrics = append(a.directMetrics, m)
 	return m
 }
 
-func (a *aggregator) newCount(name string, tags []string) *Count {
+func (a *aggregator) newCount(name string, tags []string, tlm *statsdTelemetry) *Count {
 	m := &Count{
-		name: name,
-		tags: tags,
+		name:      name,
+		tags:      tags,
+		telemetry: tlm,
 	}
 	a.directMetrics = append(a.directMetrics, m)
 	return m
 }
 
-func (a *aggregator) newSet(name string, tags []string) *Set {
+func (a *aggregator) newSet(name string, tags []string, tlm *statsdTelemetry) *Set {
 	m := &Set{
-		data: map[string]struct{}{},
-		name: name,
-		tags: tags,
+		data:      map[string]struct{}{},
+		name:      name,
+		tags:      tags,
+		telemetry: tlm,
 	}
 	a.directMetrics = append(a.directMetrics, m)
 	return m
 }
 
-func (a *aggregator) newHistogram(name string, tags []string) *Histogram {
+func (a *aggregator) newHistogram(name string, tags []string, tlm *statsdTelemetry) *Histogram {
 	_, stringTags := getContextAndTags(name, tags)
 	m := &Histogram{
-		data:  []float64{},
-		name:  name,
-		tags:  stringTags,
-		mtype: histogramAggregated,
+		data:      []float64{},
+		name:      name,
+		tags:      stringTags,
+		mtype:     histogramAggregated,
+		telemetry: tlm,
 	}
 	a.directMetrics = append(a.directMetrics, m)
 	return m
 }
-func (a *aggregator) newDistribution(name string, tags []string) *Distribution {
+func (a *aggregator) newDistribution(name string, tags []string, tlm *statsdTelemetry) *Distribution {
 	_, stringTags := getContextAndTags(name, tags)
 	m := &Distribution{
-		data:  []float64{},
-		name:  name,
-		tags:  stringTags,
-		mtype: distributionAggregated,
+		data:      []float64{},
+		name:      name,
+		tags:      stringTags,
+		mtype:     distributionAggregated,
+		telemetry: tlm,
 	}
 	a.directMetrics = append(a.directMetrics, m)
 	return m
 }
-func (a *aggregator) newTiming(name string, tags []string) *Timing {
+func (a *aggregator) newTiming(name string, tags []string, tlm *statsdTelemetry) *Timing {
 	_, stringTags := getContextAndTags(name, tags)
 	m := &Timing{
-		data:  []float64{},
-		name:  name,
-		tags:  stringTags,
-		mtype: timingAggregated,
+		data:      []float64{},
+		name:      name,
+		tags:      stringTags,
+		mtype:     timingAggregated,
+		telemetry: tlm,
 	}
 	a.directMetrics = append(a.directMetrics, m)
 	return m

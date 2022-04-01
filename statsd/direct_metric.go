@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type directMetric interface {
@@ -13,14 +14,16 @@ type directMetric interface {
 type Gauge struct {
 	sync.Mutex
 
-	value   float64
-	name    string
-	tags    []string
-	sampled bool
+	value     float64
+	name      string
+	tags      []string
+	sampled   bool
+	telemetry *statsdTelemetry
 }
 
 // Sample samples the metric
 func (g *Gauge) Sample(v float64) {
+	atomic.AddUint64(&g.telemetry.totalMetricsGauge, 1)
 	g.Lock()
 	defer g.Unlock()
 	g.value = v
@@ -55,14 +58,16 @@ func (g *Gauge) flush() []metric {
 type Count struct {
 	sync.Mutex
 
-	value   int64
-	name    string
-	tags    []string
-	sampled bool
+	value     int64
+	name      string
+	tags      []string
+	sampled   bool
+	telemetry *statsdTelemetry
 }
 
 // Sample samples the metric
 func (c *Count) Sample(v int64) {
+	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
 	c.Lock()
 	defer c.Unlock()
 
@@ -98,13 +103,15 @@ func (c *Count) flush() []metric {
 type Set struct {
 	sync.Mutex
 
-	data map[string]struct{}
-	name string
-	tags []string
+	data      map[string]struct{}
+	name      string
+	tags      []string
+	telemetry *statsdTelemetry
 }
 
 // Sample samples the metric
 func (s *Set) Sample(v string) {
+	atomic.AddUint64(&s.telemetry.totalMetricsSet, 1)
 	s.Lock()
 	defer s.Unlock()
 	s.data[v] = struct{}{}
@@ -145,8 +152,9 @@ type directBufferedMetric struct {
 	name string
 	// Histograms and Distributions store tags as one string since we need
 	// to compute its size multiple time when serializing.
-	tags  string
-	mtype metricType
+	tags      string
+	mtype     metricType
+	telemetry *statsdTelemetry
 }
 type Histogram = directBufferedMetric
 type Distribution = directBufferedMetric
@@ -154,6 +162,7 @@ type Timing = directBufferedMetric
 
 // Sample samples the metric
 func (s *directBufferedMetric) Sample(v float64) {
+	atomic.AddUint64(&s.telemetry.totalMetricsDistribution, 1)
 	s.Lock()
 	defer s.Unlock()
 	s.data = append(s.data, v)
