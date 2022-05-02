@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAggregatorSample(t *testing.T) {
@@ -192,7 +193,6 @@ func TestAggregatorFlush(t *testing.T) {
 		},
 	},
 		metrics)
-
 }
 
 func TestAggregatorFlushConcurrency(t *testing.T) {
@@ -225,6 +225,23 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestAggregatorTagsCopy(t *testing.T) {
+	a := newAggregator(nil)
+	tags := []string{"tag1", "tag2"}
+
+	a.gauge("gauge", 21, tags)
+	a.count("count", 21, tags)
+	a.set("set", "test", tags)
+
+	tags[0] = "new_tags"
+
+	metrics := a.flushMetrics()
+	require.Len(t, metrics, 3)
+	for _, m := range metrics {
+		assert.Equal(t, []string{"tag1", "tag2"}, m.tags)
+	}
 }
 
 func TestGetContextAndTags(t *testing.T) {
