@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.1.1 / 2022-05-05
+
+- [BUGFIX] Fix issue where tags of aggregated contexts could be modified after being sampled. See [#258][].
+
 # 5.1.0 / 2022-03-02
 
 * [FEATURE] Adding support for container origin detection. See [#250][].
@@ -392,6 +396,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#253]: https://github.com/DataDog/datadog-go/pull/253
 [#254]: https://github.com/DataDog/datadog-go/pull/254
 [#255]: https://github.com/DataDog/datadog-go/pull/255
+[#258]: https://github.com/DataDog/datadog-go/pull/258
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
