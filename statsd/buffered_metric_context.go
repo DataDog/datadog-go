@@ -11,7 +11,7 @@ import (
 // and Timing. Since those 3 metric types behave the same way and are sampled
 // with the same type they're represented by the same class.
 type bufferedMetricContexts struct {
-	nbContext uint64
+	nbContext *uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
 	newMetric func(string, float64, string) *bufferedMetric
@@ -27,6 +27,7 @@ type bufferedMetricContexts struct {
 
 func newBufferedContexts(newMetric func(string, float64, string) *bufferedMetric) bufferedMetricContexts {
 	return bufferedMetricContexts{
+		nbContext: new(uint64),
 		values:    bufferedMetricMap{},
 		newMetric: newMetric,
 		// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
@@ -46,7 +47,7 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	for _, d := range values {
 		metrics = append(metrics, d.flushUnsafe())
 	}
-	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
+	atomic.AddUint64(bc.nbContext, uint64(len(values)))
 	return metrics
 }
 
@@ -78,5 +79,5 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 }
 
 func (bc *bufferedMetricContexts) getNbContext() uint64 {
-	return atomic.LoadUint64(&bc.nbContext)
+	return atomic.LoadUint64(bc.nbContext)
 }
