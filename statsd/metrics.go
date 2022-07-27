@@ -14,16 +14,18 @@ Those are metrics type that can be aggregated on the client side:
 */
 
 type countMetric struct {
-	value int64
-	name  string
-	tags  []string
+	value     int64
+	timestamp int64
+	name      string
+	tags      []string
 }
 
-func newCountMetric(name string, value int64, tags []string) *countMetric {
+func newCountMetric(name string, value int64, tags []string, timestamp int64) *countMetric {
 	return &countMetric{
-		value: value,
-		name:  name,
-		tags:  copySlice(tags),
+		value:     value,
+		timestamp: timestamp,
+		name:      name,
+		tags:      copySlice(tags),
 	}
 }
 
@@ -38,22 +40,25 @@ func (c *countMetric) flushUnsafe() metric {
 		tags:       c.tags,
 		rate:       1,
 		ivalue:     c.value,
+		timestamp:  c.timestamp,
 	}
 }
 
 // Gauge
 
 type gaugeMetric struct {
-	value uint64
-	name  string
-	tags  []string
+	value     uint64
+	timestamp int64
+	name      string
+	tags      []string
 }
 
-func newGaugeMetric(name string, value float64, tags []string) *gaugeMetric {
+func newGaugeMetric(name string, value float64, tags []string, timestamp int64) *gaugeMetric {
 	return &gaugeMetric{
-		value: math.Float64bits(value),
-		name:  name,
-		tags:  copySlice(tags),
+		value:     math.Float64bits(value),
+		timestamp: timestamp,
+		name:      name,
+		tags:      copySlice(tags),
 	}
 }
 
@@ -68,6 +73,7 @@ func (g *gaugeMetric) flushUnsafe() metric {
 		tags:       g.tags,
 		rate:       1,
 		fvalue:     math.Float64frombits(g.value),
+		timestamp:  g.timestamp,
 	}
 }
 

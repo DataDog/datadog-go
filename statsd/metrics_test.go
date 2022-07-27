@@ -11,27 +11,38 @@ import (
 )
 
 func TestNewCountMetric(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, noTimestamp)
 	assert.Equal(t, c.value, int64(21))
 	assert.Equal(t, c.name, "test")
 	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, c.timestamp, noTimestamp)
+}
+
+func TestNewCountMetricWithTimestamp(t *testing.T) {
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, 1658934956)
+	assert.Equal(t, c.value, int64(21))
+	assert.Equal(t, c.name, "test")
+	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, c.timestamp, int64(1658934956))
 }
 
 func TestCountMetricSample(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, noTimestamp)
 	c.sample(12)
 	assert.Equal(t, c.value, int64(33))
 	assert.Equal(t, c.name, "test")
 	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, c.timestamp, noTimestamp)
 }
 
 func TestFlushUnsafeCountMetricSample(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, noTimestamp)
 	m := c.flushUnsafe()
 	assert.Equal(t, m.metricType, count)
 	assert.Equal(t, m.ivalue, int64(21))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.timestamp, noTimestamp)
 
 	c.sample(12)
 	m = c.flushUnsafe()
@@ -39,30 +50,42 @@ func TestFlushUnsafeCountMetricSample(t *testing.T) {
 	assert.Equal(t, m.ivalue, int64(33))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.timestamp, noTimestamp)
 }
 
 func TestNewGaugeMetric(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, noTimestamp)
 	assert.Equal(t, math.Float64frombits(g.value), float64(21))
 	assert.Equal(t, g.name, "test")
 	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, g.timestamp, noTimestamp)
 }
 
 func TestGaugeMetricSample(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, noTimestamp)
 	g.sample(12)
 	assert.Equal(t, math.Float64frombits(g.value), float64(12))
 	assert.Equal(t, g.name, "test")
 	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, g.timestamp, noTimestamp)
+}
+
+func TestNewGaugeMetricWithTimestamp(t *testing.T) {
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, 1658934956)
+	assert.Equal(t, math.Float64frombits(g.value), float64(21))
+	assert.Equal(t, g.name, "test")
+	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, g.timestamp, int64(1658934956))
 }
 
 func TestFlushUnsafeGaugeMetricSample(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, noTimestamp)
 	m := g.flushUnsafe()
 	assert.Equal(t, m.metricType, gauge)
 	assert.Equal(t, m.fvalue, float64(21))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.timestamp, noTimestamp)
 
 	g.sample(12)
 	m = g.flushUnsafe()
@@ -70,6 +93,7 @@ func TestFlushUnsafeGaugeMetricSample(t *testing.T) {
 	assert.Equal(t, m.fvalue, float64(12))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.timestamp, noTimestamp)
 }
 
 func TestNewSetMetric(t *testing.T) {

@@ -140,6 +140,7 @@ type metric struct {
 	tags       []string
 	stags      string
 	rate       float64
+	timestamp  int64
 }
 
 type noClientErr string
@@ -159,8 +160,14 @@ type ClientInterface interface {
 	// Gauge measures the value of a metric at a particular time.
 	Gauge(name string, value float64, tags []string, rate float64) error
 
+	// Gauge measures the value of a metric at a given time.
+	GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error
+
 	// Count tracks how many times something happened per second.
 	Count(name string, value int64, tags []string, rate float64) error
+
+	// Count tracks how many times something happened at the given second.
+	CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error
 
 	// Histogram tracks the statistical distribution of a set of values on each host.
 	Histogram(name string, value float64, tags []string, rate float64) error
@@ -552,6 +559,19 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
+// Gauge measures the value of a metric at a given time.
+func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
+	if c == nil {
+		return ErrNoClient
+	}
+	ts := timestamp.Unix()
+	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
+	if c.agg != nil {
+		return c.agg.gaugeWithTimestamp(name, value, tags, ts)
+	}
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: ts})
+}
+
 // Count tracks how many times something happened per second.
 func (c *Client) Count(name string, value int64, tags []string, rate float64) error {
 	if c == nil {
@@ -562,6 +582,19 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 		return c.agg.count(name, value, tags)
 	}
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+}
+
+// Count tracks how many times something happened at the given second.
+func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
+	if c == nil {
+		return ErrNoClient
+	}
+	ts := timestamp.Unix()
+	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
+	if c.agg != nil {
+		return c.agg.countWithTimestamp(name, value, tags, ts)
+	}
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: ts})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.

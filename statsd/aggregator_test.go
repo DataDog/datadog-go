@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,6 +44,36 @@ func TestAggregatorSample(t *testing.T) {
 		a.timing("timingTest", 21, tags, 1)
 		assert.Len(t, a.timings.values, 1)
 		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
+	}
+}
+
+func TestAggregatorWithTimedSamples(t *testing.T) {
+	a := newAggregator(nil)
+
+	tags := []string{"tag1", "tag2"}
+
+	for i := 0; i < 2; i++ {
+		a.gauge("gaugeTest", 21, tags)
+		assert.Len(t, a.gauges, 1)
+		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+
+		for j := 0; j < 10; j++ {
+			// this one should only update the existing one, no new entry in a.gauges
+			a.gaugeWithTimestamp("gaugeTest", 21, tags, time.Now().Unix())
+			assert.Len(t, a.gauges, 1)
+			assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+		}
+
+		a.count("countTest", 21, tags)
+		assert.Len(t, a.counts, 1)
+		assert.Contains(t, a.counts, "countTest:tag1,tag2")
+
+		for j := 0; j < 10; j++ {
+			// this one should only override the existing one, no new entry in a.counts
+			a.countWithTimestamp("countTest", 21, tags, time.Now().Unix())
+			assert.Len(t, a.counts, 1)
+			assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		}
 	}
 }
 
@@ -190,6 +221,78 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{23.0},
+		},
+	},
+		metrics)
+}
+
+func TestAggregatorFlushWithTimedSamplesMixed(t *testing.T) {
+	a := newAggregator(nil)
+
+	tags := []string{"tag1", "tag2"}
+
+	veryOld := time.Now().Add(-24 * time.Hour)
+	old := time.Now().Add(-6 * time.Hour)
+
+	a.gauge("gaugeTest1", 21, tags)
+	a.gaugeWithTimestamp("gaugeTest2", 10, tags, veryOld.Unix())
+	a.gaugeWithTimestamp("gaugeTest2", 15, tags, old.Unix())
+
+	a.count("countTest1", 44, tags)
+	a.countWithTimestamp("countTest2", 23, tags, veryOld.Unix())
+	a.countWithTimestamp("countTest2", 25, tags, old.Unix())
+
+	metrics := a.flushMetrics()
+
+	assert.Len(t, a.gauges, 0)
+	assert.Len(t, a.counts, 0)
+
+	assert.Len(t, metrics, 4)
+
+	sort.Slice(metrics, func(i, j int) bool {
+		if metrics[i].metricType == metrics[j].metricType {
+			res := strings.Compare(metrics[i].name, metrics[j].name)
+			// this happens fo set
+			if res == 0 {
+				return strings.Compare(metrics[i].svalue, metrics[j].svalue) != 1
+			}
+			return res != 1
+		}
+		return metrics[i].metricType < metrics[j].metricType
+	})
+
+	assert.Equal(t, []metric{
+		metric{
+			metricType: gauge,
+			name:       "gaugeTest1",
+			tags:       tags,
+			rate:       1,
+			fvalue:     float64(21),
+			timestamp:  0,
+		},
+		metric{
+			metricType: gauge,
+			name:       "gaugeTest2",
+			tags:       tags,
+			rate:       1,
+			fvalue:     float64(15),
+			timestamp:  old.Unix(),
+		},
+		metric{
+			metricType: count,
+			name:       "countTest1",
+			tags:       tags,
+			rate:       1,
+			ivalue:     44,
+			timestamp:  0,
+		},
+		metric{
+			metricType: count,
+			name:       "countTest2",
+			tags:       tags,
+			rate:       1,
+			ivalue:     25,
+			timestamp:  old.Unix(),
 		},
 	},
 		metrics)

@@ -78,6 +78,23 @@ func TestWorkerGauge(t *testing.T) {
 	)
 }
 
+func TestWorkerGaugeWithTimestamp(t *testing.T) {
+	testWorker(
+		t,
+		metric{
+			metricType: gauge,
+			namespace:  "namespace.",
+			globalTags: []string{"globalTags", "globalTags2"},
+			name:       "test_gauge",
+			fvalue:     21,
+			tags:       []string{"tag1", "tag2"},
+			rate:       1,
+			timestamp:  1658997712,
+		},
+		"namespace.test_gauge:21|g|#globalTags,globalTags2,tag1,tag2|T1658997712\n",
+	)
+}
+
 func TestWorkerCount(t *testing.T) {
 	testWorker(
 		t,
@@ -94,6 +111,22 @@ func TestWorkerCount(t *testing.T) {
 	)
 }
 
+func TestWorkerCountWithTimestamp(t *testing.T) {
+	testWorker(
+		t,
+		metric{
+			metricType: count,
+			namespace:  "namespace.",
+			globalTags: []string{"globalTags", "globalTags2"},
+			name:       "test_count",
+			ivalue:     21,
+			tags:       []string{"tag1", "tag2"},
+			rate:       1,
+			timestamp:  1658997712,
+		},
+		"namespace.test_count:21|c|#globalTags,globalTags2,tag1,tag2|T1658997712\n",
+	)
+}
 func TestWorkerHistogram(t *testing.T) {
 	testWorker(
 		t,
