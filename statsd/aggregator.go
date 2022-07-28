@@ -221,15 +221,7 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 		return nil
 	}
 
-	a.counts[context] = newCountMetric(name, value, tags, noTimestamp)
-	a.countsM.Unlock()
-	return nil
-}
-
-func (a *aggregator) countWithTimestamp(name string, value int64, tags []string, timestamp int64) error {
-	context := getContext(name, tags)
-	a.countsM.Lock()
-	a.counts[context] = newCountMetric(name, value, tags, timestamp)
+	a.counts[context] = newCountMetric(name, value, tags)
 	a.countsM.Unlock()
 	return nil
 }
@@ -244,7 +236,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	}
 	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags, noTimestamp)
+	gauge := newGaugeMetric(name, value, tags)
 
 	a.gaugesM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
@@ -254,14 +246,6 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 		return nil
 	}
 	a.gauges[context] = gauge
-	a.gaugesM.Unlock()
-	return nil
-}
-
-func (a *aggregator) gaugeWithTimestamp(name string, value float64, tags []string, timestamp int64) error {
-	context := getContext(name, tags)
-	a.gaugesM.Lock()
-	a.gauges[context] = newGaugeMetric(name, value, tags, timestamp)
 	a.gaugesM.Unlock()
 	return nil
 }

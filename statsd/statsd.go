@@ -161,12 +161,16 @@ type ClientInterface interface {
 	Gauge(name string, value float64, tags []string, rate float64) error
 
 	// Gauge measures the value of a metric at a given time.
+	// Even with client side aggregation enabled, there is no aggregation done on a metric
+	// sent using GaugeWithTimestamp: it is written as is in the serialization buffer.
 	GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error
 
 	// Count tracks how many times something happened per second.
 	Count(name string, value int64, tags []string, rate float64) error
 
-	// Count tracks how many times something happened at the given second.
+	// CountWithTimestamp tracks how many times something happened at the given second.
+	// Even with client side aggregation enabled, there is no aggregation done on a metric
+	// sent using CountWithTimestamp: it is written as is in the serialization buffer.
 	CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error
 
 	// Histogram tracks the statistical distribution of a set of values on each host.
@@ -560,16 +564,14 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 }
 
 // Gauge measures the value of a metric at a given time.
+// Even with client side aggregation enabled, there is no aggregation done on a metric
+// sent using GaugeWithTimestamp: it is written as is in the serialization buffer.
 func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	ts := timestamp.Unix()
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
-	if c.agg != nil {
-		return c.agg.gaugeWithTimestamp(name, value, tags, ts)
-	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: ts})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix()})
 }
 
 // Count tracks how many times something happened per second.
@@ -585,16 +587,14 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 }
 
 // Count tracks how many times something happened at the given second.
+// Even with client side aggregation enabled, there is no aggregation done on a metric
+// sent using CountWithTimestamp: it is written as is in the serialization buffer.
 func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	ts := timestamp.Unix()
 	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
-	if c.agg != nil {
-		return c.agg.countWithTimestamp(name, value, tags, ts)
-	}
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: ts})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix()})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
