@@ -126,6 +126,9 @@ const (
 	writerWindowsPipe string = "pipe"
 )
 
+// noTimestamp is used as a value for metric without a given timestamp.
+const noTimestamp = int64(0)
+
 type metric struct {
 	metricType metricType
 	namespace  string
@@ -160,17 +163,17 @@ type ClientInterface interface {
 	// Gauge measures the value of a metric at a particular time.
 	Gauge(name string, value float64, tags []string, rate float64) error
 
-	// Gauge measures the value of a metric at a given time.
-	// Even with client side aggregation enabled, there is no aggregation done on a metric
-	// sent using GaugeWithTimestamp: it is written as is in the serialization buffer.
+	// GaugeWithTimestamp measures the value of a metric at a given time.
+	// The value will bypass any aggregation on the client side and agent side.
+	// This is useful when sending points in the past.
 	GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error
 
 	// Count tracks how many times something happened per second.
 	Count(name string, value int64, tags []string, rate float64) error
 
 	// CountWithTimestamp tracks how many times something happened at the given second.
-	// Even with client side aggregation enabled, there is no aggregation done on a metric
-	// sent using CountWithTimestamp: it is written as is in the serialization buffer.
+	// The value will bypass any aggregation on the client side and agent side.
+	// This is useful when sending points in the past.
 	CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error
 
 	// Histogram tracks the statistical distribution of a set of values on each host.
@@ -563,9 +566,9 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
-// Gauge measures the value of a metric at a given time.
-// Even with client side aggregation enabled, there is no aggregation done on a metric
-// sent using GaugeWithTimestamp: it is written as is in the serialization buffer.
+// GaugeWithTimestamp measures the value of a metric at a given time.
+// The value will bypass any aggregation on the client side and agent side.
+// This is useful when sending points in the past.
 func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
 	if c == nil {
 		return ErrNoClient
@@ -586,9 +589,9 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
 
-// Count tracks how many times something happened at the given second.
-// Even with client side aggregation enabled, there is no aggregation done on a metric
-// sent using CountWithTimestamp: it is written as is in the serialization buffer.
+// CountWithTimestamp tracks how many times something happened at the given second.
+// The value will bypass any aggregation on the client side and agent side.
+// This is useful when sending points in the past.
 func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
 	if c == nil {
 		return ErrNoClient

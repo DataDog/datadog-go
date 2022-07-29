@@ -14,9 +14,6 @@ type (
 	bufferedMetricMap map[string]*bufferedMetric
 )
 
-// noTimestamp is used as a value for metric without a given timestamp.
-const noTimestamp = int64(0)
-
 type aggregator struct {
 	nbContextGauge uint64
 	nbContextCount uint64

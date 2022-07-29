@@ -45,9 +45,7 @@ func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name st
 	}
 	originalBuffer := b.buffer
 	b.buffer = appendGauge(b.buffer, namespace, globalTags, name, value, tags, rate)
-	if timestamp != noTimestamp {
-		b.buffer = appendTimestamp(b.buffer, timestamp)
-	}
+	b.buffer = appendTimestamp(b.buffer, timestamp)
 	b.writeSeparator()
 	return b.validateNewElement(originalBuffer)
 }
@@ -58,9 +56,7 @@ func (b *statsdBuffer) writeCount(namespace string, globalTags []string, name st
 	}
 	originalBuffer := b.buffer
 	b.buffer = appendCount(b.buffer, namespace, globalTags, name, value, tags, rate)
-	if timestamp != noTimestamp {
-		b.buffer = appendTimestamp(b.buffer, timestamp)
-	}
+	b.buffer = appendTimestamp(b.buffer, timestamp)
 	b.writeSeparator()
 	return b.validateNewElement(originalBuffer)
 }
