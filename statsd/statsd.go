@@ -156,6 +156,15 @@ func (e noClientErr) Error() string {
 	return string(e)
 }
 
+type invalidTimestampErr string
+
+// InvalidTimestamp is returned if a provided timestamp is invalid.
+const InvalidTimestamp = invalidTimestampErr("invalid timestamp")
+
+func (e invalidTimestampErr) Error() string {
+	return string(e)
+}
+
 // ClientInterface is an interface that exposes the common client functions for the
 // purpose of being able to provide a no-op client or even mocking. This can aid
 // downstream users' with their testing.
@@ -575,6 +584,11 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
+
+	if timestamp.Unix() < 0 {
+		return InvalidTimestamp
+	}
+
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix()})
 }
@@ -598,6 +612,11 @@ func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rat
 	if c == nil {
 		return ErrNoClient
 	}
+
+	if timestamp.Unix() < 0 {
+		return InvalidTimestamp
+	}
+
 	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix()})
 }
