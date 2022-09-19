@@ -173,18 +173,21 @@ type ClientInterface interface {
 	Gauge(name string, value float64, tags []string, rate float64) error
 
 	// GaugeWithTimestamp measures the value of a metric at a given time.
-	// The value will bypass any aggregation on the client side and agent side.
-	// This is useful when sending points in the past.
-	// Minimum Datadog Agent version: 7.39.0
+	// The value will bypass any aggregation on the client side and agent side, this is
+	// useful when sending points in the past.
+	// Please report to the Datadog documentation for the maximum age of a metric.
+	//
+	// Minimum Datadog Agent version: 7.40.0
 	GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error
 
 	// Count tracks how many times something happened per second.
 	Count(name string, value int64, tags []string, rate float64) error
 
-	// CountWithTimestamp tracks how many times something happened at the given second.
-	// The value will bypass any aggregation on the client side and agent side.
-	// This is useful when sending points in the past.
-	// Minimum Datadog Agent version: 7.39.0
+	// The value will bypass any aggregation on the client side and agent side, this is
+	// useful when sending points in the past.
+	// Please report to the Datadog documentation for the maximum age of a metric.
+	//
+	// Minimum Datadog Agent version: 7.40.0
 	CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error
 
 	// Histogram tracks the statistical distribution of a set of values on each host.
@@ -578,8 +581,9 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.
-// The value will bypass any aggregation on the client side and agent side.
-// This is useful when sending points in the past.
+// The value will bypass any aggregation on the client side and agent side, this is
+// useful when sending points in the past.
+// Please report to the Datadog documentation for the maximum age of a metric.
 //
 // Minimum Datadog Agent version: 7.40.0
 func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
@@ -587,7 +591,7 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 		return ErrNoClient
 	}
 
-	if timestamp.Unix() < 0 {
+	if timestamp.IsZero() || timestamp.Unix() <= noTimestamp {
 		return InvalidTimestamp
 	}
 
@@ -608,8 +612,9 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 }
 
 // CountWithTimestamp tracks how many times something happened at the given second.
-// The value will bypass any aggregation on the client side and agent side.
-// This is useful when sending points in the past.
+// The value will bypass any aggregation on the client side and agent side, this is
+// useful when sending points in the past.
+// Please report to the Datadog documentation for the maximum age of a metric.
 //
 // Minimum Datadog Agent version: 7.40.0
 func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
@@ -617,7 +622,7 @@ func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rat
 		return ErrNoClient
 	}
 
-	if timestamp.Unix() < 0 {
+	if timestamp.IsZero() || timestamp.Unix() <= noTimestamp {
 		return InvalidTimestamp
 	}
 
