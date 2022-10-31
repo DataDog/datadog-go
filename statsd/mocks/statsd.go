@@ -63,6 +63,20 @@ func (mr *MockClientInterfaceMockRecorder) Count(name, value, tags, rate interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockClientInterface)(nil).Count), name, value, tags, rate)
 }
 
+// CountWithTimestamp mocks base method.
+func (m *MockClientInterface) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountWithTimestamp", name, value, tags, rate, timestamp)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CountWithTimestamp indicates an expected call of CountWithTimestamp.
+func (mr *MockClientInterfaceMockRecorder) CountWithTimestamp(name, value, tags, rate, timestamp interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountWithTimestamp", reflect.TypeOf((*MockClientInterface)(nil).CountWithTimestamp), name, value, tags, rate, timestamp)
+}
+
 // Decr mocks base method.
 func (m *MockClientInterface) Decr(name string, tags []string, rate float64) error {
 	m.ctrl.T.Helper()
@@ -131,6 +145,20 @@ func (m *MockClientInterface) Gauge(name string, value float64, tags []string, r
 func (mr *MockClientInterfaceMockRecorder) Gauge(name, value, tags, rate interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Gauge", reflect.TypeOf((*MockClientInterface)(nil).Gauge), name, value, tags, rate)
+}
+
+// GaugeWithTimestamp mocks base method.
+func (m *MockClientInterface) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GaugeWithTimestamp", name, value, tags, rate, timestamp)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// GaugeWithTimestamp indicates an expected call of GaugeWithTimestamp.
+func (mr *MockClientInterfaceMockRecorder) GaugeWithTimestamp(name, value, tags, rate, timestamp interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GaugeWithTimestamp", reflect.TypeOf((*MockClientInterface)(nil).GaugeWithTimestamp), name, value, tags, rate, timestamp)
 }
 
 // GetTelemetry mocks base method.

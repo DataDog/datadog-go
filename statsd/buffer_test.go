@@ -8,7 +8,7 @@ import (
 
 func TestBufferGauge(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
-	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag\n", string(buffer.bytes()))
 
@@ -17,14 +17,21 @@ func TestBufferGauge(t *testing.T) {
 	defer resetContainerID()
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with a timestamp
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, 1658934092)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|T1658934092\n", string(buffer.bytes()))
+
 }
 
 func TestBufferCount(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
-	err := buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err := buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag\n", string(buffer.bytes()))
 
@@ -33,9 +40,15 @@ func TestBufferCount(t *testing.T) {
 	defer resetContainerID()
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with a timestamp
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, 1658934092)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id|T1658934092\n", string(buffer.bytes()))
 }
 
 func TestBufferHistogram(t *testing.T) {
@@ -135,18 +148,18 @@ func TestBufferServiceCheck(t *testing.T) {
 
 func TestBufferFullSize(t *testing.T) {
 	buffer := newStatsdBuffer(30, 10)
-	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 	assert.Len(t, buffer.bytes(), 30)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Equal(t, errBufferFull, err)
 }
 
 func TestBufferSeparator(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 10)
-	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag\nnamespace.metric:1|g|#tag:tag\n", string(buffer.bytes()))
 }
@@ -223,13 +236,13 @@ func TestBufferAggregated(t *testing.T) {
 func TestBufferMaxElement(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
 
-	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
 
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Equal(t, errBufferFull, err)
 
-	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Equal(t, errBufferFull, err)
 
 	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)

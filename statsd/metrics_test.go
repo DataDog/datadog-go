@@ -17,6 +17,13 @@ func TestNewCountMetric(t *testing.T) {
 	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
 }
 
+func TestNewCountMetricWithTimestamp(t *testing.T) {
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	assert.Equal(t, c.value, int64(21))
+	assert.Equal(t, c.name, "test")
+	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+}
+
 func TestCountMetricSample(t *testing.T) {
 	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
 	c.sample(12)
@@ -52,6 +59,13 @@ func TestGaugeMetricSample(t *testing.T) {
 	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
 	g.sample(12)
 	assert.Equal(t, math.Float64frombits(g.value), float64(12))
+	assert.Equal(t, g.name, "test")
+	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+}
+
+func TestNewGaugeMetricWithTimestamp(t *testing.T) {
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	assert.Equal(t, math.Float64frombits(g.value), float64(21))
 	assert.Equal(t, g.name, "test")
 	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
 }

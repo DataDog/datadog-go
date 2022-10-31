@@ -270,3 +270,11 @@ func appendContainerID(buffer []byte) []byte {
 	}
 	return buffer
 }
+
+func appendTimestamp(buffer []byte, timestamp int64) []byte {
+	if timestamp > noTimestamp {
+		buffer = append(buffer, "|T"...)
+		buffer = strconv.AppendInt(buffer, timestamp, 10)
+	}
+	return buffer
+}

@@ -11,8 +11,18 @@ func (n *NoOpClient) Gauge(name string, value float64, tags []string, rate float
 	return nil
 }
 
+// GaugeWithTimestamp does nothing and returns nil
+func (n *NoOpClient) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
+	return nil
+}
+
 // Count does nothing and returns nil
 func (n *NoOpClient) Count(name string, value int64, tags []string, rate float64) error {
+	return nil
+}
+
+// CountWithTimestamp does nothing and returns nil
+func (n *NoOpClient) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
 	return nil
 }
 
