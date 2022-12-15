@@ -66,6 +66,7 @@ func (a *aggregator) start(flushInterval time.Duration) {
 			case <-ticker.C:
 				a.flush()
 			case <-a.closed:
+				ticker.Stop()
 				return
 			}
 		}
