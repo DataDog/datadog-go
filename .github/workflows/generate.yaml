@@ -6,16 +6,18 @@ jobs:
   native:
     strategy:
       matrix:
-        runs-on: [ ubuntu-latest, windows-latest]
+        runs-on:
+          - ubuntu-latest
+          - windows-latest
       fail-fast: false
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Setup go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.16
+          go-version: 'stable'
       - name: Checkout code
-        uses: actions/checkout@v2
-      - run: go install github.com/golang/mock/mockgen
+        uses: actions/checkout@v3
+      - run: go install github.com/golang/mock/mockgen@v1.6.0
       - run: go generate statsd/statsd.go
       - run: git diff --exit-code HEAD
