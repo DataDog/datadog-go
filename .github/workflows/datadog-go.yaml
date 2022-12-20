@@ -8,17 +8,35 @@ jobs:
   native:
     strategy:
       matrix:
-        go-version: [ 1.17, 1.16, 1.15, 1.14, 1.13]
-        runs-on: [ ubuntu-latest, windows-latest, macos-latest ]
+        go-version:
+          - 1.13
+          - 1.14
+          - 1.15
+          - 1.16
+          - 1.17
+          - 1.18
+          - 1.19
+        runs-on:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        exclude:
+          # These fail on macOS because of this bug https://github.com/golang/go/issues/49138
+          - runs-on: macos-latest
+            go-version: 1.13
+          - runs-on: macos-latest
+            go-version: 1.14
+          - runs-on: macos-latest
+            go-version: 1.15
       fail-fast: false
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Setup go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - run: go vet ./statsd/...
       - run: go fmt ./statsd/...
       - run: go test -race -v ./statsd/...
