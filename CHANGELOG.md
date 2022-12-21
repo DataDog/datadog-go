@@ -2,6 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.2.0 / 2022-12-21
+
+- [BETA][FEATURE] Support sending counters and gauges with timestamp. See [#262][]
+  * Please contact our support team for more information to use this feature: https://www.datadoghq.com/support/
+- [BUGFIX] Fix issue where `ticker.Stop()` wasn't being called when aggregator is stopped. See [#269][], thanks [@byronwolfman][].
+
 # 5.1.1 / 2022-05-05
 
 - [BUGFIX] Fix issue where tags of aggregated contexts could be modified after being sampled. See [#258][].
@@ -397,6 +403,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#254]: https://github.com/DataDog/datadog-go/pull/254
 [#255]: https://github.com/DataDog/datadog-go/pull/255
 [#258]: https://github.com/DataDog/datadog-go/pull/258
+[#262]: https://github.com/DataDog/datadog-go/pull/262
+[#269]: https://github.com/DataDog/datadog-go/pull/269
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -432,3 +440,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@programmer04]: https://github.com/programmer04
 [@martin-sucha]: https://github.com/martin-sucha
 [@lucassscaravelli]: https://github.com/lucassscaravelli
+[@byronwolfman]: https://github.com/byronwolfman
