@@ -6,8 +6,9 @@ import (
 	"log"
 	"net"
 	"os"
-	"sync/atomic"
 	"testing"
+
+	"go.uber.org/atomic"
 
 	"github.com/DataDog/datadog-go/v5/statsd"
 )
@@ -70,11 +71,11 @@ func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, extraOption
 	client, conn := setupClient(b, transport, extraOptions)
 	defer conn.Close()
 
-	n := int32(0)
+	n := atomic.NewInt32(0)
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
-		testNumber := atomic.AddInt32(&n, 1)
+		testNumber := n.Add(1)
 		name := fmt.Sprintf("test.metric%d", testNumber)
 		for pb.Next() {
 			client.Gauge(name, 1, []string{"tag:tag"}, 1)

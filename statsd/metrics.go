@@ -3,7 +3,8 @@ package statsd
 import (
 	"math"
 	"sync"
-	"sync/atomic"
+
+	"go.uber.org/atomic"
 )
 
 /*
@@ -14,21 +15,21 @@ Those are metrics type that can be aggregated on the client side:
 */
 
 type countMetric struct {
-	value int64
+	value *atomic.Int64
 	name  string
 	tags  []string
 }
 
 func newCountMetric(name string, value int64, tags []string) *countMetric {
 	return &countMetric{
-		value: value,
+		value: atomic.NewInt64(value),
 		name:  name,
 		tags:  copySlice(tags),
 	}
 }
 
 func (c *countMetric) sample(v int64) {
-	atomic.AddInt64(&c.value, v)
+	c.value.Add(v)
 }
 
 func (c *countMetric) flushUnsafe() metric {
@@ -37,28 +38,28 @@ func (c *countMetric) flushUnsafe() metric {
 		name:       c.name,
 		tags:       c.tags,
 		rate:       1,
-		ivalue:     c.value,
+		ivalue:     c.value.Load(),
 	}
 }
 
 // Gauge
 
 type gaugeMetric struct {
-	value uint64
+	value *atomic.Uint64
 	name  string
 	tags  []string
 }
 
 func newGaugeMetric(name string, value float64, tags []string) *gaugeMetric {
 	return &gaugeMetric{
-		value: math.Float64bits(value),
+		value: atomic.NewUint64(math.Float64bits(value)),
 		name:  name,
 		tags:  copySlice(tags),
 	}
 }
 
 func (g *gaugeMetric) sample(v float64) {
-	atomic.StoreUint64(&g.value, math.Float64bits(v))
+	g.value.Store(math.Float64bits(v))
 }
 
 func (g *gaugeMetric) flushUnsafe() metric {
@@ -67,7 +68,7 @@ func (g *gaugeMetric) flushUnsafe() metric {
 		name:       g.name,
 		tags:       g.tags,
 		rate:       1,
-		fvalue:     math.Float64frombits(g.value),
+		fvalue:     math.Float64frombits(g.value.Load()),
 	}
 }
 

@@ -38,12 +38,12 @@ func TestSender(t *testing.T) {
 	writer.AssertCalled(t, "Write", []byte("\n"))
 	assert.Equal(t, 10, len(pool.pool))
 
-	assert.Equal(t, uint64(1), sender.telemetry.totalPayloadsSent)
-	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedQueueFull)
-	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedWriter)
-	assert.Equal(t, uint64(1), sender.telemetry.totalBytesSent)
-	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedQueueFull)
-	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedWriter)
+	assert.Equal(t, uint64(1), sender.telemetry.totalPayloadsSent.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedQueueFull.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedWriter.Load())
+	assert.Equal(t, uint64(1), sender.telemetry.totalBytesSent.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedQueueFull.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedWriter.Load())
 
 }
 
@@ -64,13 +64,13 @@ func TestSenderBufferFullTelemetry(t *testing.T) {
 	buffer.writeSeparator() // add some dummy data
 	sender.send(buffer)
 
-	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsSent)
-	assert.Equal(t, uint64(1), sender.telemetry.totalPayloadsDroppedQueueFull)
-	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedWriter)
+	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsSent.Load())
+	assert.Equal(t, uint64(1), sender.telemetry.totalPayloadsDroppedQueueFull.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedWriter.Load())
 
-	assert.Equal(t, uint64(0), sender.telemetry.totalBytesSent)
-	assert.Equal(t, uint64(1), sender.telemetry.totalBytesDroppedQueueFull)
-	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedWriter)
+	assert.Equal(t, uint64(0), sender.telemetry.totalBytesSent.Load())
+	assert.Equal(t, uint64(1), sender.telemetry.totalBytesDroppedQueueFull.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedWriter.Load())
 }
 
 func TestSenderWriteError(t *testing.T) {
@@ -89,11 +89,11 @@ func TestSenderWriteError(t *testing.T) {
 	writer.AssertCalled(t, "Write", []byte("\n"))
 	assert.Equal(t, 10, len(pool.pool))
 
-	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsSent)
-	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedQueueFull)
-	assert.Equal(t, uint64(1), sender.telemetry.totalPayloadsDroppedWriter)
+	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsSent.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalPayloadsDroppedQueueFull.Load())
+	assert.Equal(t, uint64(1), sender.telemetry.totalPayloadsDroppedWriter.Load())
 
-	assert.Equal(t, uint64(0), sender.telemetry.totalBytesSent)
-	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedQueueFull)
-	assert.Equal(t, uint64(1), sender.telemetry.totalBytesDroppedWriter)
+	assert.Equal(t, uint64(0), sender.telemetry.totalBytesSent.Load())
+	assert.Equal(t, uint64(0), sender.telemetry.totalBytesDroppedQueueFull.Load())
+	assert.Equal(t, uint64(1), sender.telemetry.totalBytesDroppedWriter.Load())
 }

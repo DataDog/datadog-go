@@ -3,8 +3,9 @@ package statsd
 import (
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 type (
@@ -15,9 +16,9 @@ type (
 )
 
 type aggregator struct {
-	nbContextGauge uint64
-	nbContextCount uint64
-	nbContextSet   uint64
+	nbContextGauge *atomic.Uint64
+	nbContextCount *atomic.Uint64
+	nbContextSet   *atomic.Uint64
 
 	countsM sync.RWMutex
 	gaugesM sync.RWMutex
@@ -54,6 +55,9 @@ func newAggregator(c *Client) *aggregator {
 		timings:         newBufferedContexts(newTimingMetric),
 		closed:          make(chan struct{}),
 		stopChannelMode: make(chan struct{}),
+		nbContextGauge:  atomic.NewUint64(0),
+		nbContextCount:  atomic.NewUint64(0),
+		nbContextSet:    atomic.NewUint64(0),
 	}
 }
 
@@ -121,9 +125,9 @@ func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 		return
 	}
 
-	t.AggregationNbContextGauge = atomic.LoadUint64(&a.nbContextGauge)
-	t.AggregationNbContextCount = atomic.LoadUint64(&a.nbContextCount)
-	t.AggregationNbContextSet = atomic.LoadUint64(&a.nbContextSet)
+	t.AggregationNbContextGauge = a.nbContextGauge.Load()
+	t.AggregationNbContextCount = a.nbContextCount.Load()
+	t.AggregationNbContextSet = a.nbContextSet.Load()
 	t.AggregationNbContextHistogram = a.histograms.getNbContext()
 	t.AggregationNbContextDistribution = a.distributions.getNbContext()
 	t.AggregationNbContextTiming = a.timings.getNbContext()
@@ -166,9 +170,9 @@ func (a *aggregator) flushMetrics() []metric {
 	metrics = a.distributions.flush(metrics)
 	metrics = a.timings.flush(metrics)
 
-	atomic.AddUint64(&a.nbContextCount, uint64(len(counts)))
-	atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
-	atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
+	a.nbContextCount.Add(uint64(len(counts)))
+	a.nbContextGauge.Add(uint64(len(gauges)))
+	a.nbContextSet.Add(uint64(len(sets)))
 	return metrics
 }
 

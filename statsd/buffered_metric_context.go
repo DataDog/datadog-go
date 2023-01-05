@@ -3,15 +3,16 @@ package statsd
 import (
 	"math/rand"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 // bufferedMetricContexts represent the contexts for Histograms, Distributions
 // and Timing. Since those 3 metric types behave the same way and are sampled
 // with the same type they're represented by the same class.
 type bufferedMetricContexts struct {
-	nbContext uint64
+	nbContext *atomic.Uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
 	newMetric func(string, float64, string) *bufferedMetric
@@ -27,6 +28,7 @@ type bufferedMetricContexts struct {
 
 func newBufferedContexts(newMetric func(string, float64, string) *bufferedMetric) bufferedMetricContexts {
 	return bufferedMetricContexts{
+		nbContext: atomic.NewUint64(0),
 		values:    bufferedMetricMap{},
 		newMetric: newMetric,
 		// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
@@ -46,7 +48,7 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	for _, d := range values {
 		metrics = append(metrics, d.flushUnsafe())
 	}
-	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
+	bc.nbContext.Add(uint64(len(values)))
 	return metrics
 }
 
@@ -78,5 +80,5 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 }
 
 func (bc *bufferedMetricContexts) getNbContext() uint64 {
-	return atomic.LoadUint64(&bc.nbContext)
+	return bc.nbContext.Load()
 }
