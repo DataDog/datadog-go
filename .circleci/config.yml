@@ -1,3 +1,4 @@
+---
 # We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
 #
 version: 2.1
@@ -9,7 +10,7 @@ executors:
   linux_arm64:
     description: "arm64"
     machine:
-      image: ubuntu-2004:202101-01
+      image: ubuntu-2004:2022.04.1
     resource_class: arm.medium
 
 commands:
@@ -18,7 +19,7 @@ commands:
       version:
         type: string
     steps:
-      - os-detect/init # this setup the '$SUDO' variable
+      - os-detect/init  # this setup the '$SUDO' variable
       - run:
           name: "install Golang linux"
           command: |
@@ -72,4 +73,11 @@ workflows:
       - tests_arm64:
           matrix:
             parameters:
-              go-version: ["1.13", "1.14", "1.15", "1.16", "1.17"]
+              go-version:
+                - "1.13"
+                - "1.14"
+                - "1.15"
+                - "1.16"
+                - "1.17"
+                - "1.18"
+                - "1.19"
