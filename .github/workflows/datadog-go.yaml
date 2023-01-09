@@ -1,8 +1,17 @@
-# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
-
+---
+# We use github actions to test the code on windows and linux amd64.
+# Circleci is used for linux arm64.
+#
 name: datadog-go
 on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - '*.txt'
   pull_request:
+    paths-ignore:
+      - '*.md'
+      - '*.txt'
 
 jobs:
   native:

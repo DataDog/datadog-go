@@ -7,7 +7,7 @@
 
 `datadog-go` is a library that provides a [DogStatsD](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go) client in Golang.
 
-Go 1.12+ is officially supported. Older versions might work but are not tested.
+Go 1.16+ is officially supported. Older versions might work but are not tested.
 
 The following documentation is available:
 
@@ -33,6 +33,8 @@ The following documentation is available:
     - [Tweaking kernel options](#tweaking-kernel-options)
         + [Unix Domain Sockets](#unix-domain-sockets)
     - [Maximum packets size in high-throughput scenarios](#maximum-packets-size-in-high-throughput-scenarios)
+* [Support Policy](#support-policy)
+* [Supported Versions](#supported-versions)
 * [Development](#development)
 * [License](#license)
 * [Credits](#credits)
@@ -226,6 +228,34 @@ func main() {
     }
 }
 ```
+
+### Support Policy
+
+`datadog-go` is built upon dependencies defined in specific versions of Go releases and the Datadog Agent/API.
+For Go the two latest releases are [GA](#support-ga) supported and the version before that (till version `1.12`) are in [Maintenance](#support-maintenance).
+We do not support older releases, but generally these releases are considered [Legacy](#support-legacy).
+This library only officially supports [first class ports](https://github.com/golang/go/wiki/PortingPolicy#first-class-ports) of Go.
+
+| **Level**                                              | **Support provided**                                                                                                                                                         |
+|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| <span id="support-ga">General Availability (GA)</span> | Full implementation of all features. Full support for new features, bug & security fixes.                                                                                    |
+| <span id="support-maintenance">Maintenance</span>      | Full implementation of existing features. May receive new features. Support for bug & security fixes only.                                                                   |
+| <span id="support-legacy">Legacy</span>                | Legacy implementation. May have limited function, but no maintenance provided. [Contact our customer support team for special requests.](https://www.datadoghq.com/support/) |
+
+### Supported Versions
+
+| **Go Version** | **Support level**                   |
+|----------------|-------------------------------------|
+| 1.19           | [GA](#support-ga)                   |
+| 1.18           | [GA](#support-ga)                   |
+| 1.17           | [Maintenance](#support-maintenance) |
+| 1.16           | [Maintenance](#support-maintenance) |
+| 1.15           | [Maintenance](#support-maintenance) |
+| 1.14           | [Maintenance](#support-maintenance) |
+| 1.13           | [Maintenance](#support-maintenance) |
+| 1.12           | [Maintenance](#support-maintenance) |
+
+Future releases may move older Go versions support to [Legacy](#support-legacy), which will be done in a **minor** version change.
 
 ## Development
 
