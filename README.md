@@ -246,8 +246,9 @@ This library only officially supports [first class ports](https://github.com/gol
 
 | **Go Version** | **Support level**                   |
 |----------------|-------------------------------------|
+| 1.20           | [GA](#support-ga)                   |
 | 1.19           | [GA](#support-ga)                   |
-| 1.18           | [GA](#support-ga)                   |
+| 1.18           | [Maintenance](#support-maintenance) |
 | 1.17           | [Maintenance](#support-maintenance) |
 | 1.16           | [Maintenance](#support-maintenance) |
 | 1.15           | [Maintenance](#support-maintenance) |
