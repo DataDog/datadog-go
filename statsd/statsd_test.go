@@ -219,33 +219,49 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 	} else {
 		defer os.Unsetenv(agentPortEnvVarName)
 	}
+	urlInitialValue, urlInitiallySet := os.LookupEnv(agentURLEnvVarName)
+	if urlInitiallySet {
+		defer os.Setenv(agentURLEnvVarName, urlInitialValue)
+	} else {
+		defer os.Unsetenv(agentURLEnvVarName)
+	}
 
 	for _, tc := range []struct {
 		name         string
 		addrParam    string
 		hostEnv      string
 		portEnv      string
+		urlEnv       string
 		expectedAddr string
 	}{
-		{"UPD Nominal case", "127.0.0.1:1234", "", "", "127.0.0.1:1234"},
-		{"UPD Parameter overrides environment", "127.0.0.1:8125", "10.12.16.9", "1234", "127.0.0.1:8125"},
-		{"UPD Host and port passed as env", "", "10.12.16.9", "1234", "10.12.16.9:1234"},
-		{"UPD Host env, default port", "", "10.12.16.9", "", "10.12.16.9:8125"},
-		{"UPD Host passed, ignore env port", "10.12.16.9", "", "1234", "10.12.16.9:8125"},
+		{"UPD Nominal case", "127.0.0.1:1234", "", "", "", "127.0.0.1:1234"},
+		{"UPD Parameter overrides environment", "127.0.0.1:8125", "10.12.16.9", "1234", "", "127.0.0.1:8125"},
+		{"UPD Host and port passed as env", "", "10.12.16.9", "1234", "", "10.12.16.9:1234"},
+		{"UPD Host env, default port", "", "10.12.16.9", "", "", "10.12.16.9:8125"},
+		{"UPD Host passed, ignore env port", "10.12.16.9", "", "1234", "", "10.12.16.9:8125"},
 
-		{"UDS socket passed", "unix://test/path.socket", "", "", "unix://test/path.socket"},
-		{"UDS socket env", "", "unix://test/path.socket", "", "unix://test/path.socket"},
-		{"UDS socket env with port", "", "unix://test/path.socket", "8125", "unix://test/path.socket"},
+		{"UDS socket passed", "unix://test/path.socket", "", "", "", "unix://test/path.socket"},
+		{"UDS socket env", "", "unix://test/path.socket", "", "", "unix://test/path.socket"},
+		{"UDS socket env with port", "", "unix://test/path.socket", "8125", "", "unix://test/path.socket"},
 
-		{"Pipe passed", "\\\\.\\pipe\\my_pipe", "", "", "\\\\.\\pipe\\my_pipe"},
-		{"Pipe env", "", "\\\\.\\pipe\\my_pipe", "", "\\\\.\\pipe\\my_pipe"},
-		{"Pipe env with port", "", "\\\\.\\pipe\\my_pipe", "8125", "\\\\.\\pipe\\my_pipe"},
+		{"Pipe passed", "\\\\.\\pipe\\my_pipe", "", "", "", "\\\\.\\pipe\\my_pipe"},
+		{"Pipe env", "", "\\\\.\\pipe\\my_pipe", "", "", "\\\\.\\pipe\\my_pipe"},
+		{"Pipe env with port", "", "\\\\.\\pipe\\my_pipe", "8125", "", "\\\\.\\pipe\\my_pipe"},
 
-		{"No autodetection failed", "", "", "", ""},
+		{"DD_DOGSTATSD_URL UDP", "", "", "", "udp://localhost:1234", "localhost:1234"},
+		{"DD_DOGSTATSD_URL UDP, default port", "", "", "", "udp://localhost", "localhost:8125"},
+		{"DD_DOGSTATSD_URL UDS", "", "", "", "unix://test/path.socket", "unix://test/path.socket"},
+		{"DD_DOGSTATSD_URL UDS, ignore env port", "", "", "1234", "udp://198.51.100.123:4321", "198.51.100.123:4321"},
+		{"DD_DOGSTATSD_URL UDS, ignore env host", "", "localhost", "", "udp://198.51.100.123:4321", "198.51.100.123:4321"},
+		{"DD_DOGSTATSD_URL Pipe", "", "", "", "\\\\.\\pipe\\my_pipe", "\\\\.\\pipe\\my_pipe"},
+		{"DD_DOGSTATSD_URL with no valid scheme", "", "", "", "localhost:1234", ""},
+
+		{"No autodetection failed", "", "", "", "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			os.Setenv(agentHostEnvVarName, tc.hostEnv)
-			os.Setenv(agentPortEnvVarName, tc.portEnv)
+			_ = os.Setenv(agentHostEnvVarName, tc.hostEnv)
+			_ = os.Setenv(agentPortEnvVarName, tc.portEnv)
+			_ = os.Setenv(agentURLEnvVarName, tc.urlEnv)
 
 			addr := resolveAddr(tc.addrParam)
 			assert.Equal(t, tc.expectedAddr, addr)
