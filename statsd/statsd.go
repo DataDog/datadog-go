@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -69,6 +70,7 @@ const WindowsPipeAddressPrefix = `\\.\pipe\`
 const (
 	agentHostEnvVarName = "DD_AGENT_HOST"
 	agentPortEnvVarName = "DD_DOGSTATSD_PORT"
+	agentURLEnvVarName  = "DD_DOGSTATSD_URL"
 	defaultUDPPort      = "8125"
 )
 
@@ -282,9 +284,17 @@ var _ ClientInterface = &Client{}
 
 func resolveAddr(addr string) string {
 	envPort := ""
+
 	if addr == "" {
 		addr = os.Getenv(agentHostEnvVarName)
 		envPort = os.Getenv(agentPortEnvVarName)
+		agentURL, _ := os.LookupEnv(agentURLEnvVarName)
+		agentURL = parseAgentURL(agentURL)
+
+		// agentURLEnvVarName has priority over agentHostEnvVarName
+		if agentURL != "" {
+			return agentURL
+		}
 	}
 
 	if addr == "" {
@@ -301,6 +311,31 @@ func resolveAddr(addr string) string {
 		}
 	}
 	return addr
+}
+
+func parseAgentURL(agentURL string) string {
+	if agentURL != "" {
+		if strings.HasPrefix(agentURL, WindowsPipeAddressPrefix) {
+			return agentURL
+		}
+
+		parsedURL, err := url.Parse(agentURL)
+		if err != nil {
+			return ""
+		}
+
+		if parsedURL.Scheme == "udp" {
+			if strings.Contains(parsedURL.Host, ":") {
+				return parsedURL.Host
+			}
+			return fmt.Sprintf("%s:%s", parsedURL.Host, defaultUDPPort)
+		}
+
+		if parsedURL.Scheme == "unix" {
+			return agentURL
+		}
+	}
+	return ""
 }
 
 func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, string, error) {
