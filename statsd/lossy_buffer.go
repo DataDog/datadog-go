@@ -43,7 +43,6 @@ func (l *lossyBuffer) Sample(name string, value float64, tags []string) {
 	}
 
 	l.samples++
-	//fmt.Printf("sampling %d\n", l.samples)
 }
 
 // Full returns true if this buffer has sampled enough metrics, false otherwise.

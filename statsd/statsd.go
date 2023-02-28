@@ -614,20 +614,17 @@ func (c *Client) sendToAggregator(mType metricType, name string, value float64, 
 		m := pool.Get().(*lossyBuffer)
 		m.Sample(name, value, tags)
 
-		// Not enough samples, so
 		if !m.Full() {
 			pool.Put(m)
 			return
 		}
 
-		// Flush and reset the buffer
 		bm := m.Flush()
-
-		bf(bm)
 
 		// Put the buffer back into the pool asap for other routines to use
 		pool.Put(m)
 
+		bf(bm)
 	case channelMode:
 		select {
 		case c.aggExtended.inputMetrics <- metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}:
