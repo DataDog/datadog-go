@@ -77,12 +77,12 @@ func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, extraOption
 		testNumber := atomic.AddInt32(&n, 1)
 		name := fmt.Sprintf("test.metric%d", testNumber)
 		for pb.Next() {
-			client.Gauge(name, 1, []string{"tag:tag"}, 1)
+			client.Distribution(name, 1, []string{"tag:tag"}, 1)
 		}
 	})
 	client.Flush()
 	t := client.GetTelemetry()
-	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
+	reportMetric(b, (1-(float64(t.AggregationNbSample)/float64(t.TotalMetrics)))*100, "%_dropRate")
 
 	b.StopTimer()
 	client.Close()
@@ -96,12 +96,12 @@ func benchmarkStatsdSameMetrics(b *testing.B, transport string, extraOptions ...
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			client.Gauge("test.metric", 1, []string{"tag:tag"}, 1)
+			client.Distribution("test.metric", 1, []string{"tag:tag"}, 1)
 		}
 	})
 	client.Flush()
 	t := client.GetTelemetry()
-	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
+	reportMetric(b, (1-(float64(t.AggregationNbSample)/float64(t.TotalMetrics)))*100, "%_dropRate")
 
 	b.StopTimer()
 	client.Close()
@@ -131,6 +131,21 @@ func BenchmarkStatsdUDPSameMetricChannelAggregation(b *testing.B) {
 	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
+// blocking + extended aggregation
+func BenchmarkStatsdUDPSameMetricMutexExtAggregation(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// dropping + extended aggregation
+func BenchmarkStatsdUDPSameMetricChannelExtAggregation(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// lossy + extended aggregation
+func BenchmarkStatsdUDPSameMetricLossyExtAggregation(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithLossyMode(), statsd.WithExtendedClientSideAggregation())
+}
+
 /*
 UDP with the different metrics
 */
@@ -153,6 +168,21 @@ func BenchmarkStatsdUDPDifferentMetricMutexAggregation(b *testing.B) {
 // dropping + aggregation
 func BenchmarkStatsdUDPDifferentMetricChannelAggregation(b *testing.B) {
 	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+}
+
+// blocking + extended aggregation
+func BenchmarkStatsdUDPDifferentMetricMutexExtAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// dropping + extended aggregation
+func BenchmarkStatsdUDPDifferentMetricChannelExtAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// lossy + extended aggregation
+func BenchmarkStatsdUDPDifferentMetricLossyExtAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDP, statsd.WithLossyMode(), statsd.WithExtendedClientSideAggregation())
 }
 
 /*
@@ -178,11 +208,26 @@ func BenchmarkStatsdUDSSameMetricChannelAggregation(b *testing.B) {
 	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
+// blocking + extended aggregation
+func BenchmarkStatsdUDSSameMetricMutexExtAggregation(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// dropping + extended aggregation
+func BenchmarkStatsdUDSSameMetricChannelExtAggregation(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// lossy + extended aggregation
+func BenchmarkStatsdUDSSameMetricLossyExtAggregation(b *testing.B) {
+	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithLossyMode(), statsd.WithExtendedClientSideAggregation())
+}
+
 /*
 UDS with different metrics
 */
 // blocking + no aggregation
-func BenchmarkStatsdUDPSifferentMetricMutex(b *testing.B) {
+func BenchmarkStatsdUDSDifferentMetricMutex(b *testing.B) {
 	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
 }
 
@@ -192,11 +237,31 @@ func BenchmarkStatsdUDSDifferentMetricChannel(b *testing.B) {
 }
 
 // blocking + aggregation
-func BenchmarkStatsdUDPSifferentMetricMutexAggregation(b *testing.B) {
+func BenchmarkStatsdUDSDifferentMetricMutexAggregation(b *testing.B) {
 	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
 }
 
 // dropping + aggregation
 func BenchmarkStatsdUDSDifferentMetricChannelAggregation(b *testing.B) {
 	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+}
+
+// lossy + aggregation
+func BenchmarkStatsdUDSDifferentMetricLossyAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithLossyMode(), statsd.WithClientSideAggregation())
+}
+
+// blocking + ext aggregation
+func BenchmarkStatsdUDSDifferentMetricMutexExtAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// dropping + ext aggregation
+func BenchmarkStatsdUDSDifferentMetricChannelExtAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithExtendedClientSideAggregation())
+}
+
+// lossy + ext aggregation
+func BenchmarkStatsdUDSDifferentMetricLossyExtAggregation(b *testing.B) {
+	benchmarkStatsdDifferentMetrics(b, writerNameUDS, statsd.WithLossyMode(), statsd.WithExtendedClientSideAggregation())
 }

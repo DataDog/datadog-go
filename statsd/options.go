@@ -200,14 +200,15 @@ func WithWriteTimeout(writeTimeout time.Duration) Option {
 // WithChannelMode make the client use channels to receive metrics
 //
 // This determines how the client receive metrics from the app (for example when calling the `Gauge()` method).
-// The client will either drop the metrics if its buffers are full (WithChannelMode option) or block the caller until the
-// metric can be handled (WithMutexMode option). By default the client use mutexes.
+// The client will either drop the metrics if its buffers are full (WithChannelMode option), or use lossy buffers to
+// reduce contention (WithLossyMode option), or block the caller until the metric can be handled (WithMutexMode option).
+// By default, the client use mutexes.
 //
-// WithChannelMode uses a channel (see WithChannelModeBufferSize to configure its size) to receive metrics and drops metrics if
-// the channel is full. Sending metrics in this mode is much slower that WithMutexMode (because of the channel), but will not
-// block the application. This mode is made for application using many goroutines, sending the same metrics, at a very
-// high volume. The goal is to not slow down the application at the cost of dropping metrics and having a lower max
-// throughput.
+// WithChannelMode uses a channel (see WithChannelModeBufferSize to configure its size) to receive metrics and drops
+// metrics if the channel is full. Sending metrics in this mode is much slower that WithMutexMode (because of the
+// channel), but will not block the application. This mode is made for application using many goroutines, sending the
+// same metrics, at a very high volume. The goal is to not slow down the application at the cost of dropping metrics and
+// having a lower max throughput.
 func WithChannelMode() Option {
 	return func(o *Options) error {
 		o.receiveMode = channelMode
@@ -215,19 +216,38 @@ func WithChannelMode() Option {
 	}
 }
 
-// WithMutexMode will use mutex to receive metrics from the app throught the API.
+// WithMutexMode will use mutex to receive metrics from the app throughout the API.
 //
 // This determines how the client receive metrics from the app (for example when calling the `Gauge()` method).
-// The client will either drop the metrics if its buffers are full (WithChannelMode option) or block the caller until the
-// metric can be handled (WithMutexMode option). By default the client use mutexes.
+// The client will either drop the metrics if its buffers are full (WithChannelMode option), or use lossy buffers to
+// reduce contention (WithLossyMode option), or block the caller until the metric can be handled (WithMutexMode option).
+// By default, the client use mutexes.
 //
 // WithMutexMode uses mutexes to receive metrics which is much faster than channels but can cause some lock contention
-// when used with a high number of goroutines sendint the same metrics. Mutexes are sharded based on the metrics name
+// when used with a high number of goroutines sending the same metrics. Mutexes are sharded based on the metrics name
 // which limit mutex contention when multiple goroutines send different metrics (see WithWorkersCount). This is the
 // default behavior which will produce the best throughput.
 func WithMutexMode() Option {
 	return func(o *Options) error {
 		o.receiveMode = mutexMode
+		return nil
+	}
+}
+
+// WithLossyMode will use lossy buffers to receive metrics from the app.
+//
+// This determines how the client receive metrics from the app (for example when calling the `Gauge()` method).
+// The client will either drop the metrics if its buffers are full (WithChannelMode option), or use lossy buffers to
+// reduce contention (WithLossyMode option), or block the caller until the metric can be handled (WithMutexMode option).
+// By default, the client use mutexes.
+//
+// WithLossyMode uses lossy buffers to receive and collect metrics to reduce lock contention. The buffers may be garbage
+// collected if they're not frequently used, which means any buffered metrics in them are lost. Once a lossy buffer is
+// full, the metrics are flushed to the aggregator. This mode is optimal for apps that send a lot of metrics and are
+// willing to drop a few metrics in favor of reducing contention.
+func WithLossyMode() Option {
+	return func(o *Options) error {
+		o.receiveMode = lossyMode
 		return nil
 	}
 }

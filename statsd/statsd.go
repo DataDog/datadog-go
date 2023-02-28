@@ -120,6 +120,7 @@ type receivingMode int
 const (
 	mutexMode receivingMode = iota
 	channelMode
+	lossyMode
 )
 
 const (
@@ -592,16 +593,51 @@ func (c *Client) sendBlocking(m metric) error {
 	return worker.processMetric(m)
 }
 
-func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc) error {
-	if c.aggregatorMode == channelMode {
+func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, bf bufferedMetricSampleBulkFunc) {
+	switch c.aggregatorMode {
+	case lossyMode:
+		if !shouldSample(rate) {
+			return
+		}
+
+		var pool *sync.Pool
+
+		switch mType {
+		case histogram:
+			pool = lossyBufferPoolHistogram
+		case distribution:
+			pool = lossyBufferPoolDistribution
+		case timing:
+			pool = lossyBufferPoolTiming
+		}
+
+		m := pool.Get().(*lossyBuffer)
+		m.Sample(name, value, tags)
+
+		// Not enough samples, so
+		if !m.Full() {
+			pool.Put(m)
+			return
+		}
+
+		// Flush and reset the buffer
+		bm := m.Flush()
+
+		bf(bm)
+
+		// Put the buffer back into the pool asap for other routines to use
+		pool.Put(m)
+
+	case channelMode:
 		select {
 		case c.aggExtended.inputMetrics <- metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}:
 		default:
 			atomic.AddUint64(&c.telemetry.totalDroppedOnReceive, 1)
 		}
-		return nil
+	default:
+		f(name, value, tags, rate)
 	}
-	return f(name, value, tags, rate)
+	return
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -673,7 +709,8 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsHistogram, 1)
 	if c.aggExtended != nil {
-		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
+		c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram, c.aggExtended.histogramBulk)
+		return nil
 	}
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
@@ -685,7 +722,8 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsDistribution, 1)
 	if c.aggExtended != nil {
-		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
+		c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution, c.aggExtended.distributionBulk)
+		return nil
 	}
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }
@@ -725,7 +763,8 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsTiming, 1)
 	if c.aggExtended != nil {
-		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
+		c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing, c.aggExtended.timingBulk)
+		return nil
 	}
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
 }

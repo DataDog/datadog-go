@@ -110,6 +110,18 @@ type Telemetry struct {
 	// AggregationNbContextTiming is the total number of contexts for timings flushed by the aggregator when either
 	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
 	AggregationNbContextTiming uint64
+	// AggregationNbSample is the total number of samples flushed by the aggregator when either
+	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
+	AggregationNbSample uint64
+	// AggregationNbSampleHistogram is the total number of samples for histograms flushed by the aggregator when either
+	//	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
+	AggregationNbSampleHistogram uint64
+	// AggregationNbSampleDistribution is the total number of samples for distributions flushed by the aggregator when
+	// either WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
+	AggregationNbSampleDistribution uint64
+	// AggregationNbSampleTiming is the total number of samples for timings flushed by the aggregator when either
+	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
+	AggregationNbSampleTiming uint64
 }
 
 type telemetryClient struct {
@@ -218,6 +230,9 @@ func (t *telemetryClient) getTelemetry() Telemetry {
 			tlm.AggregationNbContextHistogram +
 			tlm.AggregationNbContextDistribution +
 			tlm.AggregationNbContextTiming
+		tlm.AggregationNbSample = tlm.AggregationNbSampleHistogram +
+			tlm.AggregationNbSampleDistribution +
+			tlm.AggregationNbSampleTiming
 	}
 	return tlm
 }
@@ -266,6 +281,11 @@ func (t *telemetryClient) flush() []metric {
 		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(tlm.AggregationNbContextHistogram-t.lastSample.AggregationNbContextHistogram), t.tagsByType[histogram])
 		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(tlm.AggregationNbContextDistribution-t.lastSample.AggregationNbContextDistribution), t.tagsByType[distribution])
 		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(tlm.AggregationNbContextTiming-t.lastSample.AggregationNbContextTiming), t.tagsByType[timing])
+
+		telemetryCount("datadog.dogstatsd.client.aggregated_sample", int64(tlm.AggregationNbSample-t.lastSample.AggregationNbSample), t.tags)
+		telemetryCount("datadog.dogstatsd.client.aggregated_sample_by_type", int64(tlm.AggregationNbSampleHistogram-t.lastSample.AggregationNbSampleHistogram), t.tagsByType[histogram])
+		telemetryCount("datadog.dogstatsd.client.aggregated_sample_by_type", int64(tlm.AggregationNbSampleDistribution-t.lastSample.AggregationNbSampleDistribution), t.tagsByType[distribution])
+		telemetryCount("datadog.dogstatsd.client.aggregated_sample_by_type", int64(tlm.AggregationNbSampleTiming-t.lastSample.AggregationNbSampleTiming), t.tagsByType[timing])
 	}
 
 	t.lastSample = tlm

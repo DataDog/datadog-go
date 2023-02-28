@@ -8,10 +8,11 @@ import (
 )
 
 type (
-	countsMap         map[string]*countMetric
-	gaugesMap         map[string]*gaugeMetric
-	setsMap           map[string]*setMetric
-	bufferedMetricMap map[string]*bufferedMetric
+	metricContext     struct{ name, tags string }
+	countsMap         map[metricContext]*countMetric
+	gaugesMap         map[metricContext]*gaugeMetric
+	setsMap           map[metricContext]*setMetric
+	bufferedMetricMap map[metricContext]*bufferedMetric
 )
 
 type aggregator struct {
@@ -127,6 +128,9 @@ func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 	t.AggregationNbContextHistogram = a.histograms.getNbContext()
 	t.AggregationNbContextDistribution = a.distributions.getNbContext()
 	t.AggregationNbContextTiming = a.timings.getNbContext()
+	t.AggregationNbSampleHistogram = a.histograms.getNbSample()
+	t.AggregationNbSampleDistribution = a.distributions.getNbSample()
+	t.AggregationNbSampleTiming = a.timings.getNbSample()
 }
 
 func (a *aggregator) flushMetrics() []metric {
@@ -172,33 +176,14 @@ func (a *aggregator) flushMetrics() []metric {
 	return metrics
 }
 
-func getContext(name string, tags []string) string {
+func getContext(name string, tags []string) metricContext {
 	c, _ := getContextAndTags(name, tags)
 	return c
 }
 
-func getContextAndTags(name string, tags []string) (string, string) {
-	if len(tags) == 0 {
-		return name + nameSeparatorSymbol, ""
-	}
-	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
-	for _, s := range tags {
-		n += len(s)
-	}
-
-	var sb strings.Builder
-	sb.Grow(n)
-	sb.WriteString(name)
-	sb.WriteString(nameSeparatorSymbol)
-	sb.WriteString(tags[0])
-	for _, s := range tags[1:] {
-		sb.WriteString(tagSeparatorSymbol)
-		sb.WriteString(s)
-	}
-
-	s := sb.String()
-
-	return s, s[len(name)+len(nameSeparatorSymbol):]
+func getContextAndTags(name string, tags []string) (metricContext, string) {
+	joinedTags := strings.Join(tags, tagSeparatorSymbol)
+	return metricContext{name, joinedTags}, joinedTags
 }
 
 func (a *aggregator) count(name string, value int64, tags []string) error {
@@ -275,16 +260,30 @@ func (a *aggregator) set(name string, value string, tags []string) error {
 // sample rate will have impacts on the CPU and memory usage of the Agent.
 
 // type alias for Client.sendToAggregator
-type bufferedMetricSampleFunc func(name string, value float64, tags []string, rate float64) error
+type bufferedMetricSampleFunc func(name string, value float64, tags []string, rate float64)
 
-func (a *aggregator) histogram(name string, value float64, tags []string, rate float64) error {
-	return a.histograms.sample(name, value, tags, rate)
+func (a *aggregator) histogram(name string, value float64, tags []string, rate float64) {
+	a.histograms.sample(name, value, tags, rate)
 }
 
-func (a *aggregator) distribution(name string, value float64, tags []string, rate float64) error {
-	return a.distributions.sample(name, value, tags, rate)
+func (a *aggregator) distribution(name string, value float64, tags []string, rate float64) {
+	a.distributions.sample(name, value, tags, rate)
 }
 
-func (a *aggregator) timing(name string, value float64, tags []string, rate float64) error {
-	return a.timings.sample(name, value, tags, rate)
+func (a *aggregator) timing(name string, value float64, tags []string, rate float64) {
+	a.timings.sample(name, value, tags, rate)
+}
+
+type bufferedMetricSampleBulkFunc func(bulkMap bufferedMetricMap)
+
+func (a *aggregator) histogramBulk(bulkMap bufferedMetricMap) {
+	a.histograms.sampleBulk(bulkMap)
+}
+
+func (a *aggregator) distributionBulk(bulkMap bufferedMetricMap) {
+	a.distributions.sampleBulk(bulkMap)
+}
+
+func (a *aggregator) timingBulk(bulkMap bufferedMetricMap) {
+	a.timings.sampleBulk(bulkMap)
 }

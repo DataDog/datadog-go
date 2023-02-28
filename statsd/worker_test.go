@@ -16,25 +16,15 @@ func TestShouldSample(t *testing.T) {
 		t.Run(fmt.Sprintf("Rate %0.2f", rate), func(t *testing.T) {
 			t.Parallel()
 
-			worker := newWorker(newBufferPool(1, 1, 1), nil)
 			count := 0
 			for i := 0; i < iterations; i++ {
-				if shouldSample(rate, worker.random, &worker.randomLock) {
+				if shouldSample(rate) {
 					count++
 				}
 			}
 			assert.InDelta(t, rate, float64(count)/float64(iterations), 0.01)
 		})
 	}
-}
-
-func BenchmarkShouldSample(b *testing.B) {
-	b.RunParallel(func(pb *testing.PB) {
-		worker := newWorker(newBufferPool(1, 1, 1), nil)
-		for pb.Next() {
-			shouldSample(0.1, worker.random, &worker.randomLock)
-		}
-	})
 }
 
 func initWorker(bufferSize int) (*bufferPool, *sender, *worker) {
