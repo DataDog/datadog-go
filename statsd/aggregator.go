@@ -1,10 +1,10 @@
 package statsd
 
 import (
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 type (
@@ -189,8 +189,29 @@ func getContext(name string, tags []string) metricContext {
 }
 
 func getContextAndTags(name string, tags []string) (metricContext, string) {
-	joinedTags := strings.Join(tags, tagSeparatorSymbol)
-	return metricContext{name, joinedTags}, joinedTags
+	tagString := joinTags(tags)
+	return metricContext{name, tagString}, tagString
+}
+
+func joinTags(tags []string) string {
+	switch len(tags) {
+	case 0:
+		return ""
+	case 1:
+		return tags[0]
+	}
+	n := len(tags) - 1
+	for _, tag := range tags {
+		n += len(tag)
+	}
+	b := make([]byte, n)
+	c := copy(b, tags[0])
+	for _, s := range tags[1:] {
+		b[c] = ','
+		c++
+		c += copy(b[c:], s)
+	}
+	return *(*string)(unsafe.Pointer(&b))
 }
 
 func (a *aggregator) count(name string, value int64, tags []string) error {
