@@ -31,6 +31,10 @@ type aggregator struct {
 	distributions bufferedMetricContexts
 	timings       bufferedMetricContexts
 
+	lossyHistogramBufferPool    *sync.Pool
+	lossyDistributionBufferPool *sync.Pool
+	lossyTimingBufferPool       *sync.Pool
+
 	closed chan struct{}
 
 	client *Client
@@ -46,15 +50,18 @@ type aggregator struct {
 
 func newAggregator(c *Client) *aggregator {
 	return &aggregator{
-		client:          c,
-		counts:          countsMap{},
-		gauges:          gaugesMap{},
-		sets:            setsMap{},
-		histograms:      newBufferedContexts(newHistogramMetric),
-		distributions:   newBufferedContexts(newDistributionMetric),
-		timings:         newBufferedContexts(newTimingMetric),
-		closed:          make(chan struct{}),
-		stopChannelMode: make(chan struct{}),
+		client:                      c,
+		counts:                      countsMap{},
+		gauges:                      gaugesMap{},
+		sets:                        setsMap{},
+		histograms:                  newBufferedContexts(newHistogramMetric),
+		distributions:               newBufferedContexts(newDistributionMetric),
+		timings:                     newBufferedContexts(newTimingMetric),
+		lossyHistogramBufferPool:    newLossyBufferPool(newHistogramMetric),
+		lossyDistributionBufferPool: newLossyBufferPool(newDistributionMetric),
+		lossyTimingBufferPool:       newLossyBufferPool(newTimingMetric),
+		closed:                      make(chan struct{}),
+		stopChannelMode:             make(chan struct{}),
 	}
 }
 

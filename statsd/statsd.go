@@ -593,22 +593,11 @@ func (c *Client) sendBlocking(m metric) error {
 	return worker.processMetric(m)
 }
 
-func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, bf bufferedMetricSampleBulkFunc) {
+func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, bf bufferedMetricSampleBulkFunc, pool *sync.Pool) {
 	switch c.aggregatorMode {
 	case lossyMode:
 		if !shouldSample(rate) {
 			return
-		}
-
-		var pool *sync.Pool
-
-		switch mType {
-		case histogram:
-			pool = lossyBufferPoolHistogram
-		case distribution:
-			pool = lossyBufferPoolDistribution
-		case timing:
-			pool = lossyBufferPoolTiming
 		}
 
 		m := pool.Get().(*lossyBuffer)
@@ -706,7 +695,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsHistogram, 1)
 	if c.aggExtended != nil {
-		c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram, c.aggExtended.histogramBulk)
+		c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram, c.aggExtended.histogramBulk, c.agg.lossyHistogramBufferPool)
 		return nil
 	}
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
@@ -719,7 +708,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsDistribution, 1)
 	if c.aggExtended != nil {
-		c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution, c.aggExtended.distributionBulk)
+		c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution, c.aggExtended.distributionBulk, c.agg.lossyDistributionBufferPool)
 		return nil
 	}
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
@@ -760,7 +749,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsTiming, 1)
 	if c.aggExtended != nil {
-		c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing, c.aggExtended.timingBulk)
+		c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing, c.aggExtended.timingBulk, c.agg.lossyTimingBufferPool)
 		return nil
 	}
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})

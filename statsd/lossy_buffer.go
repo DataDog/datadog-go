@@ -8,22 +8,12 @@ import (
 // aggregator
 const flushSampleThreshold int = 64
 
-var lossyBufferPoolTiming = &sync.Pool{
-	New: func() interface{} {
-		return &lossyBuffer{values: bufferedMetricMap{}, newMetric: newTimingMetric}
-	},
-}
-
-var lossyBufferPoolDistribution = &sync.Pool{
-	New: func() interface{} {
-		return &lossyBuffer{values: bufferedMetricMap{}, newMetric: newDistributionMetric}
-	},
-}
-
-var lossyBufferPoolHistogram = &sync.Pool{
-	New: func() interface{} {
-		return &lossyBuffer{values: bufferedMetricMap{}, newMetric: newHistogramMetric}
-	},
+func newLossyBufferPool(newMetric func(string, float64, string) *bufferedMetric) *sync.Pool {
+	return &sync.Pool{
+		New: func() interface{} {
+			return &lossyBuffer{values: bufferedMetricMap{}, newMetric: newMetric}
+		},
+	}
 }
 
 type lossyBuffer struct {
