@@ -23,8 +23,8 @@ type lossyBuffer struct {
 	newMetric func(string, float64, string) *bufferedMetric
 }
 
-// Sample the incoming metric
-func (l *lossyBuffer) Sample(name string, value float64, tags []string) {
+// sample the incoming metric
+func (l *lossyBuffer) sample(name string, value float64, tags []string) {
 	context, stringTags := getContextAndTags(name, tags)
 	if bm, ok := l.values[context]; ok {
 		bm.sampleUnsafe(value)
@@ -35,13 +35,13 @@ func (l *lossyBuffer) Sample(name string, value float64, tags []string) {
 	l.samples++
 }
 
-// Full returns true if this buffer has sampled enough metrics, false otherwise.
-func (l *lossyBuffer) Full() bool {
+// full returns true if this buffer has sampled enough metrics, false otherwise.
+func (l *lossyBuffer) full() bool {
 	return l.samples >= flushSampleThreshold
 }
 
-// Flush returns the internal bufferedMetricMap and resets this buffer so that it can be put back into a pool
-func (l *lossyBuffer) Flush() bufferedMetricMap {
+// flush returns the internal bufferedMetricMap and resets this buffer so that it can be put back into a pool
+func (l *lossyBuffer) flush() bufferedMetricMap {
 	buffer := l.values
 
 	// Reset this buffer

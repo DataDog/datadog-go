@@ -601,14 +601,14 @@ func (c *Client) sendToAggregator(mType metricType, name string, value float64, 
 		}
 
 		m := pool.Get().(*lossyBuffer)
-		m.Sample(name, value, tags)
 
-		if !m.Full() {
+		m.sample(name, value, tags)
+		if !m.full() {
 			pool.Put(m)
 			return
 		}
 
-		bm := m.Flush()
+		bm := m.flush()
 
 		// Put the buffer back into the pool asap for other routines to use
 		pool.Put(m)
