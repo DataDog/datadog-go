@@ -2,6 +2,11 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.3.0 / 2023-03-06
+ 
+- [FEATURE] Added support for `DD_DOGSTATSD_URL`. You can now use this env var to set the URL to use to connect to DogStatsD. See [#273][]
+  * Please be aware that `DD_DOGSTATSD_URL` takes precedence over the `DD_AGENT_HOST`. If you have both set please make sure the value for `DD_DOGSTATSD_URL` is correct. 
+
 # 5.2.0 / 2022-12-21
 
 - [BETA][FEATURE] Support sending counters and gauges with timestamp. See [#262][]
@@ -405,6 +410,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#258]: https://github.com/DataDog/datadog-go/pull/258
 [#262]: https://github.com/DataDog/datadog-go/pull/262
 [#269]: https://github.com/DataDog/datadog-go/pull/269
+[#273]: https://github.com/DataDog/datadog-go/pull/273
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
