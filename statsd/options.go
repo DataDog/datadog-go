@@ -99,7 +99,7 @@ func WithNamespace(namespace string) Option {
 // WithTags sets global tags to be applied to every metrics, events and service checks.
 func WithTags(tags []string) Option {
 	return func(o *Options) error {
-		o.tags = tags
+		o.tags = append(o.tags, tags...)
 		return nil
 	}
 }
