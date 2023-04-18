@@ -103,6 +103,7 @@ func TestResetOptions(t *testing.T) {
 	assert.Equal(t, options.aggregation, false)
 	assert.Equal(t, options.extendedAggregation, false)
 }
+
 func TestOptionsNamespaceWithoutDot(t *testing.T) {
 	testNamespace := "datadog"
 
@@ -112,4 +113,17 @@ func TestOptionsNamespaceWithoutDot(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, options.namespace, testNamespace+".")
+}
+
+func TestOptionsTagsMerge(t *testing.T) {
+	testTagsInitial := []string{"datadog"}
+	testTagsMerge := []string{"rocks"}
+
+	options, err := resolveOptions([]Option{
+		WithTags(testTagsInitial),
+		WithTags(testTagsMerge),
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, append(testTagsInitial, testTagsMerge...), options.tags)
 }
