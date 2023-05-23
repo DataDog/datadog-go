@@ -24,6 +24,7 @@ var (
 	defaultAggregation              = true
 	defaultExtendedAggregation      = false
 	defaultOriginDetection          = true
+	defaultUDPSocketCount           = 1
 )
 
 // Options contains the configuration options for a client.
@@ -46,6 +47,7 @@ type Options struct {
 	telemetryAddr            string
 	originDetection          bool
 	containerID              string
+	udpSocketCount           int
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -66,6 +68,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		aggregation:              defaultAggregation,
 		extendedAggregation:      defaultExtendedAggregation,
 		originDetection:          defaultOriginDetection,
+		udpSocketCount:           defaultUDPSocketCount,
 	}
 
 	for _, option := range options {
@@ -343,6 +346,18 @@ func WithOriginDetection() Option {
 func WithContainerID(id string) Option {
 	return func(o *Options) error {
 		o.containerID = id
+		return nil
+	}
+}
+
+// WithUDPSocketCount allows setting the number of UDP sockets that statsd packets will be written on.  This allows for
+// high packet rates on systems with large numbers of cores.
+func WithUDPSocketCount(count int) Option {
+	return func(o *Options) error {
+		if count < 1 {
+			return fmt.Errorf("UDPSocketCount must be a positive integer")
+		}
+		o.udpSocketCount = count
 		return nil
 	}
 }

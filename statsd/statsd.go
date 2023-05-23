@@ -338,7 +338,7 @@ func parseAgentURL(agentURL string) string {
 	return ""
 }
 
-func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, string, error) {
+func createWriter(addr string, writeTimeout time.Duration, socketCount int) (io.WriteCloser, string, error) {
 	addr = resolveAddr(addr)
 	if addr == "" {
 		return nil, "", errors.New("No address passed and autodetection from environment failed")
@@ -352,7 +352,7 @@ func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, stri
 		w, err := newUDSWriter(addr[len(UnixAddressPrefix):], writeTimeout)
 		return w, writerNameUDS, err
 	default:
-		w, err := newUDPWriter(addr, writeTimeout)
+		w, err := newUDPWriter(addr, writeTimeout, socketCount)
 		return w, writerNameUDP, err
 	}
 }
@@ -365,7 +365,7 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	w, writerType, err := createWriter(addr, o.writeTimeout)
+	w, writerType, err := createWriter(addr, o.writeTimeout, o.udpSocketCount)
 	if err != nil {
 		return nil, err
 	}

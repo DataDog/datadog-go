@@ -140,7 +140,7 @@ func newTelemetryClient(c *Client, transport string, aggregationEnabled bool) *t
 }
 
 func newTelemetryClientWithCustomAddr(c *Client, transport string, telemetryAddr string, aggregationEnabled bool, pool *bufferPool, writeTimeout time.Duration) (*telemetryClient, error) {
-	telemetryWriter, _, err := createWriter(telemetryAddr, writeTimeout)
+	telemetryWriter, _, err := createWriter(telemetryAddr, writeTimeout, 1)
 	if err != nil {
 		return nil, fmt.Errorf("Could not resolve telemetry address: %v", err)
 	}
