@@ -338,7 +338,7 @@ func parseAgentURL(agentURL string) string {
 	return ""
 }
 
-func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, string, error) {
+func createWriter(addr string, writeTimeout time.Duration, udpAddrRefreshRate time.Duration) (io.WriteCloser, string, error) {
 	addr = resolveAddr(addr)
 	if addr == "" {
 		return nil, "", errors.New("No address passed and autodetection from environment failed")
@@ -352,7 +352,7 @@ func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, stri
 		w, err := newUDSWriter(addr[len(UnixAddressPrefix):], writeTimeout)
 		return w, writerNameUDS, err
 	default:
-		w, err := newUDPWriter(addr, writeTimeout)
+		w, err := newUDPWriter(addr, writeTimeout, udpAddrRefreshRate)
 		return w, writerNameUDP, err
 	}
 }
@@ -365,7 +365,7 @@ func New(addr string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
-	w, writerType, err := createWriter(addr, o.writeTimeout)
+	w, writerType, err := createWriter(addr, o.writeTimeout, o.udpAddrRefreshRate)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +494,7 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 			c.telemetryClient = newTelemetryClient(&c, writerName, c.agg != nil)
 		} else {
 			var err error
-			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, writerName, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout)
+			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, writerName, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout, o.udpAddrRefreshRate)
 			if err != nil {
 				return nil, err
 			}
