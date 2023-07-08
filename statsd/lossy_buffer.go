@@ -4,20 +4,17 @@ import (
 	"sync"
 )
 
-// flushSampleThreshold is the sample threshold for the lossy buffer to flush its samples to the buffered metric context
-// aggregator
-const flushSampleThreshold int = 64
-
-func newLossyBufferPool(newMetric func(string, float64, string) *bufferedMetric) *sync.Pool {
+func newLossyBufferPool(newMetric func(string, float64, string) *bufferedMetric, flushThreshold int) *sync.Pool {
 	return &sync.Pool{
 		New: func() interface{} {
-			return &lossyBuffer{values: bufferedMetricMap{}, newMetric: newMetric}
+			return &lossyBuffer{values: bufferedMetricMap{}, newMetric: newMetric, flushThreshold: flushThreshold}
 		},
 	}
 }
 
 type lossyBuffer struct {
-	samples int
+	samples        int
+	flushThreshold int
 
 	values    bufferedMetricMap
 	newMetric func(string, float64, string) *bufferedMetric
@@ -35,9 +32,9 @@ func (l *lossyBuffer) sample(name string, value float64, tags []string) {
 	l.samples++
 }
 
-// full returns true if this buffer has sampled enough metrics, false otherwise.
+// full returns true if this buffer has sampled enough metrics for a flush, false otherwise.
 func (l *lossyBuffer) full() bool {
-	return l.samples >= flushSampleThreshold
+	return l.samples >= l.flushThreshold
 }
 
 // flush returns the internal bufferedMetricMap and resets this buffer so that it can be put back into a pool

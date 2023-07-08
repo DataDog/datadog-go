@@ -23,6 +23,7 @@ var (
 	defaultAggregationFlushInterval = 2 * time.Second
 	defaultAggregation              = true
 	defaultExtendedAggregation      = false
+	defaultFlushSampleThreshold     = 64
 	defaultOriginDetection          = true
 )
 
@@ -43,6 +44,7 @@ type Options struct {
 	aggregationFlushInterval time.Duration
 	aggregation              bool
 	extendedAggregation      bool
+	flushSampleThreshold     int
 	telemetryAddr            string
 	originDetection          bool
 	containerID              string
@@ -65,6 +67,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		aggregationFlushInterval: defaultAggregationFlushInterval,
 		aggregation:              defaultAggregation,
 		extendedAggregation:      defaultExtendedAggregation,
+		flushSampleThreshold:     defaultFlushSampleThreshold,
 		originDetection:          defaultOriginDetection,
 	}
 
@@ -244,7 +247,7 @@ func WithMutexMode() Option {
 // WithLossyMode uses lossy buffers to receive and collect metrics to reduce lock contention. The buffers may be garbage
 // collected if they're not frequently used, which means any buffered metrics in them are lost. Once a lossy buffer is
 // full, the metrics are flushed to the aggregator. This mode is optimal for apps that send a lot of metrics and are
-// willing to drop a few metrics in favor of reducing contention.
+// willing to drop a few metric samples in favor of reducing contention.
 func WithLossyMode() Option {
 	return func(o *Options) error {
 		o.receiveMode = lossyMode
@@ -256,6 +259,24 @@ func WithLossyMode() Option {
 func WithChannelModeBufferSize(bufferSize int) Option {
 	return func(o *Options) error {
 		o.channelModeBufferSize = bufferSize
+		return nil
+	}
+}
+
+// WithFlushSampleThreshold sets the metric sample threshold at which a lossy buffer must flush its samples when
+// WithLossyMode is used.
+//
+// If there are too many dropped metric samples, the threshold should be decreased. This will increase the rate at which
+// the buffers are flushed. If there is too much contention, the threshold should be increased to decrease the rate at
+// which the buffers are flushed.
+//
+// The default is 64.
+func WithFlushSampleThreshold(flushSampleThreshold int) Option {
+	return func(o *Options) error {
+		if flushSampleThreshold < 1 {
+			return fmt.Errorf("flushSampleThreshold must be a positive integer")
+		}
+		o.flushSampleThreshold = flushSampleThreshold
 		return nil
 	}
 }

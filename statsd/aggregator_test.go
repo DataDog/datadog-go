@@ -11,7 +11,7 @@ import (
 )
 
 func TestAggregatorSample(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 
 	tags := []string{"tag1", "tag2"}
 
@@ -47,7 +47,7 @@ func TestAggregatorSample(t *testing.T) {
 }
 
 func TestAggregatorFlush(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 
 	tags := []string{"tag1", "tag2"}
 
@@ -196,7 +196,7 @@ func TestAggregatorFlush(t *testing.T) {
 }
 
 func TestAggregatorFlushConcurrency(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 
 	var wg sync.WaitGroup
 	wg.Add(10)
@@ -228,7 +228,7 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 	tags := []string{"tag1", "tag2"}
 
 	a.gauge("gauge", 21, tags)

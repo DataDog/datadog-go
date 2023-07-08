@@ -26,6 +26,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.aggregationFlushInterval, defaultAggregationFlushInterval)
 	assert.Equal(t, options.aggregation, defaultAggregation)
 	assert.Equal(t, options.extendedAggregation, defaultExtendedAggregation)
+	assert.Equal(t, options.flushSampleThreshold, defaultFlushSampleThreshold)
 	assert.Zero(t, options.telemetryAddr)
 }
 
@@ -41,6 +42,7 @@ func TestOptions(t *testing.T) {
 	testWriteTimeout := 1 * time.Minute
 	testChannelBufferSize := 500
 	testAggregationWindow := 10 * time.Second
+	testFlushSampleThreshold := 128
 	testTelemetryAddr := "localhost:1234"
 
 	options, err := resolveOptions([]Option{
@@ -58,6 +60,7 @@ func TestOptions(t *testing.T) {
 		WithChannelModeBufferSize(testChannelBufferSize),
 		WithAggregationInterval(testAggregationWindow),
 		WithClientSideAggregation(),
+		WithFlushSampleThreshold(testFlushSampleThreshold),
 		WithTelemetryAddr(testTelemetryAddr),
 	})
 
@@ -77,6 +80,7 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.aggregationFlushInterval, testAggregationWindow)
 	assert.Equal(t, options.aggregation, true)
 	assert.Equal(t, options.extendedAggregation, false)
+	assert.Equal(t, options.flushSampleThreshold, testFlushSampleThreshold)
 	assert.Equal(t, options.telemetryAddr, testTelemetryAddr)
 }
 

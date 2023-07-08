@@ -460,7 +460,7 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 	}
 
 	if o.aggregation || o.extendedAggregation {
-		c.agg = newAggregator(&c)
+		c.agg = newAggregator(&c, o)
 		c.agg.start(o.aggregationFlushInterval)
 
 		if o.extendedAggregation {
