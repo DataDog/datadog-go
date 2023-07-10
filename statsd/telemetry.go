@@ -114,7 +114,7 @@ type Telemetry struct {
 	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
 	AggregationNbSample uint64
 	// AggregationNbSampleHistogram is the total number of samples for histograms flushed by the aggregator when either
-	//	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
+	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
 	AggregationNbSampleHistogram uint64
 	// AggregationNbSampleDistribution is the total number of samples for distributions flushed by the aggregator when
 	// either WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.

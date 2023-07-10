@@ -56,7 +56,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	bc.mutex.RUnlock()
 
 	bc.mutex.Lock()
-	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
+	// Check if another goroutine hasn't created the value between the 'RUnlock' and 'Lock'
 	if v, found := bc.values[context]; found {
 		v.sample(value)
 		bc.mutex.Unlock()
@@ -79,7 +79,7 @@ func (bc *bufferedMetricContexts) sampleBulk(bulkMap bufferedMetricMap) {
 
 		bc.mutex.Lock()
 		if v, found := bc.values[context]; found {
-			// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
+			// Check if another goroutine hasn't created the value between the 'RUnlock' and 'Lock'
 			v.sampleBulk(bm.data)
 			bc.mutex.Unlock()
 			continue
