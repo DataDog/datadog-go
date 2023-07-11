@@ -1,10 +1,8 @@
 package statsd
 
 import (
-	"math/rand"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 // bufferedMetricContexts represent the contexts for Histograms, Distributions
@@ -12,28 +10,16 @@ import (
 // with the same type they're represented by the same class.
 type bufferedMetricContexts struct {
 	nbContext uint64
+	nbSample  uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
 	newMetric func(string, float64, string) *bufferedMetric
-
-	// Each bufferedMetricContexts uses its own random source and random
-	// lock to prevent goroutines from contending for the lock on the
-	// "math/rand" package-global random source (e.g. calls like
-	// "rand.Float64()" must acquire a shared lock to get the next
-	// pseudorandom number).
-	random     *rand.Rand
-	randomLock sync.Mutex
 }
 
 func newBufferedContexts(newMetric func(string, float64, string) *bufferedMetric) bufferedMetricContexts {
 	return bufferedMetricContexts{
 		values:    bufferedMetricMap{},
 		newMetric: newMetric,
-		// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
-		// very similar values. That's fine for seeding the worker-specific random
-		// source because we just need an evenly distributed stream of float values.
-		// Do not use this random source for cryptographic randomness.
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
@@ -43,16 +29,20 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	bc.values = bufferedMetricMap{}
 	bc.mutex.Unlock()
 
+	samples := 0
 	for _, d := range values {
+		samples += len(d.data)
 		metrics = append(metrics, d.flushUnsafe())
 	}
+
+	atomic.AddUint64(&bc.nbSample, uint64(samples))
 	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
 	return metrics
 }
 
-func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64) error {
-	if !shouldSample(rate, bc.random, &bc.randomLock) {
-		return nil
+func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64) {
+	if !shouldSample(rate) {
+		return
 	}
 
 	context, stringTags := getContextAndTags(name, tags)
@@ -61,22 +51,48 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	if v, found := bc.values[context]; found {
 		v.sample(value)
 		bc.mutex.RUnlock()
-		return nil
+		return
 	}
 	bc.mutex.RUnlock()
 
 	bc.mutex.Lock()
-	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
+	// Check if another goroutine hasn't created the value between the 'RUnlock' and 'Lock'
 	if v, found := bc.values[context]; found {
 		v.sample(value)
 		bc.mutex.Unlock()
-		return nil
+		return
 	}
 	bc.values[context] = bc.newMetric(name, value, stringTags)
 	bc.mutex.Unlock()
-	return nil
+	return
+}
+
+func (bc *bufferedMetricContexts) sampleBulk(bulkMap bufferedMetricMap) {
+	for context, bm := range bulkMap {
+		bc.mutex.RLock()
+		if v, found := bc.values[context]; found {
+			v.sampleBulk(bm.data)
+			bc.mutex.RUnlock()
+			continue
+		}
+		bc.mutex.RUnlock()
+
+		bc.mutex.Lock()
+		if v, found := bc.values[context]; found {
+			// Check if another goroutine hasn't created the value between the 'RUnlock' and 'Lock'
+			v.sampleBulk(bm.data)
+			bc.mutex.Unlock()
+			continue
+		}
+		bc.values[context] = bm
+		bc.mutex.Unlock()
+	}
 }
 
 func (bc *bufferedMetricContexts) getNbContext() uint64 {
 	return atomic.LoadUint64(&bc.nbContext)
+}
+
+func (bc *bufferedMetricContexts) getNbSample() uint64 {
+	return atomic.LoadUint64(&bc.nbSample)
 }

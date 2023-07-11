@@ -1,24 +1,13 @@
 package statsd
 
 import (
-	"math/rand"
-	"sync"
+	"unsafe"
+
+	"github.com/DataDog/datadog-go/v5/statsd/fastrand"
 )
 
-func shouldSample(rate float64, r *rand.Rand, lock *sync.Mutex) bool {
-	if rate >= 1 {
-		return true
-	}
-	// sources created by rand.NewSource() (ie. w.random) are not thread safe.
-	// TODO: use defer once the lowest Go version we support is 1.14 (defer
-	// has an overhead before that).
-	lock.Lock()
-	if r.Float64() > rate {
-		lock.Unlock()
-		return false
-	}
-	lock.Unlock()
-	return true
+func shouldSample(rate float64) bool {
+	return rate >= 1 || fastrand.Float64() <= rate
 }
 
 func copySlice(src []string) []string {
@@ -29,4 +18,25 @@ func copySlice(src []string) []string {
 	c := make([]string, len(src))
 	copy(c, src)
 	return c
+}
+
+func joinTags(tags []string) string {
+	const tagSeparator = ','
+	switch len(tags) {
+	case 0:
+		return ""
+	case 1:
+		return tags[0]
+	}
+
+	n := len(tags) - 1
+	for _, tag := range tags {
+		n += len(tag)
+	}
+	b := make([]byte, 0, n)
+	b = append(b, tags[0]...)
+	for _, s := range tags[1:] {
+		b = append(append(b, tagSeparator), s...)
+	}
+	return *(*string)(unsafe.Pointer(&b))
 }

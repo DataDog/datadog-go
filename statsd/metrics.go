@@ -137,6 +137,16 @@ func (s *bufferedMetric) sample(v float64) {
 	s.data = append(s.data, v)
 }
 
+func (s *bufferedMetric) sampleUnsafe(v float64) {
+	s.data = append(s.data, v)
+}
+
+func (s *bufferedMetric) sampleBulk(v []float64) {
+	s.Lock()
+	defer s.Unlock()
+	s.data = append(s.data, v...)
+}
+
 func (s *bufferedMetric) flushUnsafe() metric {
 	return metric{
 		metricType: s.mtype,

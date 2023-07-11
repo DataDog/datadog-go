@@ -290,11 +290,11 @@ func TestGetTelemetry(t *testing.T) {
 	assert.Equal(t, uint64(1), tlm.TotalEvents, "telmetry TotalEvents was wrong")
 	assert.Equal(t, uint64(1), tlm.TotalServiceChecks, "telmetry TotalServiceChecks was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalDroppedOnReceive, "telmetry TotalDroppedOnReceive was wrong")
-	assert.Equal(t, uint64(22), tlm.TotalPayloadsSent, "telmetry TotalPayloadsSent was wrong")
+	assert.Equal(t, uint64(24), tlm.TotalPayloadsSent, "telmetry TotalPayloadsSent was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalPayloadsDropped, "telmetry TotalPayloadsDropped was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalPayloadsDroppedWriter, "telmetry TotalPayloadsDroppedWriter was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalPayloadsDroppedQueueFull, "telmetry TotalPayloadsDroppedQueueFull was wrong")
-	assert.Equal(t, uint64(3112), tlm.TotalBytesSent, "telmetry TotalBytesSent was wrong")
+	assert.Equal(t, uint64(3605), tlm.TotalBytesSent, "telmetry TotalBytesSent was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalBytesDropped, "telmetry TotalBytesDropped was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalBytesDroppedWriter, "telmetry TotalBytesDroppedWriter was wrong")
 	assert.Equal(t, uint64(0), tlm.TotalBytesDroppedQueueFull, "telmetry TotalBytesDroppedQueueFull was wrong")
@@ -305,6 +305,10 @@ func TestGetTelemetry(t *testing.T) {
 	assert.Equal(t, uint64(1), tlm.AggregationNbContextHistogram, "telmetry AggregationNbContextHistogram was wrong")
 	assert.Equal(t, uint64(1), tlm.AggregationNbContextDistribution, "telmetry AggregationNbContextDistribution was wrong")
 	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
+	assert.Equal(t, uint64(4), tlm.AggregationNbSample, "telmetry AggregationNbSample was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbSampleHistogram, "telmetry AggregationNbSampleHistogram was wrong")
+	assert.Equal(t, uint64(1), tlm.AggregationNbSampleDistribution, "telmetry AggregationNbSampleDistribution was wrong")
+	assert.Equal(t, uint64(2), tlm.AggregationNbSampleTiming, "telmetry AggregationNbSampleTiming was wrong")
 }
 
 func Test_isOriginDetectionEnabled(t *testing.T) {

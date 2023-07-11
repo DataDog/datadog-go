@@ -33,6 +33,11 @@ type testTelemetryData struct {
 	aggregated_distribution int
 	aggregated_timing       int
 
+	aggregated_sample              int
+	aggregated_sample_histogram    int
+	aggregated_sample_distribution int
+	aggregated_sample_timing       int
+
 	metric_dropped_on_receive int
 	packets_sent              int
 	packets_dropped           int
@@ -295,6 +300,11 @@ func (ts *testServer) getTelemetry() []string {
 			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_distribution, tags) + containerID,
 			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_histogram, tags) + containerID,
 			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_timing, tags) + containerID,
+
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_sample:%d|c%s", ts.telemetry.aggregated_sample, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_sample_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_sample_distribution, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_sample_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_sample_histogram, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_sample_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_sample_timing, tags) + containerID,
 		}...)
 	}
 	return metrics
@@ -364,10 +374,19 @@ func (ts *testServer) sendAllMetrics(c *Client) []string {
 		ts.telemetry.aggregated_set += 1
 	}
 	if ts.extendedAggregation {
-		ts.telemetry.aggregated_context += 4
 		ts.telemetry.aggregated_histogram += 1
 		ts.telemetry.aggregated_distribution += 1
 		ts.telemetry.aggregated_timing += 2
+		ts.telemetry.aggregated_context += ts.telemetry.aggregated_histogram +
+			ts.telemetry.aggregated_distribution +
+			ts.telemetry.aggregated_timing
+
+		ts.telemetry.aggregated_sample_histogram += 1
+		ts.telemetry.aggregated_sample_distribution += 1
+		ts.telemetry.aggregated_sample_timing += 2
+		ts.telemetry.aggregated_sample += ts.telemetry.aggregated_sample_histogram +
+			ts.telemetry.aggregated_sample_distribution +
+			ts.telemetry.aggregated_sample_timing
 	}
 
 	finalTags := ts.getFinalTags(tags...)
@@ -417,10 +436,19 @@ func (ts *testServer) sendAllMetricsForBasicAggregation(c *Client) []string {
 		ts.telemetry.aggregated_set += 1
 	}
 	if ts.extendedAggregation {
-		ts.telemetry.aggregated_context += 4
 		ts.telemetry.aggregated_histogram += 1
 		ts.telemetry.aggregated_distribution += 1
 		ts.telemetry.aggregated_timing += 2
+		ts.telemetry.aggregated_context += ts.telemetry.aggregated_histogram +
+			ts.telemetry.aggregated_distribution +
+			ts.telemetry.aggregated_timing
+
+		ts.telemetry.aggregated_sample_histogram += 1
+		ts.telemetry.aggregated_sample_distribution += 1
+		ts.telemetry.aggregated_sample_timing += 2
+		ts.telemetry.aggregated_sample += ts.telemetry.aggregated_sample_histogram +
+			ts.telemetry.aggregated_sample_distribution +
+			ts.telemetry.aggregated_sample_timing
 	}
 
 	finalTags := ts.getFinalTags(tags...)
@@ -474,10 +502,19 @@ func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client) []string {
 		ts.telemetry.aggregated_set += 1
 	}
 	if ts.extendedAggregation {
-		ts.telemetry.aggregated_context += 4
 		ts.telemetry.aggregated_histogram += 1
 		ts.telemetry.aggregated_distribution += 1
 		ts.telemetry.aggregated_timing += 2
+		ts.telemetry.aggregated_context += ts.telemetry.aggregated_histogram +
+			ts.telemetry.aggregated_distribution +
+			ts.telemetry.aggregated_timing
+
+		ts.telemetry.aggregated_sample_histogram += 2
+		ts.telemetry.aggregated_sample_distribution += 2
+		ts.telemetry.aggregated_sample_timing += 4
+		ts.telemetry.aggregated_sample += ts.telemetry.aggregated_sample_histogram +
+			ts.telemetry.aggregated_sample_distribution +
+			ts.telemetry.aggregated_sample_timing
 	}
 
 	finalTags := ts.getFinalTags(tags...)

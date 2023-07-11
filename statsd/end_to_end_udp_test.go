@@ -265,9 +265,9 @@ func getTestMap() map[string]testCase {
 				ts.sendAllAndAssert(t, client)
 				// We send 4 non aggregated metrics, 1 service_check and 1 event. So 2 reads (5 items per
 				// payload). Then we flush the aggregator that will send 5 metrics, so 1 read. Finally,
-				// the telemetry is 18 metrics flushed at a different time so 4 more payload for a
-				// total of 8 reads on the network
-				ts.assertNbRead(t, 8)
+				// the telemetry is 22 metrics flushed at a different time so 5 more payload for a
+				// total of 9 reads on the network
+				ts.assertNbRead(t, 9)
 			},
 		},
 		"With max messages per payload + WithoutClientSideAggregation": testCase{

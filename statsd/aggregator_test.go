@@ -11,43 +11,43 @@ import (
 )
 
 func TestAggregatorSample(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 
 	tags := []string{"tag1", "tag2"}
 
 	for i := 0; i < 2; i++ {
 		a.gauge("gaugeTest", 21, tags)
 		assert.Len(t, a.gauges, 1)
-		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+		assert.Contains(t, a.gauges, metricContext{"gaugeTest", "tag1,tag2"})
 
 		a.count("countTest", 21, tags)
 		assert.Len(t, a.counts, 1)
-		assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		assert.Contains(t, a.counts, metricContext{"countTest", "tag1,tag2"})
 
 		a.set("setTest", "value1", tags)
 		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		assert.Contains(t, a.sets, metricContext{"setTest", "tag1,tag2"})
 
 		a.set("setTest", "value1", tags)
 		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		assert.Contains(t, a.sets, metricContext{"setTest", "tag1,tag2"})
 
 		a.histogram("histogramTest", 21, tags, 1)
 		assert.Len(t, a.histograms.values, 1)
-		assert.Contains(t, a.histograms.values, "histogramTest:tag1,tag2")
+		assert.Contains(t, a.histograms.values, metricContext{"histogramTest", "tag1,tag2"})
 
 		a.distribution("distributionTest", 21, tags, 1)
 		assert.Len(t, a.distributions.values, 1)
-		assert.Contains(t, a.distributions.values, "distributionTest:tag1,tag2")
+		assert.Contains(t, a.distributions.values, metricContext{"distributionTest", "tag1,tag2"})
 
 		a.timing("timingTest", 21, tags, 1)
 		assert.Len(t, a.timings.values, 1)
-		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
+		assert.Contains(t, a.timings.values, metricContext{"timingTest", "tag1,tag2"})
 	}
 }
 
 func TestAggregatorFlush(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 
 	tags := []string{"tag1", "tag2"}
 
@@ -196,7 +196,7 @@ func TestAggregatorFlush(t *testing.T) {
 }
 
 func TestAggregatorFlushConcurrency(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 
 	var wg sync.WaitGroup
 	wg.Add(10)
@@ -228,7 +228,7 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, &Options{})
 	tags := []string{"tag1", "tag2"}
 
 	a.gauge("gauge", 21, tags)
@@ -244,41 +244,38 @@ func TestAggregatorTagsCopy(t *testing.T) {
 	}
 }
 
-func TestGetContextAndTags(t *testing.T) {
+func BenchmarkGetContextAndTags(b *testing.B) {
 	tests := []struct {
-		testName    string
-		name        string
-		tags        []string
-		wantContext string
-		wantTags    string
+		testName string
+		name     string
+		tags     []string
 	}{
 		{
-			testName:    "no tags",
-			name:        "name",
-			tags:        nil,
-			wantContext: "name:",
-			wantTags:    "",
+			testName: "no tags",
+			name:     "name",
+			tags:     nil,
 		},
 		{
-			testName:    "one tag",
-			name:        "name",
-			tags:        []string{"tag1"},
-			wantContext: "name:tag1",
-			wantTags:    "tag1",
+			testName: "one tag",
+			name:     "name",
+			tags:     []string{"tag1"},
 		},
 		{
-			testName:    "two tags",
-			name:        "name",
-			tags:        []string{"tag1", "tag2"},
-			wantContext: "name:tag1,tag2",
-			wantTags:    "tag1,tag2",
+			testName: "two tags",
+			name:     "name",
+			tags:     []string{"tag1", "tag2"},
+		},
+		{
+			testName: "many tags",
+			name:     "name",
+			tags:     []string{"tag1", "tag2", "tag3", "tag4", "tag5", "tag7", "tag8", "tag9", "tag10"},
 		},
 	}
 	for _, test := range tests {
-		t.Run(test.testName, func(t *testing.T) {
-			gotContext, gotTags := getContextAndTags(test.name, test.tags)
-			assert.Equal(t, test.wantContext, gotContext)
-			assert.Equal(t, test.wantTags, gotTags)
+		b.Run(test.testName, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _ = getContextAndTags(test.name, test.tags)
+			}
 		})
 	}
 }
