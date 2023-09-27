@@ -546,12 +546,12 @@ func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *Clien
 	return []string{
 		ts.namespace + "Gauge:2|g" + finalTags + containerID,
 		ts.namespace + "Count:4|c" + finalTags + containerID,
-		ts.namespace + "Histogram:3:3|h" + finalTags + containerID,
-		ts.namespace + "Distribution:4:4|d" + finalTags + containerID,
+		ts.namespace + "Histogram:3:3|h|@0.6666666666666666" + finalTags + containerID,
+		ts.namespace + "Distribution:4:4|d|@0.6666666666666666" + finalTags + containerID,
 		ts.namespace + "Decr:-2|c" + finalTags + containerID,
 		ts.namespace + "Incr:2|c" + finalTags + containerID,
 		ts.namespace + "Set:value|s" + finalTags + containerID,
-		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000:5000.000000|ms|@0.6666666666666666" + finalTags + containerID,
 		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
 	}
 }

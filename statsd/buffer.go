@@ -72,7 +72,7 @@ func (b *statsdBuffer) writeHistogram(namespace string, globalTags []string, nam
 }
 
 // writeAggregated serialized as many values as possible in the current buffer and return the position in values where it stopped.
-func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, globalTags []string, name string, values []float64, tags string, tagSize int, precision int) (int, error) {
+func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, globalTags []string, name string, values []float64, tags string, tagSize int, precision int, rate float64) (int, error) {
 	if b.elementCount >= b.maxElements {
 		return 0, errBufferFull
 	}
@@ -112,6 +112,7 @@ func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, gl
 
 	b.buffer = append(b.buffer, '|')
 	b.buffer = append(b.buffer, metricSymbol...)
+	b.buffer = appendRate(b.buffer, rate)
 	b.buffer = appendTagsAggregated(b.buffer, globalTags, tags)
 	b.buffer = appendContainerID(b.buffer)
 	b.writeSeparator()

@@ -169,6 +169,7 @@ func (s *bufferedMetric) maybeKeepSample(v float64, r *rand.Rand, lock *sync.Mut
 			s.data[s.storedSamples] = v
 			s.storedSamples++
 		}
+		s.totalSamples++
 	} else {
 		// This code path appends to the slice since we did not pre-allocate memory in this case.
 		s.sampleUnsafe(v)
@@ -184,7 +185,7 @@ func (s *bufferedMetric) flushUnsafe() metric {
 		metricType: s.mtype,
 		name:       s.name,
 		stags:      s.tags,
-		rate:       float64(len(s.data)) / float64(s.totalSamples),
+		rate:       float64(s.storedSamples) / float64(s.totalSamples),
 		fvalues:    s.data[:s.storedSamples],
 	}
 }
