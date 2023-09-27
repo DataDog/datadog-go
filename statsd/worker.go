@@ -79,6 +79,11 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte, prec
 	//   +3 + len(metricSymbol) because the message will include '|<metricSymbol>|#' before the tags
 	//   +1 for the potential line break at the start of the metric
 	tagsSize := len(m.stags) + 4 + len(metricSymbol)
+	if m.rate < 1 {
+		// +2 for "|@"
+		// + the maximum size of a rate (https://en.wikipedia.org/wiki/IEEE_754-1985)
+		tagsSize += 2 + 18
+	}
 	for _, t := range m.globalTags {
 		tagsSize += len(t) + 1
 	}
