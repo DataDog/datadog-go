@@ -311,6 +311,16 @@ func getTestMap() map[string]testCase {
 				ts.assert(t, client, expectedMetrics)
 			},
 		},
+		"Extended client side aggregation + Maximum number of Samples": testCase{
+			[]Option{
+				WithExtendedClientSideAggregation(),
+				WithMaxSamplesPerContext(2),
+			},
+			func(t *testing.T, ts *testServer, client *Client) {
+				expectedMetrics := ts.sendAllMetricsForExtendedAggregationAndMaxSamples(client)
+				ts.assert(t, client, expectedMetrics)
+			},
+		},
 		"Basic client side aggregation + ChannelMode": testCase{
 			[]Option{
 				WithChannelMode(),

@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"math"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 )
@@ -123,18 +124,59 @@ func (s *setMetric) flushUnsafe() []metric {
 type bufferedMetric struct {
 	sync.Mutex
 
+	// Kept samples (after sampling)
 	data []float64
+	// Total stored samples (after sampling)
+	storedSamples int64
+	// Total number of observed samples (before sampling). This is used to keep
+	// the sampling rate correct.
+	totalSamples int64
+
 	name string
 	// Histograms and Distributions store tags as one string since we need
 	// to compute its size multiple time when serializing.
 	tags  string
 	mtype metricType
+
+	// maxSamples is the maximum number of samples we keep in memory
+	maxSamples int64
 }
 
 func (s *bufferedMetric) sample(v float64) {
 	s.Lock()
 	defer s.Unlock()
+	s.sampleUnsafe(v)
+}
+
+func (s *bufferedMetric) sampleUnsafe(v float64) {
 	s.data = append(s.data, v)
+	s.storedSamples++
+	atomic.AddInt64(&s.totalSamples, 1)
+}
+
+func (s *bufferedMetric) maybeKeepSample(v float64, r *rand.Rand, lock *sync.Mutex) {
+	s.Lock()
+	defer s.Unlock()
+	if s.maxSamples > 0 {
+		if s.storedSamples >= s.maxSamples {
+			// We reached the maximum number of samples we can keep in memory, so we randomly
+			// replace a sample.
+			r := r.Int63n(s.storedSamples)
+			if r < s.maxSamples {
+				s.data[r] = v
+			}
+		} else {
+			s.data[s.storedSamples] = v
+			s.storedSamples++
+		}
+	} else {
+		// This code path appends to the slice since we did not pre-allocate memory in this case.
+		s.sampleUnsafe(v)
+	}
+}
+
+func (s *bufferedMetric) skipSample() {
+	atomic.AddInt64(&s.totalSamples, 1)
 }
 
 func (s *bufferedMetric) flushUnsafe() metric {
@@ -142,40 +184,62 @@ func (s *bufferedMetric) flushUnsafe() metric {
 		metricType: s.mtype,
 		name:       s.name,
 		stags:      s.tags,
-		rate:       1,
+		rate:       float64(len(s.data)) / float64(s.totalSamples),
 		fvalues:    s.data,
 	}
 }
 
 type histogramMetric = bufferedMetric
 
-func newHistogramMetric(name string, value float64, stringTags string) *histogramMetric {
+func newHistogramMetric(name string, value float64, stringTags string, maxSamples int64) *histogramMetric {
 	return &histogramMetric{
-		data:  []float64{value},
-		name:  name,
-		tags:  stringTags,
-		mtype: histogramAggregated,
+		data:          newData(value, maxSamples),
+		totalSamples:  1,
+		storedSamples: 1,
+		name:          name,
+		tags:          stringTags,
+		mtype:         histogramAggregated,
+		maxSamples:    maxSamples,
 	}
 }
 
 type distributionMetric = bufferedMetric
 
-func newDistributionMetric(name string, value float64, stringTags string) *distributionMetric {
+func newDistributionMetric(name string, value float64, stringTags string, maxSamples int64) *distributionMetric {
 	return &distributionMetric{
-		data:  []float64{value},
-		name:  name,
-		tags:  stringTags,
-		mtype: distributionAggregated,
+		data:          newData(value, maxSamples),
+		totalSamples:  1,
+		storedSamples: 1,
+		name:          name,
+		tags:          stringTags,
+		mtype:         distributionAggregated,
+		maxSamples:    maxSamples,
 	}
 }
 
 type timingMetric = bufferedMetric
 
-func newTimingMetric(name string, value float64, stringTags string) *timingMetric {
+func newTimingMetric(name string, value float64, stringTags string, maxSamples int64) *timingMetric {
 	return &timingMetric{
-		data:  []float64{value},
-		name:  name,
-		tags:  stringTags,
-		mtype: timingAggregated,
+		data:          newData(value, maxSamples),
+		totalSamples:  1,
+		storedSamples: 1,
+		name:          name,
+		tags:          stringTags,
+		mtype:         timingAggregated,
+		maxSamples:    maxSamples,
+	}
+}
+
+// newData creates a new slice of float64 with the given capacity. If maxSample
+// is less than or equal to 0, it returns a slice with the given value as the
+// only element.
+func newData(value float64, maxSample int64) []float64 {
+	if maxSample <= 0 {
+		return []float64{value}
+	} else {
+		data := make([]float64, maxSample)
+		data[0] = value
+		return data
 	}
 }

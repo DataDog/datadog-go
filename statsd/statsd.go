@@ -464,8 +464,8 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		c.workersMode = mutexMode
 	}
 
-	if o.aggregation || o.extendedAggregation {
-		c.agg = newAggregator(&c)
+	if o.aggregation || o.extendedAggregation || o.maxBufferedSamplesPerContext > 0 {
+		c.agg = newAggregator(&c, int64(o.maxBufferedSamplesPerContext))
 		c.agg.start(o.aggregationFlushInterval)
 
 		if o.extendedAggregation {

@@ -8,70 +8,73 @@ import (
 )
 
 var (
-	defaultNamespace                 = ""
-	defaultTags                      = []string{}
-	defaultMaxBytesPerPayload        = 0
-	defaultMaxMessagesPerPayload     = math.MaxInt32
-	defaultBufferPoolSize            = 0
-	defaultBufferFlushInterval       = 100 * time.Millisecond
-	defaultWorkerCount               = 32
-	defaultSenderQueueSize           = 0
-	defaultWriteTimeout              = 100 * time.Millisecond
-	defaultTelemetry                 = true
-	defaultReceivingMode             = mutexMode
-	defaultChannelModeBufferSize     = 4096
-	defaultAggregationFlushInterval  = 2 * time.Second
-	defaultAggregation               = true
-	defaultExtendedAggregation       = false
-	defaultOriginDetection           = true
-	defaultChannelModeErrorsWhenFull = false
-	defaultErrorHandler              = func(error) {}
+	defaultNamespace                    = ""
+	defaultTags                         = []string{}
+	defaultMaxBytesPerPayload           = 0
+	defaultMaxMessagesPerPayload        = math.MaxInt32
+	defaultBufferPoolSize               = 0
+	defaultBufferFlushInterval          = 100 * time.Millisecond
+	defaultWorkerCount                  = 32
+	defaultSenderQueueSize              = 0
+	defaultWriteTimeout                 = 100 * time.Millisecond
+	defaultTelemetry                    = true
+	defaultReceivingMode                = mutexMode
+	defaultChannelModeBufferSize        = 4096
+	defaultAggregationFlushInterval     = 2 * time.Second
+	defaultAggregation                  = true
+	defaultExtendedAggregation          = false
+	defaultMaxBufferedSamplesPerContext = -1
+	defaultOriginDetection              = true
+	defaultChannelModeErrorsWhenFull    = false
+	defaultErrorHandler                 = func(error) {}
 )
 
 // Options contains the configuration options for a client.
 type Options struct {
-	namespace                 string
-	tags                      []string
-	maxBytesPerPayload        int
-	maxMessagesPerPayload     int
-	bufferPoolSize            int
-	bufferFlushInterval       time.Duration
-	workersCount              int
-	senderQueueSize           int
-	writeTimeout              time.Duration
-	telemetry                 bool
-	receiveMode               receivingMode
-	channelModeBufferSize     int
-	aggregationFlushInterval  time.Duration
-	aggregation               bool
-	extendedAggregation       bool
-	telemetryAddr             string
-	originDetection           bool
-	containerID               string
-	channelModeErrorsWhenFull bool
-	errorHandler              ErrorHandler
+	namespace                    string
+	tags                         []string
+	maxBytesPerPayload           int
+	maxMessagesPerPayload        int
+	bufferPoolSize               int
+	bufferFlushInterval          time.Duration
+	workersCount                 int
+	senderQueueSize              int
+	writeTimeout                 time.Duration
+	telemetry                    bool
+	receiveMode                  receivingMode
+	channelModeBufferSize        int
+	aggregationFlushInterval     time.Duration
+	aggregation                  bool
+	extendedAggregation          bool
+	maxBufferedSamplesPerContext int
+	telemetryAddr                string
+	originDetection              bool
+	containerID                  string
+	channelModeErrorsWhenFull    bool
+	errorHandler                 ErrorHandler
 }
 
 func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
-		namespace:                 defaultNamespace,
-		tags:                      defaultTags,
-		maxBytesPerPayload:        defaultMaxBytesPerPayload,
-		maxMessagesPerPayload:     defaultMaxMessagesPerPayload,
-		bufferPoolSize:            defaultBufferPoolSize,
-		bufferFlushInterval:       defaultBufferFlushInterval,
-		workersCount:              defaultWorkerCount,
-		senderQueueSize:           defaultSenderQueueSize,
-		writeTimeout:              defaultWriteTimeout,
-		telemetry:                 defaultTelemetry,
-		receiveMode:               defaultReceivingMode,
-		channelModeBufferSize:     defaultChannelModeBufferSize,
-		aggregationFlushInterval:  defaultAggregationFlushInterval,
-		aggregation:               defaultAggregation,
-		extendedAggregation:       defaultExtendedAggregation,
-		originDetection:           defaultOriginDetection,
-		channelModeErrorsWhenFull: defaultChannelModeErrorsWhenFull,
-		errorHandler:              defaultErrorHandler,
+		namespace:                    defaultNamespace,
+		tags:                         defaultTags,
+		maxBytesPerPayload:           defaultMaxBytesPerPayload,
+		maxMessagesPerPayload:        defaultMaxMessagesPerPayload,
+		bufferPoolSize:               defaultBufferPoolSize,
+		bufferFlushInterval:          defaultBufferFlushInterval,
+		workersCount:                 defaultWorkerCount,
+		senderQueueSize:              defaultSenderQueueSize,
+		writeTimeout:                 defaultWriteTimeout,
+		telemetry:                    defaultTelemetry,
+		receiveMode:                  defaultReceivingMode,
+		channelModeBufferSize:        defaultChannelModeBufferSize,
+		aggregationFlushInterval:     defaultAggregationFlushInterval,
+		aggregation:                  defaultAggregation,
+		extendedAggregation:          defaultExtendedAggregation,
+		maxBufferedSamplesPerContext: defaultMaxBufferedSamplesPerContext,
+		originDetection:              defaultOriginDetection,
+		channelModeErrorsWhenFull:    defaultChannelModeErrorsWhenFull,
+		errorHandler:                 defaultErrorHandler,
 	}
 
 	for _, option := range options {
@@ -313,6 +316,18 @@ func WithExtendedClientSideAggregation() Option {
 	return func(o *Options) error {
 		o.aggregation = true
 		o.extendedAggregation = true
+		return nil
+	}
+}
+
+// WithMaxSamplesPerContext sets the maximum number of samples that can be aggregated in a single distribution.
+// This feature should be used with `WithExtendedClientSideAggregation`. This limits the number of sample per
+// context for a distribution to a given number.
+// This will enable client side aggregation for all metrics.
+func WithMaxSamplesPerContext(maxSamplesPerDistribution int) Option {
+	return func(o *Options) error {
+		o.aggregation = true
+		o.maxBufferedSamplesPerContext = maxSamplesPerDistribution
 		return nil
 	}
 }

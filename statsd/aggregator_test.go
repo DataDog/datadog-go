@@ -11,7 +11,7 @@ import (
 )
 
 func TestAggregatorSample(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, 0)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -47,7 +47,7 @@ func TestAggregatorSample(t *testing.T) {
 }
 
 func TestAggregatorFlush(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, 0)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -195,8 +195,129 @@ func TestAggregatorFlush(t *testing.T) {
 		metrics)
 }
 
+func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
+	// In this test we keep only 2 samples per context for metrics where it's relevant.
+	maxSamples := int64(2)
+	a := newAggregator(nil, maxSamples)
+
+	tags := []string{"tag1", "tag2"}
+
+	a.gauge("gaugeTest1", 21, tags)
+	a.gauge("gaugeTest1", 10, tags)
+	a.gauge("gaugeTest1", 15, tags)
+
+	a.count("countTest1", 21, tags)
+	a.count("countTest1", 10, tags)
+	a.count("countTest1", 1, tags)
+
+	a.set("setTest1", "value1", tags)
+	a.set("setTest1", "value1", tags)
+	a.set("setTest1", "value2", tags)
+
+	a.histogram("histogramTest1", 21, tags, 1)
+	a.histogram("histogramTest1", 22, tags, 1)
+	a.histogram("histogramTest1", 23, tags, 1)
+
+	a.distribution("distributionTest1", 21, tags, 1)
+	a.distribution("distributionTest1", 22, tags, 1)
+	a.distribution("distributionTest1", 23, tags, 1)
+
+	a.timing("timingTest1", 21, tags, 1)
+	a.timing("timingTest1", 22, tags, 1)
+	a.timing("timingTest1", 23, tags, 1)
+
+	metrics := a.flushMetrics()
+
+	assert.Len(t, a.gauges, 0)
+	assert.Len(t, a.counts, 0)
+	assert.Len(t, a.sets, 0)
+	assert.Len(t, a.histograms.values, 0)
+	assert.Len(t, a.distributions.values, 0)
+	assert.Len(t, a.timings.values, 0)
+
+	assert.Len(t, metrics, 7)
+
+	sort.Slice(metrics, func(i, j int) bool {
+		if metrics[i].metricType == metrics[j].metricType {
+			res := strings.Compare(metrics[i].name, metrics[j].name)
+			// this happens fo set
+			if res == 0 {
+				return strings.Compare(metrics[i].svalue, metrics[j].svalue) != 1
+			}
+			return res != 1
+		}
+		return metrics[i].metricType < metrics[j].metricType
+	})
+
+	expectedMetrics := []metric{
+		metric{
+			metricType: gauge,
+			name:       "gaugeTest1",
+			tags:       tags,
+			rate:       1,
+			fvalue:     float64(10),
+		},
+		metric{
+			metricType: count,
+			name:       "countTest1",
+			tags:       tags,
+			rate:       1,
+			ivalue:     int64(31),
+		},
+		metric{
+			metricType: histogramAggregated,
+			name:       "histogramTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       float64(maxSamples) / 3,
+			fvalues:    []float64{21.0, 22.0, 23.0},
+		},
+		metric{
+			metricType: distributionAggregated,
+			name:       "distributionTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       float64(maxSamples) / 3,
+			fvalues:    []float64{21.0, 22.0, 23.0},
+		},
+		metric{
+			metricType: set,
+			name:       "setTest1",
+			tags:       tags,
+			rate:       1,
+			svalue:     "value1",
+		},
+		metric{
+			metricType: set,
+			name:       "setTest1",
+			tags:       tags,
+			rate:       1,
+			svalue:     "value2",
+		},
+		metric{
+			metricType: timingAggregated,
+			name:       "timingTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       float64(maxSamples) / 3,
+			fvalues:    []float64{21.0, 22.0, 23.0},
+		},
+	}
+
+	for i, m := range metrics {
+		assert.Equal(t, expectedMetrics[i].metricType, m.metricType)
+		assert.Equal(t, expectedMetrics[i].name, m.name)
+		assert.Equal(t, expectedMetrics[i].tags, m.tags)
+		if m.metricType == timingAggregated || m.metricType == histogramAggregated || m.metricType == distributionAggregated {
+			assert.Equal(t, expectedMetrics[i].rate, float64(len(m.fvalues))/float64(len(expectedMetrics[i].fvalues)))
+			assert.Subset(t, expectedMetrics[i].fvalues, m.fvalues)
+			assert.Len(t, m.fvalues, int(maxSamples))
+		} else {
+			assert.Equal(t, expectedMetrics[i].rate, m.rate)
+			assert.Equal(t, expectedMetrics[i].fvalues, m.fvalues)
+		}
+	}
+}
+
 func TestAggregatorFlushConcurrency(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, 0)
 
 	var wg sync.WaitGroup
 	wg.Add(10)
@@ -228,7 +349,7 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
-	a := newAggregator(nil)
+	a := newAggregator(nil, 0)
 	tags := []string{"tag1", "tag2"}
 
 	a.gauge("gauge", 21, tags)
