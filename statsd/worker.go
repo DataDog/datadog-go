@@ -59,8 +59,11 @@ func (w *worker) pullMetric() {
 }
 
 func (w *worker) processMetric(m metric) error {
-	if !shouldSample(m.rate, w.random, &w.randomLock) {
-		return nil
+	// Aggregated metrics are already sampled.
+	if m.metricType != distributionAggregated && m.metricType != histogramAggregated && m.metricType != timingAggregated {
+		if !shouldSample(m.rate, w.random, &w.randomLock) {
+			return nil
+		}
 	}
 	w.Lock()
 	var err error
