@@ -185,7 +185,7 @@ func (s *bufferedMetric) flushUnsafe() metric {
 		name:       s.name,
 		stags:      s.tags,
 		rate:       float64(len(s.data)) / float64(s.totalSamples),
-		fvalues:    s.data,
+		fvalues:    s.data[:s.storedSamples],
 	}
 }
 

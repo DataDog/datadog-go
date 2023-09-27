@@ -518,15 +518,13 @@ func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *Clien
 	c.Timing("Timing", 5*time.Second, tags, 1)
 	c.Timing("Timing", 5*time.Second, tags, 1)
 	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
-	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
-	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
 
 	ts.telemetry.gauge += 2
 	ts.telemetry.histogram += 3
 	ts.telemetry.distribution += 3
 	ts.telemetry.count += 6
 	ts.telemetry.set += 2
-	ts.telemetry.timing += 6
+	ts.telemetry.timing += 4
 
 	if ts.aggregation {
 		ts.telemetry.aggregated_context += 5
@@ -554,7 +552,7 @@ func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *Clien
 		ts.namespace + "Incr:2|c" + finalTags + containerID,
 		ts.namespace + "Set:value|s" + finalTags + containerID,
 		ts.namespace + "Timing:5000.000000:5000.000000|ms" + finalTags + containerID,
-		ts.namespace + "TimeInMilliseconds:6.000000:6.000000|ms" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
 	}
 }
 
