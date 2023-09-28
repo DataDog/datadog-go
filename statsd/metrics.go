@@ -151,6 +151,7 @@ func (s *bufferedMetric) sample(v float64) {
 func (s *bufferedMetric) sampleUnsafe(v float64) {
 	s.data = append(s.data, v)
 	s.storedSamples++
+	// Total samples needs to be incremented though an atomic because it can be accessed without the lock.
 	atomic.AddInt64(&s.totalSamples, 1)
 }
 
