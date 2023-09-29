@@ -1,17 +1,16 @@
 package statsd
 
 import (
-	"math/rand"
 	"sync"
-	"time"
+	"sync/atomic"
 )
 
 type worker struct {
-	pool       *bufferPool
-	buffer     *statsdBuffer
-	sender     *sender
-	random     *rand.Rand
-	randomLock sync.Mutex
+	pool     *bufferPool
+	buffer   *statsdBuffer
+	sender   *sender
+	attempts atomic.Uint64
+	written  atomic.Uint64
 	sync.Mutex
 
 	inputMetrics chan metric
@@ -19,21 +18,10 @@ type worker struct {
 }
 
 func newWorker(pool *bufferPool, sender *sender) *worker {
-	// Each worker uses its own random source and random lock to prevent
-	// workers in separate goroutines from contending for the lock on the
-	// "math/rand" package-global random source (e.g. calls like
-	// "rand.Float64()" must acquire a shared lock to get the next
-	// pseudorandom number).
-	// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
-	// very similar values. That's fine for seeding the worker-specific random
-	// source because we just need an evenly distributed stream of float values.
-	// Do not use this random source for cryptographic randomness.
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &worker{
 		pool:   pool,
 		sender: sender,
 		buffer: pool.borrowBuffer(),
-		random: random,
 		stop:   make(chan struct{}),
 	}
 }
@@ -59,7 +47,7 @@ func (w *worker) pullMetric() {
 }
 
 func (w *worker) processMetric(m metric) error {
-	if !shouldSample(m.rate, w.random, &w.randomLock) {
+	if !shouldSample(m.rate, &w.attempts, &w.written) {
 		return nil
 	}
 	w.Lock()

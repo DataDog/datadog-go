@@ -1,24 +1,24 @@
 package statsd
 
 import (
-	"math/rand"
-	"sync"
+	"sync/atomic"
 )
 
-func shouldSample(rate float64, r *rand.Rand, lock *sync.Mutex) bool {
+func shouldSample(rate float64, attempts, written *atomic.Uint64) bool {
 	if rate >= 1 {
 		return true
 	}
-	// sources created by rand.NewSource() (ie. w.random) are not thread safe.
-	// TODO: use defer once the lowest Go version we support is 1.14 (defer
-	// has an overhead before that).
-	lock.Lock()
-	if r.Float64() > rate {
-		lock.Unlock()
-		return false
+
+	// protect against dividing by 0
+	attempts.CompareAndSwap(0, 1)
+	w := written.Load()
+	a := attempts.Add(1)
+	// we want to submit the metric if the ratio of written vs attempts drops below the threshold
+	if float64(w)/float64(a) <= rate {
+		written.Add(1)
+		return true
 	}
-	lock.Unlock()
-	return true
+	return false
 }
 
 func copySlice(src []string) []string {
