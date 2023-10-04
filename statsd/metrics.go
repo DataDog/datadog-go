@@ -162,7 +162,7 @@ func (s *bufferedMetric) maybeKeepSample(v float64, r *rand.Rand, lock *sync.Mut
 		if s.storedSamples >= s.maxSamples {
 			// We reached the maximum number of samples we can keep in memory, so we randomly
 			// replace a sample.
-			r := r.Int63n(s.totalSamples)
+			r := r.Int63n(atomic.LoadInt64(&s.totalSamples))
 			if r < s.maxSamples {
 				s.data[r] = v
 			}
@@ -186,7 +186,7 @@ func (s *bufferedMetric) flushUnsafe() metric {
 		metricType: s.mtype,
 		name:       s.name,
 		stags:      s.tags,
-		rate:       float64(s.storedSamples) / float64(s.totalSamples),
+		rate:       float64(s.storedSamples) / float64(atomic.LoadInt64(&s.totalSamples)),
 		fvalues:    s.data[:s.storedSamples],
 	}
 }
