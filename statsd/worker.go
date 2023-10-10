@@ -81,18 +81,18 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte, prec
 	// first check how much data we can write to the buffer:
 	//   +3 + len(metricSymbol) because the message will include '|<metricSymbol>|#' before the tags
 	//   +1 for the potential line break at the start of the metric
-	tagsSize := len(m.stags) + 4 + len(metricSymbol)
+	extraSize := len(m.stags) + 4 + len(metricSymbol)
 	if m.rate < 1 {
 		// +2 for "|@"
 		// + the maximum size of a rate (https://en.wikipedia.org/wiki/IEEE_754-1985)
-		tagsSize += 2 + 18
+		extraSize += 2 + 18
 	}
 	for _, t := range m.globalTags {
-		tagsSize += len(t) + 1
+		extraSize += len(t) + 1
 	}
 
 	for {
-		pos, err := w.buffer.writeAggregated(metricSymbol, m.namespace, m.globalTags, m.name, m.fvalues[globalPos:], m.stags, tagsSize, precision, rate)
+		pos, err := w.buffer.writeAggregated(metricSymbol, m.namespace, m.globalTags, m.name, m.fvalues[globalPos:], m.stags, extraSize, precision, rate)
 		if err == errPartialWrite {
 			// We successfully wrote part of the histogram metrics.
 			// We flush the current buffer and finish the histogram

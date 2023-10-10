@@ -320,10 +320,12 @@ func WithExtendedClientSideAggregation() Option {
 	}
 }
 
-// WithMaxSamplesPerContext sets the maximum number of samples that can be aggregated in a single distribution.
-// This feature should be used with `WithExtendedClientSideAggregation`. This limits the number of sample per
-// context for a distribution to a given number.
-// This will enable client side aggregation for all metrics.
+// WithMaxSamplesPerContext limits the number of sample for metric types that require multiple samples to be send
+// over statsd to the agent, such as distributions or timings. This limits the number of sample per
+// context for a distribution to a given number. Gauges and counts will not be affected as a single sample per context
+// is sent with client side aggregation.
+// - This will enable client side aggregation for all metrics.
+// - This feature should be used with `WithExtendedClientSideAggregation` for optimal results.
 func WithMaxSamplesPerContext(maxSamplesPerDistribution int) Option {
 	return func(o *Options) error {
 		o.aggregation = true

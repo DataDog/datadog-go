@@ -41,24 +41,19 @@ type aggregator struct {
 	inputMetrics    chan metric
 	stopChannelMode chan struct{}
 	wg              sync.WaitGroup
-
-	// maxSamplesPerContext is the maximum number of samples that can be
-	// aggregated in a single distribution/histogram/set metric (per context).
-	maxSamplesPerContext int64
 }
 
 func newAggregator(c *Client, maxSamplesPerContext int64) *aggregator {
 	return &aggregator{
-		client:               c,
-		counts:               countsMap{},
-		gauges:               gaugesMap{},
-		sets:                 setsMap{},
-		histograms:           newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
-		distributions:        newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
-		timings:              newBufferedContexts(newTimingMetric, maxSamplesPerContext),
-		closed:               make(chan struct{}),
-		stopChannelMode:      make(chan struct{}),
-		maxSamplesPerContext: maxSamplesPerContext,
+		client:          c,
+		counts:          countsMap{},
+		gauges:          gaugesMap{},
+		sets:            setsMap{},
+		histograms:      newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
+		distributions:   newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
+		timings:         newBufferedContexts(newTimingMetric, maxSamplesPerContext),
+		closed:          make(chan struct{}),
+		stopChannelMode: make(chan struct{}),
 	}
 }
 

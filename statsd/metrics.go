@@ -155,16 +155,18 @@ func (s *bufferedMetric) sampleUnsafe(v float64) {
 	atomic.AddInt64(&s.totalSamples, 1)
 }
 
-func (s *bufferedMetric) maybeKeepSample(v float64, r *rand.Rand, lock *sync.Mutex) {
+func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *sync.Mutex) {
 	s.Lock()
 	defer s.Unlock()
 	if s.maxSamples > 0 {
 		if s.storedSamples >= s.maxSamples {
 			// We reached the maximum number of samples we can keep in memory, so we randomly
 			// replace a sample.
-			r := r.Int63n(atomic.LoadInt64(&s.totalSamples))
-			if r < s.maxSamples {
-				s.data[r] = v
+			randLock.Lock()
+			i := rand.Int63n(atomic.LoadInt64(&s.totalSamples))
+			randLock.Unlock()
+			if i < s.maxSamples {
+				s.data[i] = v
 			}
 		} else {
 			s.data[s.storedSamples] = v
