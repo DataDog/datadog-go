@@ -8,64 +8,70 @@ import (
 )
 
 var (
-	defaultNamespace                = ""
-	defaultTags                     = []string{}
-	defaultMaxBytesPerPayload       = 0
-	defaultMaxMessagesPerPayload    = math.MaxInt32
-	defaultBufferPoolSize           = 0
-	defaultBufferFlushInterval      = 100 * time.Millisecond
-	defaultWorkerCount              = 32
-	defaultSenderQueueSize          = 0
-	defaultWriteTimeout             = 100 * time.Millisecond
-	defaultTelemetry                = true
-	defaultReceivingMode            = mutexMode
-	defaultChannelModeBufferSize    = 4096
-	defaultAggregationFlushInterval = 2 * time.Second
-	defaultAggregation              = true
-	defaultExtendedAggregation      = false
-	defaultOriginDetection          = true
+	defaultNamespace                 = ""
+	defaultTags                      = []string{}
+	defaultMaxBytesPerPayload        = 0
+	defaultMaxMessagesPerPayload     = math.MaxInt32
+	defaultBufferPoolSize            = 0
+	defaultBufferFlushInterval       = 100 * time.Millisecond
+	defaultWorkerCount               = 32
+	defaultSenderQueueSize           = 0
+	defaultWriteTimeout              = 100 * time.Millisecond
+	defaultTelemetry                 = true
+	defaultReceivingMode             = mutexMode
+	defaultChannelModeBufferSize     = 4096
+	defaultAggregationFlushInterval  = 2 * time.Second
+	defaultAggregation               = true
+	defaultExtendedAggregation       = false
+	defaultOriginDetection           = true
+	defaultChannelModeErrorsWhenFull = false
+	defaultErrorHandler              = func(error) {}
 )
 
 // Options contains the configuration options for a client.
 type Options struct {
-	namespace                string
-	tags                     []string
-	maxBytesPerPayload       int
-	maxMessagesPerPayload    int
-	bufferPoolSize           int
-	bufferFlushInterval      time.Duration
-	workersCount             int
-	senderQueueSize          int
-	writeTimeout             time.Duration
-	telemetry                bool
-	receiveMode              receivingMode
-	channelModeBufferSize    int
-	aggregationFlushInterval time.Duration
-	aggregation              bool
-	extendedAggregation      bool
-	telemetryAddr            string
-	originDetection          bool
-	containerID              string
+	namespace                 string
+	tags                      []string
+	maxBytesPerPayload        int
+	maxMessagesPerPayload     int
+	bufferPoolSize            int
+	bufferFlushInterval       time.Duration
+	workersCount              int
+	senderQueueSize           int
+	writeTimeout              time.Duration
+	telemetry                 bool
+	receiveMode               receivingMode
+	channelModeBufferSize     int
+	aggregationFlushInterval  time.Duration
+	aggregation               bool
+	extendedAggregation       bool
+	telemetryAddr             string
+	originDetection           bool
+	containerID               string
+	channelModeErrorsWhenFull bool
+	errorHandler              ErrorHandler
 }
 
 func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
-		namespace:                defaultNamespace,
-		tags:                     defaultTags,
-		maxBytesPerPayload:       defaultMaxBytesPerPayload,
-		maxMessagesPerPayload:    defaultMaxMessagesPerPayload,
-		bufferPoolSize:           defaultBufferPoolSize,
-		bufferFlushInterval:      defaultBufferFlushInterval,
-		workersCount:             defaultWorkerCount,
-		senderQueueSize:          defaultSenderQueueSize,
-		writeTimeout:             defaultWriteTimeout,
-		telemetry:                defaultTelemetry,
-		receiveMode:              defaultReceivingMode,
-		channelModeBufferSize:    defaultChannelModeBufferSize,
-		aggregationFlushInterval: defaultAggregationFlushInterval,
-		aggregation:              defaultAggregation,
-		extendedAggregation:      defaultExtendedAggregation,
-		originDetection:          defaultOriginDetection,
+		namespace:                 defaultNamespace,
+		tags:                      defaultTags,
+		maxBytesPerPayload:        defaultMaxBytesPerPayload,
+		maxMessagesPerPayload:     defaultMaxMessagesPerPayload,
+		bufferPoolSize:            defaultBufferPoolSize,
+		bufferFlushInterval:       defaultBufferFlushInterval,
+		workersCount:              defaultWorkerCount,
+		senderQueueSize:           defaultSenderQueueSize,
+		writeTimeout:              defaultWriteTimeout,
+		telemetry:                 defaultTelemetry,
+		receiveMode:               defaultReceivingMode,
+		channelModeBufferSize:     defaultChannelModeBufferSize,
+		aggregationFlushInterval:  defaultAggregationFlushInterval,
+		aggregation:               defaultAggregation,
+		extendedAggregation:       defaultExtendedAggregation,
+		originDetection:           defaultOriginDetection,
+		channelModeErrorsWhenFull: defaultChannelModeErrorsWhenFull,
+		errorHandler:              defaultErrorHandler,
 	}
 
 	for _, option := range options {
@@ -201,12 +207,12 @@ func WithWriteTimeout(writeTimeout time.Duration) Option {
 //
 // This determines how the client receive metrics from the app (for example when calling the `Gauge()` method).
 // The client will either drop the metrics if its buffers are full (WithChannelMode option) or block the caller until the
-// metric can be handled (WithMutexMode option). By default the client use mutexes.
+// metric can be handled (WithMutexMode option). By default, the client use mutexes.
 //
 // WithChannelMode uses a channel (see WithChannelModeBufferSize to configure its size) to receive metrics and drops metrics if
 // the channel is full. Sending metrics in this mode is much slower that WithMutexMode (because of the channel), but will not
-// block the application. This mode is made for application using many goroutines, sending the same metrics, at a very
-// high volume. The goal is to not slow down the application at the cost of dropping metrics and having a lower max
+// block the application. This mode is made for application using statsd directly into the application code instead of
+// a separated periodic reporter. The goal is to not slow down the application at the cost of dropping metrics and having a lower max
 // throughput.
 func WithChannelMode() Option {
 	return func(o *Options) error {
@@ -215,14 +221,14 @@ func WithChannelMode() Option {
 	}
 }
 
-// WithMutexMode will use mutex to receive metrics from the app throught the API.
+// WithMutexMode will use mutex to receive metrics from the app through the API.
 //
 // This determines how the client receive metrics from the app (for example when calling the `Gauge()` method).
 // The client will either drop the metrics if its buffers are full (WithChannelMode option) or block the caller until the
 // metric can be handled (WithMutexMode option). By default the client use mutexes.
 //
 // WithMutexMode uses mutexes to receive metrics which is much faster than channels but can cause some lock contention
-// when used with a high number of goroutines sendint the same metrics. Mutexes are sharded based on the metrics name
+// when used with a high number of goroutines sending the same metrics. Mutexes are sharded based on the metrics name
 // which limit mutex contention when multiple goroutines send different metrics (see WithWorkersCount). This is the
 // default behavior which will produce the best throughput.
 func WithMutexMode() Option {
@@ -236,6 +242,33 @@ func WithMutexMode() Option {
 func WithChannelModeBufferSize(bufferSize int) Option {
 	return func(o *Options) error {
 		o.channelModeBufferSize = bufferSize
+		return nil
+	}
+}
+
+// WithChannelModeErrorsWhenFull makes the client return an error when the channel is full.
+// This should be enabled if you want to be notified when the client is dropping metrics. You
+// will also need to set `WithErrorHandler` to be notified of sender error. This might have
+// a small performance impact.
+func WithChannelModeErrorsWhenFull() Option {
+	return func(o *Options) error {
+		o.channelModeErrorsWhenFull = true
+		return nil
+	}
+}
+
+// WithoutChannelModeErrorsWhenFull makes the client not return an error when the channel is full.
+func WithoutChannelModeErrorsWhenFull() Option {
+	return func(o *Options) error {
+		o.channelModeErrorsWhenFull = false
+		return nil
+	}
+}
+
+// WithErrorHandler sets a function that will be called when an error occurs.
+func WithErrorHandler(errorHandler ErrorHandler) Option {
+	return func(o *Options) error {
+		o.errorHandler = errorHandler
 		return nil
 	}
 }
