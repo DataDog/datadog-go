@@ -46,7 +46,9 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	bc.mutex.Unlock()
 
 	for _, d := range values {
+		d.Lock()
 		metrics = append(metrics, d.flushUnsafe())
+		d.Unlock()
 	}
 	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
 	return metrics
