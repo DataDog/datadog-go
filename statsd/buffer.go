@@ -23,7 +23,7 @@ const errPartialWrite = partialWriteError("value partially written")
 const metricOverhead = 512
 
 // statsdBuffer is a buffer containing statsd messages
-// this struct methods are NOT safe for concurent use
+// this struct methods are NOT safe for concurrent use
 type statsdBuffer struct {
 	buffer       []byte
 	maxSize      int
