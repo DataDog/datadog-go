@@ -32,7 +32,7 @@ func newUDSWriter(addr string, writeTimeout time.Duration, transport string) (*u
 }
 
 // retryOnWriteErr returns true if we should retry writing after a write error
-func (w *udsWriter) retryOnWriteErr(n int, err error) bool {
+func (w *udsWriter) retryOnWriteErr(err error) bool {
 	if err == nil {
 		return true
 	}
@@ -48,7 +48,7 @@ func (w *udsWriter) retryOnWriteErr(n int, err error) bool {
 }
 
 func (w *udsWriter) shouldCloseConnection(err error) bool {
-	if err, isNetworkErr := err.(net.Error); err != nil && (!isNetworkErr || !err.Temporary()) {
+	if err, isNetworkErr := err.(net.Error); err != nil && (!isNetworkErr || !err.Timeout()) {
 		// Statsd server disconnected, retry connecting at next packet
 		return true
 	}
@@ -56,14 +56,26 @@ func (w *udsWriter) shouldCloseConnection(err error) bool {
 }
 
 // writeFull writes the whole data to the UDS connection
-func (w *udsWriter) writeFull(data []byte) (int, error) {
+func (w *udsWriter) writeFull(data []byte, stopIfNoneWritten bool) (int, error) {
 	written := 0
 	for written < len(data) {
 		n, e := w.conn.Write(data)
-		if e != nil && !w.retryOnWriteErr(n, e) {
+		written += n
+
+		// If we haven't written anything and we're supposed to stop if we can't write anything, return the error
+		if written == 0 && stopIfNoneWritten {
 			return written, e
 		}
-		written += n
+
+		// If there's an error, check if it is retryable
+		if e != nil && !w.retryOnWriteErr(e) {
+			return written, e
+		}
+
+		// When using "unix" we need to be able to finish to write partially written packets once we have started.
+		if w.transport == "unix" {
+			w.conn.SetWriteDeadline(time.Time{})
+		}
 	}
 	return written, nil
 }
@@ -77,16 +89,20 @@ func (w *udsWriter) Write(data []byte) (int, error) {
 		return 0, err
 	}
 
+	// When using streams the deadline will only make us drop the packet if we can't write it at all,
+	// once we've started writing we need to finish.
 	conn.SetWriteDeadline(time.Now().Add(w.writeTimeout))
 
 	// When using streams, we append the length of the packet to the data
 	if w.transport == "unix" {
 		bs := []byte{0, 0, 0, 0}
 		binary.LittleEndian.PutUint32(bs, uint32(len(data)))
-		_, err = w.writeFull(bs)
-	}
-	if err == nil {
-		n, err = w.writeFull(data)
+		_, err = w.writeFull(bs, true)
+		if err == nil {
+			n, err = w.writeFull(data, false)
+		}
+	} else if w.transport == "unixgram" {
+		n, err = w.writeFull(data, true)
 	}
 
 	if w.shouldCloseConnection(err) {
