@@ -57,15 +57,31 @@ const DefaultMaxAgentPayloadSize = 8192
 
 /*
 UnixAddressPrefix holds the prefix to use to enable Unix Domain Socket
-traffic instead of UDP.
+traffic instead of UDP. The type of the socket will be guessed.
 */
 const UnixAddressPrefix = "unix://"
+
+/*
+UnixDatagramAddressPrefix holds the prefix to use to enable Unix Domain Socket
+datagram traffic instead of UDP.
+*/
+const UnixAddressDatagramPrefix = "unixgram://"
+
+/*
+UnixStreamAddressPrefix holds the prefix to use to enable Unix Domain Socket
+stream traffic instead of UDP.
+*/
+const UnixAddressStreamPrefix = "unixstream://"
 
 /*
 WindowsPipeAddressPrefix holds the prefix to use to enable Windows Named Pipes
 traffic instead of UDP.
 */
 const WindowsPipeAddressPrefix = `\\.\pipe\`
+
+var (
+	AddressPrefixes = []string{UnixAddressPrefix, UnixAddressDatagramPrefix, UnixAddressStreamPrefix, WindowsPipeAddressPrefix}
+)
 
 const (
 	agentHostEnvVarName = "DD_AGENT_HOST"
@@ -305,14 +321,19 @@ func resolveAddr(addr string) string {
 		return ""
 	}
 
-	if !strings.HasPrefix(addr, WindowsPipeAddressPrefix) && !strings.HasPrefix(addr, UnixAddressPrefix) {
-		if !strings.Contains(addr, ":") {
-			if envPort != "" {
-				addr = fmt.Sprintf("%s:%s", addr, envPort)
-			} else {
-				addr = fmt.Sprintf("%s:%s", addr, defaultUDPPort)
-			}
+	for _, prefix := range AddressPrefixes {
+		if strings.HasPrefix(addr, prefix) {
+			return addr
 		}
+	}
+	// TODO: How does this work for IPv6?
+	if strings.Contains(addr, ":") {
+		return addr
+	}
+	if envPort != "" {
+		addr = fmt.Sprintf("%s:%s", addr, envPort)
+	} else {
+		addr = fmt.Sprintf("%s:%s", addr, defaultUDPPort)
 	}
 	return addr
 }
@@ -353,7 +374,13 @@ func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, stri
 		w, err := newWindowsPipeWriter(addr, writeTimeout)
 		return w, writerWindowsPipe, err
 	case strings.HasPrefix(addr, UnixAddressPrefix):
-		w, err := newUDSWriter(addr[len(UnixAddressPrefix):], writeTimeout)
+		w, err := newUDSWriter(addr[len(UnixAddressPrefix):], writeTimeout, "")
+		return w, writerNameUDS, err
+	case strings.HasPrefix(addr, UnixAddressDatagramPrefix):
+		w, err := newUDSWriter(addr[len(UnixAddressDatagramPrefix):], writeTimeout, "unixgram")
+		return w, writerNameUDS, err
+	case strings.HasPrefix(addr, UnixAddressStreamPrefix):
+		w, err := newUDSWriter(addr[len(UnixAddressStreamPrefix):], writeTimeout, "unix")
 		return w, writerNameUDS, err
 	default:
 		w, err := newUDPWriter(addr, writeTimeout)
