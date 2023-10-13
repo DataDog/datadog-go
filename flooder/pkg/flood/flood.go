@@ -15,6 +15,7 @@ type client struct {
 	client              *statsd.Client
 	pointsPer10Seconds  int
 	sendAtStartOfBucket bool
+	errors              int
 }
 
 func initClient(command *cobra.Command) (*client, error) {
@@ -128,26 +129,30 @@ func initClient(command *cobra.Command) (*client, error) {
 
 	log.Printf("Tags: %v - Hash: %x", tags, h)
 
-	b, err = command.Flags().GetBool("verbose")
+	verbose, err := command.Flags().GetBool("verbose")
 	if err != nil {
 		return nil, err
 	}
-	if b {
-		options = append(options, statsd.WithErrorHandler(statsd.LoggingErrorHandler))
-	}
-
 	options = append(options, statsd.WithOriginDetection())
 
-	c, err := statsd.New(address, options...)
+	client := &client{
+		pointsPer10Seconds:  pointsPer10Seconds,
+		sendAtStartOfBucket: sendAtStart,
+	}
+	var errorHandler statsd.ErrorHandler
+	if verbose {
+		errorHandler = func(err error) { verboseErrorHandler(err, client) }
+	} else {
+		errorHandler = func(err error) { simpleErrorHandler(err, client) }
+	}
+	options = append(options, statsd.WithErrorHandler(errorHandler))
+
+	client.client, err = statsd.New(address, options...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &client{
-		client:              c,
-		pointsPer10Seconds:  pointsPer10Seconds,
-		sendAtStartOfBucket: sendAtStart,
-	}, nil
+	return client, nil
 }
 
 func hash(s []string) uint32 {
@@ -156,6 +161,15 @@ func hash(s []string) uint32 {
 		h.Write([]byte(e))
 	}
 	return h.Sum32()
+}
+
+func simpleErrorHandler(err error, c *client) {
+	c.errors++
+}
+
+func verboseErrorHandler(err error, c *client) {
+	simpleErrorHandler(err, c)
+	statsd.LoggingErrorHandler(err)
 }
 
 func Flood(command *cobra.Command, args []string) {
@@ -186,6 +200,11 @@ func Flood(command *cobra.Command, args []string) {
 
 		duration := t2.Sub(t1)
 		s := time.Duration(10)*time.Second - duration
+
+		if c.errors > 0 {
+			log.Printf("Errors: %d", c.errors)
+			c.errors = 0
+		}
 		if s > 0 {
 			// Sleep until the next bucket
 			log.Printf("Sleeping for %f seconds", s.Seconds())
