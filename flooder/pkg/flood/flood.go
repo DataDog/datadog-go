@@ -128,6 +128,14 @@ func initClient(command *cobra.Command) (*client, error) {
 
 	log.Printf("Tags: %v - Hash: %x", tags, h)
 
+	b, err = command.Flags().GetBool("verbose")
+	if err != nil {
+		return nil, err
+	}
+	if b {
+		options = append(options, statsd.WithErrorHandler(statsd.LoggingErrorHandler))
+	}
+
 	options = append(options, statsd.WithOriginDetection())
 
 	c, err := statsd.New(address, options...)

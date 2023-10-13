@@ -39,4 +39,5 @@ func init() {
 	floodCmd.Flags().StringSliceP("tags", "", []string{}, "Set tags")
 	floodCmd.Flags().IntP("points-per-10seconds", "", 100000, "Set points per 10 seconds")
 	floodCmd.Flags().BoolP("send-at-start-of-bucket", "", false, "Send all the points at the start of the 10 sec time bucket.")
+	floodCmd.Flags().BoolP("verbose", "", false, "Enable verbose mode")
 }
