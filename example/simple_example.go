@@ -2,19 +2,13 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/DataDog/datadog-go/v5/statsd"
 )
 
 func main() {
-	addr := os.Getenv("DOGSTATSD_ADDR")
-	if addr == "" {
-		addr = "127.0.0.1:8125"
-	}
-	client, err := statsd.New(addr,
+	client, err := statsd.New("127.0.0.1:8125",
 		statsd.WithTags([]string{"env:prod", "service:myservice"}),
-		statsd.WithErrorHandler(statsd.LoggingErrorHandler),
 	)
 	if err != nil {
 		log.Fatal(err)
