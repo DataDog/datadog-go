@@ -15,6 +15,7 @@ type client struct {
 	client              *statsd.Client
 	pointsPer10Seconds  int
 	sendAtStartOfBucket bool
+	sendWithTimestamp   bool
 	errors              int
 }
 
@@ -92,6 +93,12 @@ func initClient(command *cobra.Command) (*client, error) {
 	}
 	tags = append(tags, "send-at-start-of-bucket:"+strconv.FormatBool(sendAtStart))
 
+	sendWithTimestamp, err := command.Flags().GetBool("send-with-timestamp")
+	if err != nil {
+		return nil, err
+	}
+	tags = append(tags, "send-with-timestamp:"+strconv.FormatBool(sendWithTimestamp))
+
 	address, err := command.Flags().GetString("address")
 	if err != nil {
 		return nil, err
@@ -138,6 +145,7 @@ func initClient(command *cobra.Command) (*client, error) {
 	client := &client{
 		pointsPer10Seconds:  pointsPer10Seconds,
 		sendAtStartOfBucket: sendAtStart,
+		sendWithTimestamp:   sendWithTimestamp,
 	}
 	var errorHandler statsd.ErrorHandler
 	if verbose {
@@ -182,18 +190,29 @@ func Flood(command *cobra.Command, args []string) {
 	for {
 		t1 := time.Now()
 
-		for sent := 0; sent < c.pointsPer10Seconds; sent++ {
-			err := c.client.Incr("flood.dogstatsd.count", []string{}, 1)
+		if c.sendWithTimestamp {
+			err = c.client.CountWithTimestamp("flood.dogstatsd.count", int64(c.pointsPer10Seconds), []string{}, 1, t1)
 			if err != nil {
 				log.Printf("Error: %v", err)
 			}
-			if !c.sendAtStartOfBucket {
-				time.Sleep(time.Duration(8) * time.Second / time.Duration(c.pointsPer10Seconds))
+			err := c.client.CountWithTimestamp("flood.dogstatsd.expected", int64(c.pointsPer10Seconds), []string{}, 1, t1)
+			if err != nil {
+				log.Printf("Error: %v", err)
 			}
-		}
-		err := c.client.Count("flood.dogstatsd.expected", int64(c.pointsPer10Seconds), []string{}, 1)
-		if err != nil {
-			log.Printf("Error: %v", err)
+		} else {
+			for sent := 0; sent < c.pointsPer10Seconds; sent++ {
+				err = c.client.Incr("flood.dogstatsd.count", []string{}, 1)
+				if err != nil {
+					log.Printf("Error: %v", err)
+				}
+				if !c.sendAtStartOfBucket {
+					time.Sleep(time.Duration(8) * time.Second / time.Duration(c.pointsPer10Seconds))
+				}
+			}
+			err := c.client.Count("flood.dogstatsd.expected", int64(c.pointsPer10Seconds), []string{}, 1)
+			if err != nil {
+				log.Printf("Error: %v", err)
+			}
 		}
 
 		t2 := time.Now()
