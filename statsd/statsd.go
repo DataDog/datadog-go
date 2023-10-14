@@ -68,7 +68,7 @@ datagram traffic instead of UDP.
 const UnixAddressDatagramPrefix = "unixgram://"
 
 /*
-UnixStreamAddressPrefix holds the prefix to use to enable Unix Domain Socket
+UnixAddressStreamPrefix holds the prefix to use to enable Unix Domain Socket
 stream traffic instead of UDP.
 */
 const UnixAddressStreamPrefix = "unixstream://"
