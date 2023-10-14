@@ -33,9 +33,6 @@ func newUDSWriter(addr string, writeTimeout time.Duration, transport string) (*u
 
 // retryOnWriteErr returns true if we should retry writing after a write error
 func (w *udsWriter) retryOnWriteErr(err error) bool {
-	if err == nil {
-		return true
-	}
 	// Never retry when using unixgram (to preserve the historical behavior)
 	if w.transport == "unixgram" {
 		return false
@@ -59,7 +56,7 @@ func (w *udsWriter) shouldCloseConnection(err error) bool {
 func (w *udsWriter) writeFull(data []byte, stopIfNoneWritten bool) (int, error) {
 	written := 0
 	for written < len(data) {
-		n, e := w.conn.Write(data)
+		n, e := w.conn.Write(data[written:])
 		written += n
 
 		// If we haven't written anything and we're supposed to stop if we can't write anything, return the error
