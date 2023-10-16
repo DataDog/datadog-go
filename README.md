@@ -193,6 +193,16 @@ interesting data to know how useful extended aggregation is to your app.
 
 This can be enabled with the `WithExtendedClientSideAggregation()` option.
 
+### Maximum samples per context
+
+This feature is best coupled with the previous aggregation mechanism. It allows to limit the number of samples per
+context for `histogram`, `distribution` and `timing` metrics.
+
+This can be enabled with the `WithMaxSamplesPerContext(n int)` option. When enabled up to `n` samples will be kept in
+per context. The default value is 0 which means no limit.
+
+The selection of the samples is using an algorithm that tries to keep the distribution of kept sample over time uniform.
+
 ## Performance / Metric drops
 
 ### Monitoring this client

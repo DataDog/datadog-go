@@ -132,7 +132,7 @@ func TestFlushUnsafeSetMetricSample(t *testing.T) {
 }
 
 func TestNewHistogramMetric(t *testing.T) {
-	s := newHistogramMetric("test", 1.0, "tag1,tag2")
+	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0)
 	assert.Equal(t, s.data, []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
@@ -140,7 +140,7 @@ func TestNewHistogramMetric(t *testing.T) {
 }
 
 func TestHistogramMetricSample(t *testing.T) {
-	s := newHistogramMetric("test", 1.0, "tag1,tag2")
+	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0)
 	s.sample(123.45)
 	assert.Equal(t, s.data, []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
@@ -149,7 +149,7 @@ func TestHistogramMetricSample(t *testing.T) {
 }
 
 func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
-	s := newHistogramMetric("test", 1.0, "tag1,tag2")
+	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0)
 	m := s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, histogramAggregated)
@@ -170,7 +170,7 @@ func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
 }
 
 func TestNewDistributionMetric(t *testing.T) {
-	s := newDistributionMetric("test", 1.0, "tag1,tag2")
+	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0)
 	assert.Equal(t, s.data, []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
@@ -178,7 +178,7 @@ func TestNewDistributionMetric(t *testing.T) {
 }
 
 func TestDistributionMetricSample(t *testing.T) {
-	s := newDistributionMetric("test", 1.0, "tag1,tag2")
+	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0)
 	s.sample(123.45)
 	assert.Equal(t, s.data, []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
@@ -187,7 +187,7 @@ func TestDistributionMetricSample(t *testing.T) {
 }
 
 func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
-	s := newDistributionMetric("test", 1.0, "tag1,tag2")
+	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0)
 	m := s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, distributionAggregated)
@@ -208,7 +208,7 @@ func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
 }
 
 func TestNewTimingMetric(t *testing.T) {
-	s := newTimingMetric("test", 1.0, "tag1,tag2")
+	s := newTimingMetric("test", 1.0, "tag1,tag2", 0)
 	assert.Equal(t, s.data, []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
@@ -216,7 +216,7 @@ func TestNewTimingMetric(t *testing.T) {
 }
 
 func TestTimingMetricSample(t *testing.T) {
-	s := newTimingMetric("test", 1.0, "tag1,tag2")
+	s := newTimingMetric("test", 1.0, "tag1,tag2", 0)
 	s.sample(123.45)
 	assert.Equal(t, s.data, []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
@@ -225,7 +225,7 @@ func TestTimingMetricSample(t *testing.T) {
 }
 
 func TestFlushUnsafeTimingMetricSample(t *testing.T) {
-	s := newTimingMetric("test", 1.0, "tag1,tag2")
+	s := newTimingMetric("test", 1.0, "tag1,tag2", 0)
 	m := s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, timingAggregated)
