@@ -65,8 +65,8 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	bc.mutex.RUnlock()
 
 	// Create it if it wasn't found
-	bc.mutex.Lock()
 	if v == nil {
+		bc.mutex.Lock()
 		// It might have been created by another goroutine since last call
 		v, _ = bc.values[context]
 		if v == nil {
@@ -76,8 +76,8 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 			bc.mutex.Unlock()
 			return nil
 		}
+		bc.mutex.Unlock()
 	}
-	bc.mutex.Unlock()
 
 	// Now we can keep the sample or skip it
 	if keepingSample {
