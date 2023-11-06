@@ -27,7 +27,7 @@ var (
 	defaultOriginDetection              = true
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
-	defaultUDPAddrRefreshRate       = 0 * time.Second
+	defaultUDPAddrRefreshRate           = 0 * time.Second
 )
 
 // Options contains the configuration options for a client.
