@@ -6,6 +6,7 @@
 
 - [FEATURE] Add `WithMaxSamplesPerContext()` option to limit the number of samples per context. See [#292][].
 - [BUGFIX] Fix the `rate` of distributions and histograms when using client side aggregation. See [#283][].
+- [FEATURE] Add `WithUDPAddrRefreshRate(rate time.Duration)` option to refresh the UDP address at a given interval. See [#280][].
 
 # 5.3.0 / 2023-03-06
  
