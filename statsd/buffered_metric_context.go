@@ -25,10 +25,12 @@ type bufferedMetricContexts struct {
 	randomLock sync.Mutex
 }
 
-func newBufferedContexts(newMetric func(string, float64, string) *bufferedMetric) bufferedMetricContexts {
+func newBufferedContexts(newMetric func(string, float64, string, int64) *bufferedMetric, maxSamples int64) bufferedMetricContexts {
 	return bufferedMetricContexts{
-		values:    bufferedMetricMap{},
-		newMetric: newMetric,
+		values: bufferedMetricMap{},
+		newMetric: func(name string, value float64, stringTags string) *bufferedMetric {
+			return newMetric(name, value, stringTags, maxSamples)
+		},
 		// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
 		// very similar values. That's fine for seeding the worker-specific random
 		// source because we just need an evenly distributed stream of float values.
@@ -44,36 +46,46 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	bc.mutex.Unlock()
 
 	for _, d := range values {
+		d.Lock()
 		metrics = append(metrics, d.flushUnsafe())
+		d.Unlock()
 	}
 	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
 	return metrics
 }
 
 func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64) error {
-	if !shouldSample(rate, bc.random, &bc.randomLock) {
-		return nil
-	}
+	keepingSample := shouldSample(rate, bc.random, &bc.randomLock)
 
 	context, stringTags := getContextAndTags(name, tags)
+	var v *bufferedMetric = nil
 
 	bc.mutex.RLock()
-	if v, found := bc.values[context]; found {
-		v.sample(value)
-		bc.mutex.RUnlock()
-		return nil
-	}
+	v, _ = bc.values[context]
 	bc.mutex.RUnlock()
 
-	bc.mutex.Lock()
-	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if v, found := bc.values[context]; found {
-		v.sample(value)
+	// Create it if it wasn't found
+	if v == nil {
+		bc.mutex.Lock()
+		// It might have been created by another goroutine since last call
+		v, _ = bc.values[context]
+		if v == nil {
+			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
+			bc.values[context] = bc.newMetric(name, value, stringTags)
+			// We added a new value, we need to unlock the mutex and quit
+			bc.mutex.Unlock()
+			return nil
+		}
 		bc.mutex.Unlock()
-		return nil
 	}
-	bc.values[context] = bc.newMetric(name, value, stringTags)
-	bc.mutex.Unlock()
+
+	// Now we can keep the sample or skip it
+	if keepingSample {
+		v.maybeKeepSample(value, bc.random, &bc.randomLock)
+	} else {
+		v.skipSample()
+	}
+
 	return nil
 }
 

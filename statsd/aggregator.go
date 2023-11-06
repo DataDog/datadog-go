@@ -43,15 +43,15 @@ type aggregator struct {
 	wg              sync.WaitGroup
 }
 
-func newAggregator(c *Client) *aggregator {
+func newAggregator(c *Client, maxSamplesPerContext int64) *aggregator {
 	return &aggregator{
 		client:          c,
 		counts:          countsMap{},
 		gauges:          gaugesMap{},
 		sets:            setsMap{},
-		histograms:      newBufferedContexts(newHistogramMetric),
-		distributions:   newBufferedContexts(newDistributionMetric),
-		timings:         newBufferedContexts(newTimingMetric),
+		histograms:      newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
+		distributions:   newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
+		timings:         newBufferedContexts(newTimingMetric, maxSamplesPerContext),
 		closed:          make(chan struct{}),
 		stopChannelMode: make(chan struct{}),
 	}

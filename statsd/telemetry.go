@@ -151,7 +151,7 @@ func newTelemetryClientWithCustomAddr(c *Client, transport string, telemetryAddr
 	// telemetry that share the same bufferPool.
 	// FIXME due to performance pitfall, we're always using UDP defaults
 	// even for UDS.
-	t.sender = newSender(telemetryWriter, DefaultUDPBufferPoolSize, pool)
+	t.sender = newSender(telemetryWriter, DefaultUDPBufferPoolSize, pool, c.errorHandler)
 	t.worker = newWorker(pool, t.sender)
 	return t, nil
 }

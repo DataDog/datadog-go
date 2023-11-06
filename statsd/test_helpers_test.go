@@ -496,6 +496,66 @@ func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client) []string {
 	}
 }
 
+func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *Client) []string {
+	tags := []string{"custom:1", "custom:2"}
+	c.Gauge("Gauge", 1, tags, 1)
+	c.Gauge("Gauge", 2, tags, 1)
+	c.Count("Count", 2, tags, 1)
+	c.Count("Count", 2, tags, 1)
+	c.Histogram("Histogram", 3, tags, 1)
+	c.Histogram("Histogram", 3, tags, 1)
+	c.Histogram("Histogram", 3, tags, 1)
+	c.Distribution("Distribution", 4, tags, 1)
+	c.Distribution("Distribution", 4, tags, 1)
+	c.Distribution("Distribution", 4, tags, 1)
+	c.Decr("Decr", tags, 1)
+	c.Decr("Decr", tags, 1)
+	c.Incr("Incr", tags, 1)
+	c.Incr("Incr", tags, 1)
+	c.Set("Set", "value", tags, 1)
+	c.Set("Set", "value", tags, 1)
+	c.Timing("Timing", 5*time.Second, tags, 1)
+	c.Timing("Timing", 5*time.Second, tags, 1)
+	c.Timing("Timing", 5*time.Second, tags, 1)
+	c.TimeInMilliseconds("TimeInMilliseconds", 6, tags, 1)
+
+	ts.telemetry.gauge += 2
+	ts.telemetry.histogram += 3
+	ts.telemetry.distribution += 3
+	ts.telemetry.count += 6
+	ts.telemetry.set += 2
+	ts.telemetry.timing += 4
+
+	if ts.aggregation {
+		ts.telemetry.aggregated_context += 5
+		ts.telemetry.aggregated_gauge += 1
+		ts.telemetry.aggregated_count += 3
+		ts.telemetry.aggregated_set += 1
+	}
+	if ts.extendedAggregation {
+		ts.telemetry.aggregated_context += 4
+		ts.telemetry.aggregated_histogram += 1
+		ts.telemetry.aggregated_distribution += 1
+		ts.telemetry.aggregated_timing += 2
+	}
+
+	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
+
+	// Even though we recorded 3 samples, we will send only 2
+	return []string{
+		ts.namespace + "Gauge:2|g" + finalTags + containerID,
+		ts.namespace + "Count:4|c" + finalTags + containerID,
+		ts.namespace + "Histogram:3:3|h|@0.6666666666666666" + finalTags + containerID,
+		ts.namespace + "Distribution:4:4|d|@0.6666666666666666" + finalTags + containerID,
+		ts.namespace + "Decr:-2|c" + finalTags + containerID,
+		ts.namespace + "Incr:2|c" + finalTags + containerID,
+		ts.namespace + "Set:value|s" + finalTags + containerID,
+		ts.namespace + "Timing:5000.000000:5000.000000|ms|@0.6666666666666666" + finalTags + containerID,
+		ts.namespace + "TimeInMilliseconds:6.000000|ms" + finalTags + containerID,
+	}
+}
+
 func (ts *testServer) sendAllType(c *Client) []string {
 	res := ts.sendAllMetrics(c)
 	c.SimpleEvent("hello", "world")

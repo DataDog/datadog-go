@@ -27,7 +27,7 @@ func TestSender(t *testing.T) {
 	writer.On("Write", mock.Anything).Return(1, nil)
 	writer.On("Close").Return(nil)
 	pool := newBufferPool(10, 1024, 1)
-	sender := newSender(writer, 10, pool)
+	sender := newSender(writer, 10, pool, LoggingErrorHandler)
 	buffer := pool.borrowBuffer()
 	buffer.writeSeparator() // add some dummy data
 
@@ -54,7 +54,7 @@ func TestSenderBufferFullTelemetry(t *testing.T) {
 
 	// a sender with a queue of 1 message
 	pool := newBufferPool(10, 1024, 1)
-	sender := newSender(writer, 0, pool)
+	sender := newSender(writer, 0, pool, LoggingErrorHandler)
 
 	// close the sender to prevent it from consuming the queue
 	sender.close()
@@ -78,7 +78,7 @@ func TestSenderWriteError(t *testing.T) {
 	writer.On("Write", mock.Anything).Return(1, fmt.Errorf("some write error"))
 	writer.On("Close").Return(nil)
 	pool := newBufferPool(10, 1024, 1)
-	sender := newSender(writer, 10, pool)
+	sender := newSender(writer, 10, pool, LoggingErrorHandler)
 	buffer := pool.borrowBuffer()
 	buffer.writeSeparator() // add some dummy data
 

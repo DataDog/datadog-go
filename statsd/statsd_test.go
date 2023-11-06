@@ -376,3 +376,28 @@ func TestMessageTooLongError(t *testing.T) {
 	require.Error(t, err)
 	assert.IsType(t, MessageTooLongError{}, err)
 }
+
+func withNoWorkers() Option {
+	return func(o *Options) error {
+		o.workersCount = 0
+		return nil
+	}
+}
+func TestErrorsReturnedWithAggregator(t *testing.T) {
+	client, err := New("localhost:8765",
+		WithChannelMode(), WithExtendedClientSideAggregation(),
+		withNoWorkers(), WithChannelModeBufferSize(1),
+		WithErrorHandler(LoggingErrorHandler), WithChannelModeErrorsWhenFull(),
+	)
+	require.NoError(t, err)
+
+	err = client.Distribution("fake_name_", 21, nil, 1)
+	require.NoError(t, err)
+
+	err = client.Distribution("fake_name_", 21, nil, 1)
+	require.Error(t, err)
+	assert.IsType(t, &ErrorInputChannelFull{}, err)
+
+	err = client.Close()
+	require.NoError(t, err)
+}

@@ -16,22 +16,34 @@ type senderTelemetry struct {
 }
 
 type sender struct {
-	transport   io.WriteCloser
-	pool        *bufferPool
-	queue       chan *statsdBuffer
-	telemetry   *senderTelemetry
-	stop        chan struct{}
-	flushSignal chan struct{}
+	transport    io.WriteCloser
+	pool         *bufferPool
+	queue        chan *statsdBuffer
+	telemetry    *senderTelemetry
+	stop         chan struct{}
+	flushSignal  chan struct{}
+	errorHandler ErrorHandler
 }
 
-func newSender(transport io.WriteCloser, queueSize int, pool *bufferPool) *sender {
+type ErrorSenderChannelFull struct {
+	LostElements int
+	ChannelSize  int
+	Msg          string
+}
+
+func (e *ErrorSenderChannelFull) Error() string {
+	return e.Msg
+}
+
+func newSender(transport io.WriteCloser, queueSize int, pool *bufferPool, errorHandler ErrorHandler) *sender {
 	sender := &sender{
-		transport:   transport,
-		pool:        pool,
-		queue:       make(chan *statsdBuffer, queueSize),
-		telemetry:   &senderTelemetry{},
-		stop:        make(chan struct{}),
-		flushSignal: make(chan struct{}),
+		transport:    transport,
+		pool:         pool,
+		queue:        make(chan *statsdBuffer, queueSize),
+		telemetry:    &senderTelemetry{},
+		stop:         make(chan struct{}),
+		flushSignal:  make(chan struct{}),
+		errorHandler: errorHandler,
 	}
 
 	go sender.sendLoop()
@@ -42,6 +54,14 @@ func (s *sender) send(buffer *statsdBuffer) {
 	select {
 	case s.queue <- buffer:
 	default:
+		if s.errorHandler != nil {
+			err := &ErrorSenderChannelFull{
+				LostElements: buffer.elementCount,
+				ChannelSize:  len(s.queue),
+				Msg:          "Sender queue is full",
+			}
+			s.errorHandler(err)
+		}
 		atomic.AddUint64(&s.telemetry.totalPayloadsDroppedQueueFull, 1)
 		atomic.AddUint64(&s.telemetry.totalBytesDroppedQueueFull, uint64(len(buffer.bytes())))
 		s.pool.returnBuffer(buffer)
@@ -53,6 +73,9 @@ func (s *sender) write(buffer *statsdBuffer) {
 	if err != nil {
 		atomic.AddUint64(&s.telemetry.totalPayloadsDroppedWriter, 1)
 		atomic.AddUint64(&s.telemetry.totalBytesDroppedWriter, uint64(len(buffer.bytes())))
+		if s.errorHandler != nil {
+			s.errorHandler(err)
+		}
 	} else {
 		atomic.AddUint64(&s.telemetry.totalPayloadsSent, 1)
 		atomic.AddUint64(&s.telemetry.totalBytesSent, uint64(len(buffer.bytes())))
