@@ -312,6 +312,8 @@ func WithoutClientSideAggregation() Option {
 
 // WithExtendedClientSideAggregation enables client side aggregation for all types. This feature is only compatible with
 // Agent's version >=6.25.0 && <7.0.0 or Agent's versions >=7.25.0.
+// When enabled the use of `rate` with distribution is discouraged and `WithMaxSamplesPerContext()` should be used.
+// If `rate` is used with different values of `rate` the resulting rate is not guaranteed to be correct.
 func WithExtendedClientSideAggregation() Option {
 	return func(o *Options) error {
 		o.aggregation = true

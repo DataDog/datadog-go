@@ -140,6 +140,11 @@ type bufferedMetric struct {
 
 	// maxSamples is the maximum number of samples we keep in memory
 	maxSamples int64
+
+	// The first observed user-specified sample rate. This is used only if
+	// we have observed a single sample so far. If we have observed multiple
+	// samples, we use the actual sampling rate.
+	specifiedRate float64
 }
 
 func (s *bufferedMetric) sample(v float64) {
@@ -184,18 +189,30 @@ func (s *bufferedMetric) skipSample() {
 }
 
 func (s *bufferedMetric) flushUnsafe() metric {
+	totalSample := atomic.LoadInt64(&s.totalSamples)
+	var rate float64
+
+	// If the user had a specified rate send it because we don't know better.
+	// This code should be removed once we can also remove the early return at the top of
+	// `bufferedMetricContexts.sample`
+	if s.specifiedRate != 1.0 {
+		rate = s.specifiedRate
+	} else {
+		rate = float64(s.storedSamples) / float64(totalSample)
+	}
+
 	return metric{
 		metricType: s.mtype,
 		name:       s.name,
 		stags:      s.tags,
-		rate:       float64(s.storedSamples) / float64(atomic.LoadInt64(&s.totalSamples)),
+		rate:       rate,
 		fvalues:    s.data[:s.storedSamples],
 	}
 }
 
 type histogramMetric = bufferedMetric
 
-func newHistogramMetric(name string, value float64, stringTags string, maxSamples int64) *histogramMetric {
+func newHistogramMetric(name string, value float64, stringTags string, maxSamples int64, rate float64) *histogramMetric {
 	return &histogramMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
@@ -204,12 +221,13 @@ func newHistogramMetric(name string, value float64, stringTags string, maxSample
 		tags:          stringTags,
 		mtype:         histogramAggregated,
 		maxSamples:    maxSamples,
+		specifiedRate: rate,
 	}
 }
 
 type distributionMetric = bufferedMetric
 
-func newDistributionMetric(name string, value float64, stringTags string, maxSamples int64) *distributionMetric {
+func newDistributionMetric(name string, value float64, stringTags string, maxSamples int64, rate float64) *distributionMetric {
 	return &distributionMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
@@ -218,12 +236,13 @@ func newDistributionMetric(name string, value float64, stringTags string, maxSam
 		tags:          stringTags,
 		mtype:         distributionAggregated,
 		maxSamples:    maxSamples,
+		specifiedRate: rate,
 	}
 }
 
 type timingMetric = bufferedMetric
 
-func newTimingMetric(name string, value float64, stringTags string, maxSamples int64) *timingMetric {
+func newTimingMetric(name string, value float64, stringTags string, maxSamples int64, rate float64) *timingMetric {
 	return &timingMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
@@ -232,6 +251,7 @@ func newTimingMetric(name string, value float64, stringTags string, maxSamples i
 		tags:          stringTags,
 		mtype:         timingAggregated,
 		maxSamples:    maxSamples,
+		specifiedRate: rate,
 	}
 }
 
