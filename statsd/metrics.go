@@ -141,9 +141,8 @@ type bufferedMetric struct {
 	// maxSamples is the maximum number of samples we keep in memory
 	maxSamples int64
 
-	// The first observed user-specified sample rate. This is used only if
-	// we have observed a single sample so far. If we have observed multiple
-	// samples, we use the actual sampling rate.
+	// The first observed user-specified sample rate. When specified
+	// it is used because we don't know better.
 	specifiedRate float64
 }
 
@@ -198,7 +197,7 @@ func (s *bufferedMetric) flushUnsafe() metric {
 	if s.specifiedRate != 1.0 {
 		rate = s.specifiedRate
 	} else {
-		rate = float64(s.storedSamples) / float64(totalSample)
+		rate = float64(s.storedSamples) / float64(totalSamples)
 	}
 
 	return metric{
