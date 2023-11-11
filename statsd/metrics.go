@@ -189,7 +189,7 @@ func (s *bufferedMetric) skipSample() {
 }
 
 func (s *bufferedMetric) flushUnsafe() metric {
-	totalSample := atomic.LoadInt64(&s.totalSamples)
+	totalSamples := atomic.LoadInt64(&s.totalSamples)
 	var rate float64
 
 	// If the user had a specified rate send it because we don't know better.
