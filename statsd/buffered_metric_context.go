@@ -57,7 +57,8 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64) error {
 	keepingSample := shouldSample(rate, bc.random, &bc.randomLock)
 
-	// If we don't keep the sample, return early, if we do store *first* observed sampling rate in the metric.
+	// If we don't keep the sample, return early. If we do keep the sample
+	// we end up storing the *first* observed sampling rate in the metric.
 	// This is the *wrong* behavior but it's the one we had before and the alternative would increase lock contention too
 	// much with the current code.
 	// TODO: change this behavior in the future, probably by introducing thread-local storage and lockless stuctures.
