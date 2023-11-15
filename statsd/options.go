@@ -27,6 +27,7 @@ var (
 	defaultOriginDetection              = true
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
+	defaultUDPAddrRefreshRate           = 0 * time.Second
 )
 
 // Options contains the configuration options for a client.
@@ -52,6 +53,7 @@ type Options struct {
 	containerID                  string
 	channelModeErrorsWhenFull    bool
 	errorHandler                 ErrorHandler
+	udpAddrRefreshRate           time.Duration
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -75,6 +77,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		originDetection:              defaultOriginDetection,
 		channelModeErrorsWhenFull:    defaultChannelModeErrorsWhenFull,
 		errorHandler:                 defaultErrorHandler,
+		udpAddrRefreshRate:           defaultUDPAddrRefreshRate,
 	}
 
 	for _, option := range options {
@@ -395,6 +398,16 @@ func WithOriginDetection() Option {
 func WithContainerID(id string) Option {
 	return func(o *Options) error {
 		o.containerID = id
+		return nil
+	}
+}
+
+// WithUDPAddrRefreshRate sets the interval at which the client refreshes the UDP address.
+// This is useful when using the Agent's address may change during deployments without a fixed IP.
+// A value of 0 disables the refresh.
+func WithUDPAddrRefreshRate(rate time.Duration) Option {
+	return func(o *Options) error {
+		o.udpAddrRefreshRate = rate
 		return nil
 	}
 }
