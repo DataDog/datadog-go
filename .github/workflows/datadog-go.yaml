@@ -1,8 +1,17 @@
-# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
-
+---
+# We use github actions to test the code on windows and linux amd64.
+# Circleci is used for linux arm64.
+#
 name: datadog-go
 on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - '*.txt'
   pull_request:
+    paths-ignore:
+      - '*.md'
+      - '*.txt'
 
 jobs:
   native:
@@ -16,6 +25,7 @@ jobs:
           - 1.17
           - 1.18
           - 1.19
+          - "1.20" # bug as without the quotes you get go 1.2
         runs-on:
           - macos-latest
           - ubuntu-latest
