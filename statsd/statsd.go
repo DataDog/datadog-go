@@ -139,9 +139,11 @@ const (
 )
 
 const (
-	writerNameUDP     string = "udp"
-	writerNameUDS     string = "uds"
-	writerWindowsPipe string = "pipe"
+	writerNameUDP         string = "udp"
+	writerNameUDS         string = "uds"
+	writerNameUDSDatagram string = "uds-datagram"
+	writerNameUdsStream   string = "uds-stream"
+	writerWindowsPipe     string = "pipe"
 )
 
 // noTimestamp is used as a value for metric without a given timestamp.
@@ -378,10 +380,10 @@ func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, stri
 		return w, writerNameUDS, err
 	case strings.HasPrefix(addr, UnixAddressDatagramPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressDatagramPrefix):], writeTimeout, "unixgram")
-		return w, writerNameUDS, err
+		return w, writerNameUDSDatagram, err
 	case strings.HasPrefix(addr, UnixAddressStreamPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressStreamPrefix):], writeTimeout, "unix")
-		return w, writerNameUDS, err
+		return w, writerNameUdsStream, err
 	default:
 		w, err := newUDPWriter(addr, writeTimeout)
 		return w, writerNameUDP, err
@@ -456,22 +458,24 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID))
 	}
 
+	isUDS := writerName == writerNameUDS || writerName == writerNameUDSDatagram || writerName == writerNameUdsStream
+
 	if o.maxBytesPerPayload == 0 {
-		if writerName == writerNameUDS {
+		if isUDS {
 			o.maxBytesPerPayload = DefaultMaxAgentPayloadSize
 		} else {
 			o.maxBytesPerPayload = OptimalUDPPayloadSize
 		}
 	}
 	if o.bufferPoolSize == 0 {
-		if writerName == writerNameUDS {
+		if isUDS {
 			o.bufferPoolSize = DefaultUDSBufferPoolSize
 		} else {
 			o.bufferPoolSize = DefaultUDPBufferPoolSize
 		}
 	}
 	if o.senderQueueSize == 0 {
-		if writerName == writerNameUDS {
+		if isUDS {
 			o.senderQueueSize = DefaultUDSBufferPoolSize
 		} else {
 			o.senderQueueSize = DefaultUDPBufferPoolSize
