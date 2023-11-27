@@ -142,7 +142,7 @@ const (
 	writerNameUDP         string = "udp"
 	writerNameUDS         string = "uds"
 	writerNameUDSDatagram string = "uds-datagram"
-	writerNameUdsStream   string = "uds-stream"
+	writerNameUDSStream   string = "uds-stream"
 	writerWindowsPipe     string = "pipe"
 )
 
@@ -383,7 +383,7 @@ func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, stri
 		return w, writerNameUDSDatagram, err
 	case strings.HasPrefix(addr, UnixAddressStreamPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressStreamPrefix):], writeTimeout, "unix")
-		return w, writerNameUdsStream, err
+		return w, writerNameUDSStream, err
 	default:
 		w, err := newUDPWriter(addr, writeTimeout)
 		return w, writerNameUDP, err
@@ -458,7 +458,7 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID))
 	}
 
-	isUDS := writerName == writerNameUDS || writerName == writerNameUDSDatagram || writerName == writerNameUdsStream
+	isUDS := writerName == writerNameUDS || writerName == writerNameUDSDatagram || writerName == writerNameUDSStream
 
 	if o.maxBytesPerPayload == 0 {
 		if isUDS {
