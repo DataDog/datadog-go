@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"syscall"
@@ -127,6 +128,66 @@ func isCgroupV1(mountsPath string) bool {
 	return false
 }
 
+func parseCgroupMountPath(r io.Reader) string {
+	scn := bufio.NewScanner(r)
+	for scn.Scan() {
+		line := scn.Text()
+		tokens := strings.Fields(line)
+		if len(tokens) >= 3 {
+			fsType := tokens[2]
+			if strings.HasPrefix(fsType, "cgroup") {
+				return tokens[1] // line is formatted as "cgroup /sys/fs/cgroup/... cgroup...""
+			}
+		}
+	}
+	return ""
+}
+
+func parseCgroupNodePath(r io.Reader) string {
+	scn := bufio.NewScanner(r)
+	for scn.Scan() {
+		line := scn.Text()
+		if strings.HasPrefix(line, "0::") {
+			return line[3:]
+		}
+	}
+	return ""
+}
+
+// getCgroupInode returns the cgroup inode prefixed by "in-" and is used by the agent to retrieve the container ID
+func getCgroupInode(mountsPath, cgroupPath string) string {
+	// Retrieve a cgroup mount point from /proc/self/mounts
+	f, err := os.Open(mountsPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	cgroupMountPath := parseCgroupMountPath(f)
+
+	if cgroupMountPath == "" {
+		return ""
+	}
+
+	// Parse /proc/self/cgroup to retrieve the cgroup node path
+	f, err = os.Open(cgroupPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	cgroupNodePath := parseCgroupNodePath(f)
+	if cgroupNodePath == "" {
+		return ""
+	}
+
+	// Retrieve the cgroup inode from the cgroup mount and cgroup node path
+	fi, err := os.Stat(path.Clean(cgroupMountPath + cgroupNodePath))
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("in-%d", fi.Sys().(*syscall.Stat_t).Ino)
+}
+
 func isHostCgroupNamespace() bool {
 	fi, err := os.Stat("/proc/self/ns/cgroup")
 	if err != nil {
@@ -152,6 +213,9 @@ func initContainerID(userProvidedID string, cgroupFallback bool) {
 				containerID = readContainerID(cgroupPath)
 			} else {
 				containerID = readMountinfo(selfMountInfoPath)
+			}
+			if containerID != "" {
+				containerID = getCgroupInode(mountsPath, cgroupPath)
 			}
 		}
 	})
