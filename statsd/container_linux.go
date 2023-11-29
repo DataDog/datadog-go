@@ -46,6 +46,9 @@ var (
 	expContainerID = regexp.MustCompile(fmt.Sprintf(`(%s|%s|%s)(?:.scope)?$`, uuidSource, containerSource, taskSource))
 
 	cIDMountInfoRegexp = regexp.MustCompile(cIDRegexpStr)
+
+	// initContainerID initializes the container ID.
+	initContainerID = internalInitContainerID
 )
 
 // parseContainerID finds the first container ID reading from r and returns it.
@@ -135,7 +138,7 @@ func parseCgroupMountPath(r io.Reader) string {
 		tokens := strings.Fields(line)
 		if len(tokens) >= 3 {
 			fsType := tokens[2]
-			if strings.HasPrefix(fsType, "cgroup") {
+			if fsType == "cgroup2" {
 				return tokens[1] // line is formatted as "cgroup /sys/fs/cgroup/... cgroup...""
 			}
 		}
@@ -156,7 +159,7 @@ func parseCgroupNodePath(r io.Reader) string {
 
 // getCgroupInode returns the cgroup inode prefixed by "in-" and is used by the agent to retrieve the container ID
 func getCgroupInode(mountsPath, cgroupPath string) string {
-	// Retrieve a cgroup mount point from /proc/self/mounts
+	// Retrieve a cgroup mount point from /proc/mounts
 	f, err := os.Open(mountsPath)
 	if err != nil {
 		return ""
@@ -199,9 +202,9 @@ func isHostCgroupNamespace() bool {
 	return inode == hostCgroupNamespaceInode
 }
 
-// initContainerID initializes the container ID.
+// internalInitContainerID initializes the container ID.
 // It can either be provided by the user or read from cgroups.
-func initContainerID(userProvidedID string, cgroupFallback bool) {
+func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 	initOnce.Do(func() {
 		if userProvidedID != "" {
 			containerID = userProvidedID

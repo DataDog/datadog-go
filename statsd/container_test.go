@@ -17,6 +17,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// initContainerID initializes the container ID.
+func init() {
+	initContainerID = dummyInitContainerId
+}
+
+// dummyInitContainerId initializes the container ID if provided
+func dummyInitContainerId(userProvidedID string, _ bool) {
+	initOnce.Do(func() {
+		if userProvidedID != "" {
+			containerID = userProvidedID
+			return
+		}
+	})
+}
+
 func TestParseContainerID(t *testing.T) {
 	for input, expectedResult := range map[string]string{
 		`other_line
@@ -478,14 +493,21 @@ func TestGetCgroupInode(t *testing.T) {
 			expectedResult:        "in-%d", // Will be formatted with inode number
 		},
 		{
-			description: "hybrid cgroup - should match the first which does not exist",
+			description:           "should not match cgroup",
+			procMountsContent:     "cgroup %s cgroup rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0\n",
+			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: "0::/system.slice/docker-abcdef0123456789abcdef0123456789.scope\n",
+			expectedResult:        "",
+		},
+		{
+			description: "hybrid cgroup - should match only cgroup2",
 			procMountsContent: `other_line
 cgroup /sys/fs/cgroup/memory cgroup foo,bar 0 0
 cgroup2 %s cgroup2 rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
 `,
 			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
 			procSelfCgroupContent: "0::/system.slice/docker-abcdef0123456789abcdef0123456789.scope\n",
-			expectedResult:        "", // Will be formatted with inode number
+			expectedResult:        "in-%d", // Will be formatted with inode number
 		},
 		{
 			description:           "Non-matching entry in /proc/self/cgroup",
