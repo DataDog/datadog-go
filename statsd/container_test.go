@@ -390,7 +390,7 @@ func TestParseCgroupMountPath(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "two cgroup mounts found",
+			name: "cgroup2 and cgroup mounts found",
 			content: `
 none /proc proc rw,nosuid,nodev,noexec,relatime 0 0
 sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
@@ -401,14 +401,14 @@ cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpuacct
 			expected: "/sys/fs/cgroup",
 		},
 		{
-			name: "cgroup mount found",
+			name: "only cgroup found",
 			content: `
 none /proc proc rw,nosuid,nodev,noexec,relatime 0 0
 sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
 tmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0
 cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpuacct,cpu 0 0
 `,
-			expected: "/sys/fs/cgroup/cpu,cpuacct",
+			expected: "",
 		},
 		{
 			name: "cgroup mount not found",
