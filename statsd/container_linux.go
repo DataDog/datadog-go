@@ -131,6 +131,8 @@ func isCgroupV1(mountsPath string) bool {
 	return false
 }
 
+// parseCgroupMountPath parses the cgroup mount path from /proc/mounts
+// It returns an empty string if cgroup v2 is not used
 func parseCgroupMountPath(r io.Reader) string {
 	scn := bufio.NewScanner(r)
 	for scn.Scan() {
@@ -139,17 +141,19 @@ func parseCgroupMountPath(r io.Reader) string {
 		if len(tokens) >= 3 {
 			fsType := tokens[2]
 			if fsType == "cgroup2" {
-				return tokens[1] // line is formatted as "cgroup /sys/fs/cgroup/... cgroup...""
+				return tokens[1]
 			}
 		}
 	}
 	return ""
 }
 
+// parseCgroupNodePath parses the cgroup node path from /proc/self/cgroup
 func parseCgroupNodePath(r io.Reader) string {
 	scn := bufio.NewScanner(r)
 	for scn.Scan() {
 		line := scn.Text()
+		// in cgroup v2, the cgroup node path is the last element of the line starting with "0::"
 		if strings.HasPrefix(line, "0::") {
 			return line[3:]
 		}
@@ -157,7 +161,8 @@ func parseCgroupNodePath(r io.Reader) string {
 	return ""
 }
 
-// getCgroupInode returns the cgroup inode prefixed by "in-" and is used by the agent to retrieve the container ID
+// getCgroupInode returns the cgroup inode only with cgroup v2.
+// The result is prefixed by "in-" and is used by the agent to retrieve the container ID.
 func getCgroupInode(mountsPath, cgroupPath string) string {
 	// Retrieve a cgroup mount point from /proc/mounts
 	f, err := os.Open(mountsPath)
