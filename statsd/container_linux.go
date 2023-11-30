@@ -131,12 +131,13 @@ func isCgroupV1(mountsPath string) bool {
 	return false
 }
 
-// parseCgroupMountPath parses the cgroup mount path from /proc/mounts
+// parseCgroupV2MountPath parses the cgroup mount path from /proc/mounts
 // It returns an empty string if cgroup v2 is not used
-func parseCgroupMountPath(r io.Reader) string {
+func parseCgroupV2MountPath(r io.Reader) string {
 	scn := bufio.NewScanner(r)
 	for scn.Scan() {
 		line := scn.Text()
+		// a correct line line should be formatted as `cgroup2 <path> cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate 0 0`
 		tokens := strings.Fields(line)
 		if len(tokens) >= 3 {
 			fsType := tokens[2]
@@ -148,12 +149,14 @@ func parseCgroupMountPath(r io.Reader) string {
 	return ""
 }
 
-// parseCgroupNodePath parses the cgroup node path from /proc/self/cgroup
-func parseCgroupNodePath(r io.Reader) string {
+// parseCgroupV2NodePath parses the cgroup node path from /proc/self/cgroup
+// It returns an empty string if cgroup v2 is not used
+// With respect to https://man7.org/linux/man-pages/man7/cgroups.7.html#top_of_page, in cgroupv2, only 0::<path> should exist
+func parseCgroupV2NodePath(r io.Reader) string {
 	scn := bufio.NewScanner(r)
 	for scn.Scan() {
 		line := scn.Text()
-		// in cgroup v2, the cgroup node path is the last element of the line starting with "0::"
+		// The cgroup node path is the last element of the line starting with "0::"
 		if strings.HasPrefix(line, "0::") {
 			return line[3:]
 		}
@@ -161,16 +164,16 @@ func parseCgroupNodePath(r io.Reader) string {
 	return ""
 }
 
-// getCgroupInode returns the cgroup inode only with cgroup v2.
-// The result is prefixed by "in-" and is used by the agent to retrieve the container ID.
-func getCgroupInode(mountsPath, cgroupPath string) string {
+// getCgroupV2Inode returns the cgroup v2 node inode if it exists otherwise an empty string.
+// The inode is prefixed by "in-" and is used by the agent to retrieve the container ID.
+func getCgroupV2Inode(mountsPath, cgroupPath string) string {
 	// Retrieve a cgroup mount point from /proc/mounts
 	f, err := os.Open(mountsPath)
 	if err != nil {
 		return ""
 	}
 	defer f.Close()
-	cgroupMountPath := parseCgroupMountPath(f)
+	cgroupMountPath := parseCgroupV2MountPath(f)
 
 	if cgroupMountPath == "" {
 		return ""
@@ -182,7 +185,7 @@ func getCgroupInode(mountsPath, cgroupPath string) string {
 		return ""
 	}
 	defer f.Close()
-	cgroupNodePath := parseCgroupNodePath(f)
+	cgroupNodePath := parseCgroupV2NodePath(f)
 	if cgroupNodePath == "" {
 		return ""
 	}
@@ -223,7 +226,7 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 				containerID = readMountinfo(selfMountInfoPath)
 			}
 			if containerID != "" {
-				containerID = getCgroupInode(mountsPath, cgroupPath)
+				containerID = getCgroupV2Inode(mountsPath, cgroupPath)
 			}
 		}
 	})
