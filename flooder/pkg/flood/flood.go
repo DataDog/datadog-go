@@ -1,12 +1,13 @@
 package flood
 
 import (
-	"github.com/spf13/cobra"
 	"hash/fnv"
 	"log"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/DataDog/datadog-go/v5/statsd"
 )
@@ -201,7 +202,7 @@ func Flood(command *cobra.Command, args []string) {
 			}
 		} else {
 			for sent := 0; sent < c.pointsPer10Seconds; sent++ {
-				err = c.client.Incr("flood.dogstatsd.count", []string{}, 1)
+				err = c.client.Incr("flood.dogstatsd.count", []string{"sent:" + strconv.Itoa(sent)}, 1)
 				if err != nil {
 					log.Printf("Error: %v", err)
 				}
