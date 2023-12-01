@@ -524,7 +524,7 @@ cgroup2 %s cgroup2 rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			// Setup
-			cgroupMountPath, err := os.MkdirTemp(os.TempDir(), "sysfscgroup")
+			cgroupMountPath, err := ioutil.TempDir(os.TempDir(), "sysfscgroup")
 			require.NoError(t, err)
 			defer os.RemoveAll(cgroupMountPath)
 
@@ -541,7 +541,7 @@ cgroup2 %s cgroup2 rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
 				expectedInode = fmt.Sprintf(tc.expectedResult, stat.Sys().(*syscall.Stat_t).Ino)
 			}
 
-			procMounts, err := os.CreateTemp("", "procmounts")
+			procMounts, err := ioutil.TempFile("", "procmounts")
 			require.NoError(t, err)
 			defer os.Remove(procMounts.Name())
 			_, err = procMounts.WriteString(fmt.Sprintf(tc.procMountsContent, cgroupMountPath))
@@ -549,7 +549,7 @@ cgroup2 %s cgroup2 rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
 			err = procMounts.Close()
 			require.NoError(t, err)
 
-			procSelfCgroup, err := os.CreateTemp("", "procselfcgroup")
+			procSelfCgroup, err := ioutil.TempFile("", "procselfcgroup")
 			require.NoError(t, err)
 			defer os.Remove(procSelfCgroup.Name())
 			_, err = procSelfCgroup.WriteString(tc.procSelfCgroupContent)
