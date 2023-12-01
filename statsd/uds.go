@@ -31,6 +31,18 @@ func newUDSWriter(addr string, writeTimeout time.Duration, transport string) (*u
 	return writer, nil
 }
 
+// GetTransportName returns the transport used by the writer
+func (w *udsWriter) GetTransportName() string {
+	if w.transport == "unixgram" {
+		return writerNameUDS
+	} else if w.transport == "unix" {
+		return writerNameUDSStream
+	} else {
+		// For backward compatibility.
+		return writerNameUDS
+	}
+}
+
 // retryOnWriteErr returns true if we should retry writing after a write error
 func (w *udsWriter) retryOnWriteErr(err error) bool {
 	// Never retry when using unixgram (to preserve the historical behavior)

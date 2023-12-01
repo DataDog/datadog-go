@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package statsd
@@ -9,6 +10,7 @@ import (
 	"testing"
 )
 
+// TODO: implement the same test for uds-stream
 func TestFullPipelineUDS(t *testing.T) {
 	for testName, c := range getTestMap() {
 		socketPath := fmt.Sprintf("/tmp/dsd_%d.socket", rand.Int())

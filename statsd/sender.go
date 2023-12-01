@@ -15,8 +15,14 @@ type senderTelemetry struct {
 	totalBytesDroppedWriter       uint64
 }
 
+type Transport interface {
+	io.WriteCloser
+
+	GetTransportName() string
+}
+
 type sender struct {
-	transport    io.WriteCloser
+	transport    Transport
 	pool         *bufferPool
 	queue        chan *statsdBuffer
 	telemetry    *senderTelemetry
@@ -35,7 +41,7 @@ func (e *ErrorSenderChannelFull) Error() string {
 	return e.Msg
 }
 
-func newSender(transport io.WriteCloser, queueSize int, pool *bufferPool, errorHandler ErrorHandler) *sender {
+func newSender(transport Transport, queueSize int, pool *bufferPool, errorHandler ErrorHandler) *sender {
 	sender := &sender{
 		transport:    transport,
 		pool:         pool,
@@ -131,4 +137,8 @@ func (s *sender) close() error {
 	<-s.stop
 	s.flushInputQueue()
 	return s.transport.Close()
+}
+
+func (s *sender) getTransportName() string {
+	return s.transport.GetTransportName()
 }

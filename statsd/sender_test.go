@@ -22,6 +22,10 @@ func (w *mockedWriter) Close() error {
 	return args.Error(0)
 }
 
+func (w *mockedWriter) GetTransportName() string {
+	return "mock"
+}
+
 func TestSender(t *testing.T) {
 	writer := new(mockedWriter)
 	writer.On("Write", mock.Anything).Return(1, nil)
