@@ -68,7 +68,7 @@ func (p *pipeWriter) Close() error {
 
 // GetTransportName returns the name of the transport
 func (p *pipeWriter) GetTransportName() string {
-	return writerNamePipe
+	return writerWindowsPipe
 }
 
 func newWindowsPipeWriter(pipepath string, writeTimeout time.Duration) (*pipeWriter, error) {

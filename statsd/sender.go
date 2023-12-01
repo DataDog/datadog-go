@@ -18,6 +18,7 @@ type senderTelemetry struct {
 type Transport interface {
 	io.WriteCloser
 
+	// GetTransportName returns the name of the transport
 	GetTransportName() string
 }
 
