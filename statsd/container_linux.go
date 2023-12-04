@@ -24,6 +24,9 @@ const (
 	// mountsPath is the path to the file listing all the mount points
 	mountsPath = "/proc/mounts"
 
+	// cgroupV1BaseController is the controller used to identify the container-id for cgroup v1
+	cgroupV1BaseController = "memory"
+
 	uuidSource      = "[0-9a-f]{8}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{12}"
 	containerSource = "[0-9a-f]{64}"
 	taskSource      = "[0-9a-f]{32}-\\d+"
@@ -131,74 +134,6 @@ func isCgroupV1(mountsPath string) bool {
 	return false
 }
 
-// parseCgroupV2MountPath parses the cgroup mount path from /proc/mounts
-// It returns an empty string if cgroup v2 is not used
-func parseCgroupV2MountPath(r io.Reader) string {
-	scn := bufio.NewScanner(r)
-	for scn.Scan() {
-		line := scn.Text()
-		// a correct line line should be formatted as `cgroup2 <path> cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate 0 0`
-		tokens := strings.Fields(line)
-		if len(tokens) >= 3 {
-			fsType := tokens[2]
-			if fsType == "cgroup2" {
-				return tokens[1]
-			}
-		}
-	}
-	return ""
-}
-
-// parseCgroupV2NodePath parses the cgroup node path from /proc/self/cgroup
-// It returns an empty string if cgroup v2 is not used
-// With respect to https://man7.org/linux/man-pages/man7/cgroups.7.html#top_of_page, in cgroupv2, only 0::<path> should exist
-func parseCgroupV2NodePath(r io.Reader) string {
-	scn := bufio.NewScanner(r)
-	for scn.Scan() {
-		line := scn.Text()
-		// The cgroup node path is the last element of the line starting with "0::"
-		if strings.HasPrefix(line, "0::") {
-			return line[3:]
-		}
-	}
-	return ""
-}
-
-// getCgroupV2Inode returns the cgroup v2 node inode if it exists otherwise an empty string.
-// The inode is prefixed by "in-" and is used by the agent to retrieve the container ID.
-func getCgroupV2Inode(mountsPath, cgroupPath string) string {
-	// Retrieve a cgroup mount point from /proc/mounts
-	f, err := os.Open(mountsPath)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	cgroupMountPath := parseCgroupV2MountPath(f)
-
-	if cgroupMountPath == "" {
-		return ""
-	}
-
-	// Parse /proc/self/cgroup to retrieve the cgroup node path
-	f, err = os.Open(cgroupPath)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	cgroupNodePath := parseCgroupV2NodePath(f)
-	if cgroupNodePath == "" {
-		return ""
-	}
-
-	// Retrieve the cgroup inode from the cgroup mount and cgroup node path
-	fi, err := os.Stat(path.Clean(cgroupMountPath + cgroupNodePath))
-	if err != nil {
-		return ""
-	}
-
-	return fmt.Sprintf("in-%d", fi.Sys().(*syscall.Stat_t).Ino)
-}
-
 func isHostCgroupNamespace() bool {
 	fi, err := os.Stat("/proc/self/ns/cgroup")
 	if err != nil {
@@ -208,6 +143,61 @@ func isHostCgroupNamespace() bool {
 	inode := fi.Sys().(*syscall.Stat_t).Ino
 
 	return inode == hostCgroupNamespaceInode
+}
+
+// parseCgroupNodePath parses /proc/self/cgroup and returns a map of controller to its associated cgroup node path.
+func parseCgroupNodePath(r io.Reader) map[string]string {
+	res := make(map[string]string)
+	scn := bufio.NewScanner(r)
+	for scn.Scan() {
+		line := scn.Text()
+		tokens := strings.Split(line, ":")
+		if len(tokens) != 3 {
+			continue
+		}
+		if tokens[1] == cgroupV1BaseController || tokens[1] == "" {
+			res[tokens[1]] = tokens[2]
+		}
+	}
+	return res
+}
+
+// getCgroupInode returns the cgroup controller inode if it exists otherwise an empty string.
+// The inode is prefixed by "in-" and is used by the agent to retrieve the container ID.
+// For cgroup v1, we use the memory controller.
+func getCgroupInode(cgroupMountPath, procSelfCgroupPath string) string {
+	// Parse /proc/self/cgroup to retrieve the paths to the memory controller (cgroupv1) and the cgroup node (cgroupv2)
+	f, err := os.Open(procSelfCgroupPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	cgroupControllersPaths := parseCgroupNodePath(f)
+	// Retrieve the cgroup inode from /sys/fs/cgroup+cgroupNodePath
+	for _, controller := range []string{cgroupV1BaseController, ""} {
+		cgroupNodePath, ok := cgroupControllersPaths[controller]
+		if !ok {
+			continue
+		}
+		inode := inodeForPath(path.Join(cgroupMountPath, controller, cgroupNodePath))
+		if inode != "" {
+			return inode
+		}
+	}
+	return ""
+}
+
+// inodeForPath returns the inode for the provided path or empty on failure.
+func inodeForPath(path string) string {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	stats, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("in-%d", stats.Ino)
 }
 
 // internalInitContainerID initializes the container ID.
@@ -226,7 +216,7 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 				containerID = readMountinfo(selfMountInfoPath)
 			}
 			if containerID != "" {
-				containerID = getCgroupV2Inode(mountsPath, cgroupPath)
+				containerID = getCgroupInode(mountsPath, cgroupPath)
 			}
 		}
 	})
