@@ -139,9 +139,11 @@ const (
 )
 
 const (
-	writerNameUDP     string = "udp"
-	writerNameUDS     string = "uds"
-	writerWindowsPipe string = "pipe"
+	writerNameUDP       string = "udp"
+	writerNameUDS       string = "uds"
+	writerNameUDSStream string = "uds-stream"
+	writerWindowsPipe   string = "pipe"
+	writerNameCustom    string = "custom"
 )
 
 // noTimestamp is used as a value for metric without a given timestamp.
@@ -363,7 +365,7 @@ func parseAgentURL(agentURL string) string {
 	return ""
 }
 
-func createWriter(addr string, writeTimeout time.Duration) (io.WriteCloser, string, error) {
+func createWriter(addr string, writeTimeout time.Duration) (Transport, string, error) {
 	addr = resolveAddr(addr)
 	if addr == "" {
 		return nil, "", errors.New("No address passed and autodetection from environment failed")
@@ -409,6 +411,14 @@ func New(addr string, options ...Option) (*Client, error) {
 	return client, err
 }
 
+type customWriter struct {
+	io.WriteCloser
+}
+
+func (w *customWriter) GetTransportName() string {
+	return writerNameCustom
+}
+
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser
 func NewWithWriter(w io.WriteCloser, options ...Option) (*Client, error) {
@@ -416,7 +426,7 @@ func NewWithWriter(w io.WriteCloser, options ...Option) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newWithWriter(w, o, "custom")
+	return newWithWriter(&customWriter{w}, o, writerNameCustom)
 }
 
 // CloneWithExtraOptions create a new Client with extra options
@@ -432,7 +442,7 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 	return New(c.addrOption, opt...)
 }
 
-func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, error) {
+func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) {
 	c := Client{
 		namespace:             o.namespace,
 		tags:                  o.tags,
@@ -456,22 +466,24 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID))
 	}
 
+	isUDS := writerName == writerNameUDS
+
 	if o.maxBytesPerPayload == 0 {
-		if writerName == writerNameUDS {
+		if isUDS {
 			o.maxBytesPerPayload = DefaultMaxAgentPayloadSize
 		} else {
 			o.maxBytesPerPayload = OptimalUDPPayloadSize
 		}
 	}
 	if o.bufferPoolSize == 0 {
-		if writerName == writerNameUDS {
+		if isUDS {
 			o.bufferPoolSize = DefaultUDSBufferPoolSize
 		} else {
 			o.bufferPoolSize = DefaultUDPBufferPoolSize
 		}
 	}
 	if o.senderQueueSize == 0 {
-		if writerName == writerNameUDS {
+		if isUDS {
 			o.senderQueueSize = DefaultUDSBufferPoolSize
 		} else {
 			o.senderQueueSize = DefaultUDPBufferPoolSize
@@ -524,10 +536,10 @@ func newWithWriter(w io.WriteCloser, o *Options, writerName string) (*Client, er
 
 	if o.telemetry {
 		if o.telemetryAddr == "" {
-			c.telemetryClient = newTelemetryClient(&c, writerName, c.agg != nil)
+			c.telemetryClient = newTelemetryClient(&c, c.agg != nil)
 		} else {
 			var err error
-			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, writerName, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout)
+			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout)
 			if err != nil {
 				return nil, err
 			}
@@ -598,6 +610,14 @@ func (c *Client) flushTelemetryMetrics(t *Telemetry) {
 // GetTelemetry return the telemetry metrics for the client since it started.
 func (c *Client) GetTelemetry() Telemetry {
 	return c.telemetryClient.getTelemetry()
+}
+
+// GetTransport return the name of the transport used.
+func (c *Client) GetTransport() string {
+	if c.sender == nil {
+		return ""
+	}
+	return c.sender.getTransportName()
 }
 
 type ErrorInputChannelFull struct {

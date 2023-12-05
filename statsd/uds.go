@@ -31,10 +31,22 @@ func newUDSWriter(addr string, writeTimeout time.Duration, transport string) (*u
 	return writer, nil
 }
 
+// GetTransportName returns the transport used by the writer
+func (w *udsWriter) GetTransportName() string {
+	w.RLock()
+	defer w.RUnlock()
+
+	if w.transport == "unix" {
+		return writerNameUDSStream
+	} else {
+		return writerNameUDS
+	}
+}
+
 // retryOnWriteErr returns true if we should retry writing after a write error
-func (w *udsWriter) retryOnWriteErr(err error) bool {
+func (w *udsWriter) retryOnWriteErr(err error, stream bool) bool {
 	// Never retry when using unixgram (to preserve the historical behavior)
-	if w.transport == "unixgram" {
+	if !stream {
 		return false
 	}
 	// Otherwise we retry on timeout because we might have written a partial packet
@@ -53,24 +65,24 @@ func (w *udsWriter) shouldCloseConnection(err error) bool {
 }
 
 // writeFull writes the whole data to the UDS connection
-func (w *udsWriter) writeFull(data []byte, stopIfNoneWritten bool) (int, error) {
+func (w *udsWriter) writeFull(data []byte, stopIfNoneWritten bool, stream bool) (int, error) {
 	written := 0
 	for written < len(data) {
 		n, e := w.conn.Write(data[written:])
 		written += n
 
-		// If we haven't written anything and we're supposed to stop if we can't write anything, return the error
+		// If we haven't written anything, and we're supposed to stop if we can't write anything, return the error
 		if written == 0 && stopIfNoneWritten {
 			return written, e
 		}
 
 		// If there's an error, check if it is retryable
-		if e != nil && !w.retryOnWriteErr(e) {
+		if e != nil && !w.retryOnWriteErr(e, stream) {
 			return written, e
 		}
 
 		// When using "unix" we need to be able to finish to write partially written packets once we have started.
-		if w.transport == "unix" {
+		if stream {
 			w.conn.SetWriteDeadline(time.Time{})
 		}
 	}
@@ -85,21 +97,22 @@ func (w *udsWriter) Write(data []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	stream := conn.LocalAddr().Network() == "unix"
 
 	// When using streams the deadline will only make us drop the packet if we can't write it at all,
 	// once we've started writing we need to finish.
 	conn.SetWriteDeadline(time.Now().Add(w.writeTimeout))
 
 	// When using streams, we append the length of the packet to the data
-	if w.transport == "unix" {
+	if stream {
 		bs := []byte{0, 0, 0, 0}
 		binary.LittleEndian.PutUint32(bs, uint32(len(data)))
-		_, err = w.writeFull(bs, true)
+		_, err = w.writeFull(bs, true, true)
 		if err == nil {
-			n, err = w.writeFull(data, false)
+			n, err = w.writeFull(data, false, true)
 		}
-	} else if w.transport == "unixgram" {
-		n, err = w.writeFull(data, true)
+	} else {
+		n, err = w.writeFull(data, true, false)
 	}
 
 	if w.shouldCloseConnection(err) {

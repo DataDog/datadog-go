@@ -75,13 +75,15 @@ func TestTelemetryCustomAddr(t *testing.T) {
 	}()
 
 	ts.sendAllType(client)
-	client.Flush()
+	err = client.Flush()
+	require.NoError(t, err)
+
 	client.telemetryClient.sendTelemetry()
 
 	select {
 	case <-readDone:
 	case <-time.After(2 * time.Second):
-		require.Fail(t, "No data was flush on Close")
+		require.Fail(t, "No data was flushed on Close")
 	}
 
 	result := []string{}
