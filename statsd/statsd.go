@@ -139,12 +139,11 @@ const (
 )
 
 const (
-	writerNameUDP         string = "udp"
-	writerNameUDS         string = "uds"
-	writerNameUDSDatagram string = "uds-datagram"
-	writerNameUDSStream   string = "uds-stream"
-	writerWindowsPipe     string = "pipe"
-	writerNameCustom      string = "custom"
+	writerNameUDP       string = "udp"
+	writerNameUDS       string = "uds"
+	writerNameUDSStream string = "uds-stream"
+	writerWindowsPipe   string = "pipe"
+	writerNameCustom    string = "custom"
 )
 
 // noTimestamp is used as a value for metric without a given timestamp.
@@ -381,10 +380,10 @@ func createWriter(addr string, writeTimeout time.Duration) (Transport, string, e
 		return w, writerNameUDS, err
 	case strings.HasPrefix(addr, UnixAddressDatagramPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressDatagramPrefix):], writeTimeout, "unixgram")
-		return w, writerNameUDSDatagram, err
+		return w, writerNameUDS, err
 	case strings.HasPrefix(addr, UnixAddressStreamPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressStreamPrefix):], writeTimeout, "unix")
-		return w, writerNameUDSStream, err
+		return w, writerNameUDS, err
 	default:
 		w, err := newUDPWriter(addr, writeTimeout)
 		return w, writerNameUDP, err
@@ -467,7 +466,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID))
 	}
 
-	isUDS := writerName == writerNameUDS || writerName == writerNameUDSDatagram || writerName == writerNameUDSStream
+	isUDS := writerName == writerNameUDS
 
 	if o.maxBytesPerPayload == 0 {
 		if isUDS {

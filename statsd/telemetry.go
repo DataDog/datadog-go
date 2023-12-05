@@ -126,13 +126,6 @@ type telemetryClient struct {
 	lastSample        Telemetry // The previous sample of telemetry sent
 }
 
-func clientTransportTag(transport string) string {
-	if transport == writerNameUDS || transport == writerNameUDSDatagram {
-		return writerNameUDS // For backward compatibility.
-	}
-	return transport
-}
-
 func newTelemetryClient(c *Client, aggregationEnabled bool) *telemetryClient {
 	t := &telemetryClient{
 		c:          c,
@@ -248,7 +241,7 @@ func (t *telemetryClient) setTags() {
 	t.transport = transport
 	t.tags = append(t.c.tags, clientTelemetryTag, clientVersionTelemetryTag)
 	if transport != "" {
-		t.tags = append(t.tags, "client_transport:"+clientTransportTag(transport))
+		t.tags = append(t.tags, "client_transport:"+transport)
 	}
 	t.tagsByType[gauge] = append(append([]string{}, t.tags...), "metrics_type:gauge")
 	t.tagsByType[count] = append(append([]string{}, t.tags...), "metrics_type:count")
