@@ -36,6 +36,11 @@ func (n *NoOpClient) Distribution(name string, value float64, tags []string, rat
 	return nil
 }
 
+// DistributionSamples does nothing and returns nil
+func (n *NoOpClient) DistributionSamples(name string, values []float64, tags []string, rate float64) error {
+	return nil
+}
+
 // Decr does nothing and returns nil
 func (n *NoOpClient) Decr(name string, tags []string, rate float64) error {
 	return nil

@@ -599,6 +599,7 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 	client.Set("set", "3_id", tags, 1)
 	client.Histogram("histo", 4, tags, 1)
 	client.Distribution("distro", 5, tags, 1)
+	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)
 	client.Timing("timing", 6*time.Second, tags, 1)
 
 	finalTags := ts.getFinalTags(tags...)
@@ -609,6 +610,7 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 		ts.namespace + "set:3_id|s" + finalTags + containerID,
 		ts.namespace + "histo:4|h" + finalTags + containerID,
 		ts.namespace + "distro:5|d" + finalTags + containerID,
+		ts.namespace + "distro2:5:6|d|@0.5" + finalTags + containerID,
 		ts.namespace + "timing:6000.000000|ms" + finalTags + containerID,
 	}
 }

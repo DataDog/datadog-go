@@ -18,6 +18,7 @@ func TestNoOpClient(t *testing.T) {
 	a.Nil(c.CountWithTimestamp("asd", 123, tags, 56.0, time.Now()))
 	a.Nil(c.Histogram("asd", 12.34, tags, 56.0))
 	a.Nil(c.Distribution("asd", 1.234, tags, 56.0))
+	a.Nil(c.DistributionSamples("asd", []float64{1.234}, tags, 56.0))
 	a.Nil(c.Decr("asd", tags, 56.0))
 	a.Nil(c.Incr("asd", tags, 56.0))
 	a.Nil(c.Set("asd", "asd", tags, 56.0))

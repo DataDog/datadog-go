@@ -31,6 +31,7 @@ func TestNilError(t *testing.T) {
 		func() error { return c.Decr("", nil, 1) },
 		func() error { return c.Histogram("", 0, nil, 1) },
 		func() error { return c.Distribution("", 0, nil, 1) },
+		func() error { return c.DistributionSamples("", []float64{0}, nil, 1) },
 		func() error { return c.Gauge("", 0, nil, 1) },
 		func() error { return c.Set("", "", nil, 1) },
 		func() error { return c.Timing("", time.Second, nil, 1) },

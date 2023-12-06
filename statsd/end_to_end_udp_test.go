@@ -340,6 +340,18 @@ func getTestMap() map[string]testCase {
 				ts.assert(t, client, expectedMetrics)
 			},
 		},
+		"Basic Extended client side aggregation + Maximum number of Samples + ChannelMode + pre-sampled distributions": testCase{
+			[]Option{
+				WithExtendedClientSideAggregation(),
+				WithMaxSamplesPerContext(2),
+				WithChannelMode(),
+				WithoutTelemetry(),
+			},
+			func(t *testing.T, ts *testServer, client *Client) {
+				expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client)
+				ts.assert(t, client, expectedMetrics)
+			},
+		},
 	}
 }
 

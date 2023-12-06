@@ -105,6 +105,20 @@ func (mr *MockClientInterfaceMockRecorder) Distribution(name, value, tags, rate 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockClientInterface)(nil).Distribution), name, value, tags, rate)
 }
 
+// DistributionSamples mocks base method.
+func (m *MockClientInterface) DistributionSamples(name string, value []float64, tags []string, rate float64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DistributionSamples", name, value, tags, rate)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DistributionSamples indicates an expected call of DistributionSamples.
+func (mr *MockClientInterfaceMockRecorder) DistributionSamples(name, value, tags, rate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionSamples", reflect.TypeOf((*MockClientInterface)(nil).DistributionSamples), name, value, tags, rate)
+}
+
 // Event mocks base method.
 func (m *MockClientInterface) Event(e *statsd.Event) error {
 	m.ctrl.T.Helper()
