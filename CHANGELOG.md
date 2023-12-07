@@ -2,7 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.4.0 / xxxx-xx-xx
+# 5.5.0 / xxxx-xx-xx
+
+
+# 5.4.0 / 2023-12-07
 
 - [FEATURE] Add `WithMaxSamplesPerContext()` option to limit the number of samples per context. See [#292][].
 - [BUGFIX] Fix the `rate` of distributions and histograms when using client side aggregation. See [#283][].
