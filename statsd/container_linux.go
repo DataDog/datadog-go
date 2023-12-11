@@ -24,6 +24,9 @@ const (
 	// mountsPath is the path to the file listing all the mount points
 	mountsPath = "/proc/mounts"
 
+	// defaultCgroupMountPath is the default path to the cgroup mount point.
+	defaultCgroupMountPath = "/sys/fs/cgroup"
+
 	// cgroupV1BaseController is the controller used to identify the container-id for cgroup v1
 	cgroupV1BaseController = "memory"
 
@@ -173,7 +176,7 @@ func getCgroupInode(cgroupMountPath, procSelfCgroupPath string) string {
 	}
 	defer f.Close()
 	cgroupControllersPaths := parseCgroupNodePath(f)
-	// Retrieve the cgroup inode from /sys/fs/cgroup+cgroupNodePath
+	// Retrieve the cgroup inode from /sys/fs/cgroup+controller+cgroupNodePath
 	for _, controller := range []string{cgroupV1BaseController, ""} {
 		cgroupNodePath, ok := cgroupControllersPaths[controller]
 		if !ok {
@@ -216,7 +219,7 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 				containerID = readMountinfo(selfMountInfoPath)
 			}
 			if containerID != "" {
-				containerID = getCgroupInode(mountsPath, cgroupPath)
+				containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
 			}
 		}
 	})
