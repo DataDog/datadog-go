@@ -220,15 +220,6 @@ type ClientInterface interface {
 	// also be used to limit the load. Both options can *not* be used together.
 	Distribution(name string, value float64, tags []string, rate float64) error
 
-	// DistributionSamples is similar to Distribution, but it lets the client deals with the sampling.
-	//
-	// The provided `rate` is the sampling rate applied by the client. This is recommended in high performance
-	// cases were the overhead of the statsd library might be significant and the sampling is already done
-	// by the client.
-	//
-	// `WithMaxBufferedMetricsPerContext` is ignored when using this method.
-	DistributionSamples(name string, value []float64, tags []string, rate float64) error
-
 	// Decr is just Count of -1
 	Decr(name string, tags []string, rate float64) error
 
@@ -778,24 +769,6 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
-}
-
-// DistributionSamples tracks the statistical distribution of a set of values across your infrastructure.
-func (c *Client) DistributionSamples(name string, values []float64, tags []string, rate float64) error {
-	if c == nil {
-		return ErrNoClient
-	}
-	atomic.AddUint64(&c.telemetry.totalMetricsDistribution, uint64(len(values)))
-	return c.send(metric{
-		metricType: distributionAggregated,
-		name:       name,
-		fvalues:    values,
-		tags:       tags,
-		stags:      strings.Join(tags, tagSeparatorSymbol),
-		rate:       rate,
-		globalTags: c.tags,
-		namespace:  c.namespace,
-	})
 }
 
 // Decr is just Count of -1

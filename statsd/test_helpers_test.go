@@ -66,8 +66,7 @@ type testServer struct {
 	telemetryEnabled    bool
 }
 
-func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client) {
-
+func newTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) *testServer {
 	opt, err := resolveOptions(options)
 	require.NoError(t, err)
 
@@ -108,12 +107,29 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 		require.FailNow(t, "unknown proto '%s'", proto)
 	}
 
-	client, err := New(addr, options...)
-	require.NoError(t, err)
-
 	ts.containerID = getContainerID()
 
 	go ts.start()
+	return ts
+}
+
+func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client) {
+
+	ts := newTestServer(t, proto, addr, tags, options...)
+
+	client, err := New(addr, options...)
+	require.NoError(t, err)
+
+	return ts, client
+}
+
+func newClientDirectAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *ClientDirect) {
+
+	ts := newTestServer(t, proto, addr, tags, options...)
+
+	client, err := NewDirect(addr, options...)
+	require.NoError(t, err)
+
 	return ts, client
 }
 
@@ -599,7 +615,6 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 	client.Set("set", "3_id", tags, 1)
 	client.Histogram("histo", 4, tags, 1)
 	client.Distribution("distro", 5, tags, 1)
-	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)
 	client.Timing("timing", 6*time.Second, tags, 1)
 
 	finalTags := ts.getFinalTags(tags...)
@@ -610,9 +625,18 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 		ts.namespace + "set:3_id|s" + finalTags + containerID,
 		ts.namespace + "histo:4|h" + finalTags + containerID,
 		ts.namespace + "distro:5|d" + finalTags + containerID,
-		ts.namespace + "distro2:5:6|d|@0.5" + finalTags + containerID,
 		ts.namespace + "timing:6000.000000|ms" + finalTags + containerID,
 	}
+}
+
+func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client *ClientDirect) []string {
+	expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client.Client)
+
+	tags := []string{"custom:1", "custom:2"}
+	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)
+
+	finalTags := ts.getFinalTags(tags...)
+	return append(expectedMetrics, ts.namespace+"distro2:5:6|d|@0.5"+finalTags)
 }
 
 func patchContainerID(id string) { containerID = id }
