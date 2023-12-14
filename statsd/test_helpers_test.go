@@ -107,10 +107,13 @@ func newTestServer(t *testing.T, proto string, addr string, tags []string, optio
 		require.FailNow(t, "unknown proto '%s'", proto)
 	}
 
+	return ts
+}
+
+func startTestServer(ts *testServer) {
 	ts.containerID = getContainerID()
 
 	go ts.start()
-	return ts
 }
 
 func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client) {
@@ -120,6 +123,7 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 	client, err := New(addr, options...)
 	require.NoError(t, err)
 
+	startTestServer(ts)
 	return ts, client
 }
 
@@ -130,6 +134,7 @@ func newClientDirectAndTestServer(t *testing.T, proto string, addr string, tags 
 	client, err := NewDirect(addr, options...)
 	require.NoError(t, err)
 
+	startTestServer(ts)
 	return ts, client
 }
 
