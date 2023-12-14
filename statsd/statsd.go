@@ -216,7 +216,7 @@ type ClientInterface interface {
 
 	// Distribution tracks the statistical distribution of a set of values across your infrastructure.
 	//
-	// It is recommended to use `WithMaxBufferedMetricsPerContext` to avoid dropping metrics, `rate` can
+	// It is recommended to use `WithMaxBufferedMetricsPerContext` to avoid dropping metrics at high throughput, `rate` can
 	// also be used to limit the load. Both options can *not* be used together.
 	Distribution(name string, value float64, tags []string, rate float64) error
 
