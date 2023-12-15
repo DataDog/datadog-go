@@ -66,8 +66,7 @@ type testServer struct {
 	telemetryEnabled    bool
 }
 
-func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client) {
-
+func newTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) *testServer {
 	opt, err := resolveOptions(options)
 	require.NoError(t, err)
 
@@ -108,12 +107,34 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 		require.FailNow(t, "unknown proto '%s'", proto)
 	}
 
-	client, err := New(addr, options...)
-	require.NoError(t, err)
+	return ts
+}
 
+func startTestServer(ts *testServer) {
 	ts.containerID = getContainerID()
 
 	go ts.start()
+}
+
+func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client) {
+
+	ts := newTestServer(t, proto, addr, tags, options...)
+
+	client, err := New(addr, options...)
+	require.NoError(t, err)
+
+	startTestServer(ts)
+	return ts, client
+}
+
+func newClientDirectAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *ClientDirect) {
+
+	ts := newTestServer(t, proto, addr, tags, options...)
+
+	client, err := NewDirect(addr, options...)
+	require.NoError(t, err)
+
+	startTestServer(ts)
 	return ts, client
 }
 
@@ -611,6 +632,16 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client) []stri
 		ts.namespace + "distro:5|d" + finalTags + containerID,
 		ts.namespace + "timing:6000.000000|ms" + finalTags + containerID,
 	}
+}
+
+func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client *ClientDirect) []string {
+	expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client.Client)
+
+	tags := []string{"custom:1", "custom:2"}
+	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)
+
+	finalTags := ts.getFinalTags(tags...)
+	return append(expectedMetrics, ts.namespace+"distro2:5:6|d|@0.5"+finalTags)
 }
 
 func patchContainerID(id string) { containerID = id }

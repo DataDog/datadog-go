@@ -30,3 +30,12 @@ func TestNoOpClient(t *testing.T) {
 	a.Nil(c.Close())
 	a.Nil(c.Flush())
 }
+
+func TestNoopClientDirect(t *testing.T) {
+	a := assert.New(t)
+	c := NoOpClientDirect{}
+	tags := []string{"a:b"}
+
+	a.Nil(c.Gauge("asd", 123.4, tags, 56.0))
+	a.Nil(c.DistributionSamples("asd", []float64{1.234, 4.567}, tags, 56.0))
+}

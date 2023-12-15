@@ -215,6 +215,9 @@ type ClientInterface interface {
 	Histogram(name string, value float64, tags []string, rate float64) error
 
 	// Distribution tracks the statistical distribution of a set of values across your infrastructure.
+	//
+	// It is recommended to use `WithMaxBufferedMetricsPerContext` to avoid dropping metrics at high throughput, `rate` can
+	// also be used to limit the load. Both options can *not* be used together.
 	Distribution(name string, value float64, tags []string, rate float64) error
 
 	// Decr is just Count of -1

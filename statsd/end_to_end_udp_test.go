@@ -340,6 +340,40 @@ func getTestMap() map[string]testCase {
 				ts.assert(t, client, expectedMetrics)
 			},
 		},
+		"Basic Extended client side aggregation + Maximum number of Samples + ChannelMode": testCase{
+			[]Option{
+				WithExtendedClientSideAggregation(),
+				WithMaxSamplesPerContext(2),
+				WithChannelMode(),
+				WithoutTelemetry(),
+			},
+			func(t *testing.T, ts *testServer, client *Client) {
+				expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client)
+				ts.assert(t, client, expectedMetrics)
+			},
+		},
+	}
+}
+
+type testCaseDirect struct {
+	opt      []Option
+	testFunc func(*testing.T, *testServer, *ClientDirect)
+}
+
+func getTestMapDirect() map[string]testCaseDirect {
+	return map[string]testCaseDirect{
+		"Basic Extended client side aggregation + Maximum number of Samples + ChannelMode + pre-sampled distributions": testCaseDirect{
+			[]Option{
+				WithExtendedClientSideAggregation(),
+				WithMaxSamplesPerContext(2),
+				WithChannelMode(),
+				WithoutTelemetry(),
+			},
+			func(t *testing.T, ts *testServer, client *ClientDirect) {
+				expectedMetrics := ts.sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client)
+				ts.assert(t, client.Client, expectedMetrics)
+			},
+		},
 	}
 }
 
@@ -347,6 +381,20 @@ func TestFullPipelineUDP(t *testing.T) {
 	for testName, c := range getTestMap() {
 		t.Run(testName, func(t *testing.T) {
 			ts, client := newClientAndTestServer(t,
+				"udp",
+				"localhost:8765",
+				nil,
+				c.opt...,
+			)
+			c.testFunc(t, ts, client)
+		})
+	}
+}
+
+func TestFullPipelineUDPDirectClient(t *testing.T) {
+	for testName, c := range getTestMapDirect() {
+		t.Run(testName, func(t *testing.T) {
+			ts, client := newClientDirectAndTestServer(t,
 				"udp",
 				"localhost:8765",
 				nil,
