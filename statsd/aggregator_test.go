@@ -377,7 +377,7 @@ func TestGetContextAndTags(t *testing.T) {
 			testName:    "no tags",
 			name:        "name",
 			tags:        nil,
-			wantContext: "name:",
+			wantContext: "name",
 			wantTags:    "",
 		},
 		{
@@ -402,4 +402,22 @@ func TestGetContextAndTags(t *testing.T) {
 			assert.Equal(t, test.wantTags, gotTags)
 		})
 	}
+}
+
+func BenchmarkGetContext(b *testing.B) {
+	name := "test.metric"
+	tags := []string{"tag:tag", "foo:bar"}
+	for i := 0; i < b.N; i++ {
+		getContext(name, tags)
+	}
+	b.ReportAllocs()
+}
+
+func BenchmarkGetContextNoTags(b *testing.B) {
+	name := "test.metric"
+	var tags []string
+	for i := 0; i < b.N; i++ {
+		getContext(name, tags)
+	}
+	b.ReportAllocs()
 }

@@ -26,7 +26,15 @@ func setupUDSClientServer(b *testing.B, options []statsd.Option) (*statsd.Client
 	}
 	go func() {
 		for {
-			_, err := conn.Accept()
+			c, err := conn.Accept()
+			// We need to read everything from the socket to avoid blocking the sender
+			buf := make([]byte, 1024)
+			for {
+				_, err = c.Read(buf)
+				if err != nil {
+					break
+				}
+			}
 			if err != nil {
 				return
 			}
@@ -76,8 +84,9 @@ func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, extraOption
 	b.RunParallel(func(pb *testing.PB) {
 		testNumber := atomic.AddInt32(&n, 1)
 		name := fmt.Sprintf("test.metric%d", testNumber)
+		tags := []string{"tag:tag"}
 		for pb.Next() {
-			client.Gauge(name, 1, []string{"tag:tag"}, 1)
+			client.Gauge(name, 1, tags, 1)
 		}
 	})
 	client.Flush()
@@ -96,7 +105,8 @@ func benchmarkStatsdSameMetrics(b *testing.B, transport string, extraOptions ...
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			client.Gauge("test.metric", 1, []string{"tag:tag"}, 1)
+			tags := []string{"tag:tag"}
+			client.Gauge("test.metric", 1, tags, 1)
 		}
 	})
 	client.Flush()
