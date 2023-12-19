@@ -29,7 +29,7 @@ const (
 
 	containerdSandboxPrefix = "sandboxes"
 	containerRegexpStr      = "([0-9a-f]{64})|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
-	cIDRegexpStr            = `([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
+	cIDRegexpStr            = `.*/([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
 
 	// From https://github.com/torvalds/linux/blob/5859a2b1991101d6b978f3feb5325dad39421f29/include/linux/proc_ns.h#L41-L49
 	// Currently, host namespace inode number are hardcoded, which can be used to detect
