@@ -32,8 +32,14 @@ const (
 	taskSource      = "[0-9a-f]{32}-\\d+"
 
 	containerdSandboxPrefix = "sandboxes"
-	containerRegexpStr      = "([0-9a-f]{64})|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
-	cIDRegexpStr            = `.*/([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
+
+	// ContainerRegexpStr defines the regexp used to match container IDs
+	// ([0-9a-f]{64}) is standard container id used pretty much everywhere
+	// ([0-9a-f]{32}-[0-9]{10}) is container id used by AWS ECS
+	// ([0-9a-f]{8}(-[0-9a-f]{4}){4}$) is container id used by Garden
+	containerRegexpStr = "([0-9a-f]{64})|([0-9a-f]{32}-[0-9]{10})|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
+	// cIDRegexpStr defines the regexp used to match container IDs in /proc/self/mountinfo
+	cIDRegexpStr = `.*/([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
 
 	// From https://github.com/torvalds/linux/blob/5859a2b1991101d6b978f3feb5325dad39421f29/include/linux/proc_ns.h#L41-L49
 	// Currently, host namespace inode number are hardcoded, which can be used to detect
