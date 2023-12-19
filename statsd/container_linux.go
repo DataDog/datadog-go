@@ -21,9 +21,6 @@ const (
 	// selfMountinfo is the path to the mountinfo path where we can find the container id in case cgroup namespace is preventing the use of /proc/self/cgroup
 	selfMountInfoPath = "/proc/self/mountinfo"
 
-	// mountsPath is the path to the file listing all the mount points
-	mountsPath = "/proc/mounts"
-
 	// defaultCgroupMountPath is the default path to the cgroup mount point.
 	defaultCgroupMountPath = "/sys/fs/cgroup"
 
@@ -113,30 +110,6 @@ func readMountinfo(path string) string {
 	return parseMountinfo(f)
 }
 
-// isCgroupV1 checks if Cgroup V1 is used
-func isCgroupV1(mountsPath string) bool {
-	f, err := os.Open(mountsPath)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	scn := bufio.NewScanner(f)
-	for scn.Scan() {
-		line := scn.Text()
-
-		tokens := strings.Fields(line)
-		if len(tokens) >= 3 {
-			fsType := tokens[2]
-			if fsType == "cgroup" {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 func isHostCgroupNamespace() bool {
 	fi, err := os.Stat("/proc/self/ns/cgroup")
 	if err != nil {
@@ -214,12 +187,12 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 
 		if cgroupFallback {
 			isHostCgroupNs := isHostCgroupNamespace()
-			if isCgroupV1(mountsPath) || isHostCgroupNs {
+			if isHostCgroupNs {
 				containerID = readContainerID(cgroupPath)
-			} else {
-				containerID = readMountinfo(selfMountInfoPath)
+				return
 			}
-			if containerID != "" && !isHostCgroupNs {
+			containerID = readMountinfo(selfMountInfoPath)
+			if containerID != "" {
 				containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
 			}
 		}
