@@ -213,12 +213,13 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 		}
 
 		if cgroupFallback {
-			if isCgroupV1(mountsPath) || isHostCgroupNamespace() {
+			isHostCgroupNs := isHostCgroupNamespace()
+			if isCgroupV1(mountsPath) || isHostCgroupNs {
 				containerID = readContainerID(cgroupPath)
 			} else {
 				containerID = readMountinfo(selfMountInfoPath)
 			}
-			if containerID != "" {
+			if containerID != "" && !isHostCgroupNs {
 				containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
 			}
 		}
