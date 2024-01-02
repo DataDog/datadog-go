@@ -5,12 +5,13 @@ package statsd
 
 import (
 	"encoding/binary"
-	"golang.org/x/net/nettest"
 	"math/rand"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"golang.org/x/net/nettest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,13 +22,13 @@ func init() {
 }
 
 func TestNewUDSWriter(t *testing.T) {
-	w, err := newUDSWriter("/tmp/test.socket", 100*time.Millisecond, "")
+	w, err := newUDSWriter("/tmp/test.socket", 100*time.Millisecond, 1000*time.Millisecond, "")
 	assert.NotNil(t, w)
 	assert.NoError(t, err)
-	w, err = newUDSWriter("/tmp/test.socket", 100*time.Millisecond, "unix")
+	w, err = newUDSWriter("/tmp/test.socket", 100*time.Millisecond, 1000*time.Millisecond, "unix")
 	assert.NotNil(t, w)
 	assert.NoError(t, err)
-	w, err = newUDSWriter("/tmp/test.socket", 100*time.Millisecond, "unixgram")
+	w, err = newUDSWriter("/tmp/test.socket", 100*time.Millisecond, 1000*time.Millisecond, "unixgram")
 	assert.NotNil(t, w)
 	assert.NoError(t, err)
 }
@@ -44,7 +45,7 @@ func TestUDSDatagramWrite(t *testing.T) {
 	err = os.Chmod(socketPath, 0722)
 	require.NoError(t, err)
 
-	w, err := newUDSWriter(socketPath, 100*time.Millisecond, "")
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond, 1000*time.Millisecond, "")
 	require.Nil(t, err)
 	require.NotNil(t, w)
 
@@ -74,7 +75,7 @@ func TestUDSDatagramWriteUnsetConnection(t *testing.T) {
 	err = os.Chmod(socketPath, 0722)
 	require.NoError(t, err)
 
-	w, err := newUDSWriter(socketPath, 100*time.Millisecond, "")
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond, 1000*time.Millisecond, "")
 	require.Nil(t, err)
 	require.NotNil(t, w)
 
@@ -107,7 +108,7 @@ func TestUDSStreamWrite(t *testing.T) {
 	err = os.Chmod(socketPath, 0722)
 	require.NoError(t, err)
 
-	w, err := newUDSWriter(socketPath, 100*time.Millisecond, "")
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond, 1000*time.Millisecond, "")
 	require.Nil(t, err)
 	require.NotNil(t, w)
 
@@ -120,6 +121,7 @@ func TestUDSStreamWrite(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, len(msg), n)
 
+		// This works because the kernel accepts sockets before the accept call
 		if conn == nil {
 			conn, err = listener.Accept()
 			require.NoError(t, err)
@@ -148,7 +150,7 @@ func TestUDSStreamWriteUnsetConnection(t *testing.T) {
 	err = os.Chmod(socketPath, 0722)
 	require.NoError(t, err)
 
-	w, err := newUDSWriter(socketPath, 100*time.Millisecond, "")
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond, 1000*time.Millisecond, "")
 	require.Nil(t, err)
 	require.NotNil(t, w)
 
@@ -161,6 +163,7 @@ func TestUDSStreamWriteUnsetConnection(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, len(msg), n)
 
+		// This works because the kernel accepts sockets before the accept call
 		if conn == nil {
 			conn, err = listener.Accept()
 			require.NoError(t, err)
@@ -179,4 +182,35 @@ func TestUDSStreamWriteUnsetConnection(t *testing.T) {
 		w.unsetConnection()
 		conn = nil
 	}
+}
+
+func TestUDSStreamPartialWrite(t *testing.T) {
+	socketPath, err := nettest.LocalPath()
+	require.NoError(t, err)
+	defer os.Remove(socketPath)
+
+	address, err := net.ResolveUnixAddr("unix", socketPath)
+	require.NoError(t, err)
+	listener, err := net.ListenUnix("unix", address)
+	defer listener.Close()
+	require.NoError(t, err)
+	err = os.Chmod(socketPath, 0722)
+	require.NoError(t, err)
+
+	w, err := newUDSWriter(socketPath, 100*time.Millisecond, 1000*time.Millisecond, "")
+	require.Nil(t, err)
+	require.NotNil(t, w)
+
+	// Force a connection
+	w.ensureConnection()
+	// Set a very low buffer size to force a partial write, but still enough to write the header
+	w.conn.(*net.UnixConn).SetWriteBuffer(8)
+
+	msg := []byte("some data")
+	n, err := w.Write(msg)
+	require.Error(t, err)
+	assert.Lessf(t, n, len(msg), "n: %d, len(msg): %d", n, len(msg))
+
+	// The connection should be dropped
+	assert.Nil(t, w.conn)
 }
