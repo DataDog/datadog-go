@@ -8,10 +8,13 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseContainerID(t *testing.T) {
@@ -261,106 +264,139 @@ func TestReadMountinfo(t *testing.T) {
 	assert.Equal(t, cid, actualCID)
 }
 
-func TestIsCgroupV1(t *testing.T) {
-	for input, expectedResult := range map[string]bool{
-		`sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-udev /dev devtmpfs rw,nosuid,relatime,size=16229088k,nr_inodes=4057272,mode=755,inode64 0 0
-devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
-tmpfs /run tmpfs rw,nosuid,nodev,noexec,relatime,size=3253732k,mode=755,inode64 0 0
-/dev/mapper/vg-root / ext4 rw,relatime,errors=remount-ro 0 0
-/dev/mapper/vg-root_usr /usr ext4 rw,nodev,relatime 0 0
-securityfs /sys/kernel/security securityfs rw,nosuid,nodev,noexec,relatime 0 0
-tmpfs /dev/shm tmpfs rw,nosuid,nodev,noexec,inode64 0 0
-tmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k,inode64 0 0
-cgroup2 /sys/fs/cgroup cgroup2 rw,nosuid,nodev,noexec,relatime 0 0
-pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
-efivarfs /sys/firmware/efi/efivars efivarfs rw,nosuid,nodev,noexec,relatime 0 0
-bpf /sys/fs/bpf bpf rw,nosuid,nodev,noexec,relatime,mode=700 0 0
-systemd-1 /proc/sys/fs/binfmt_misc autofs rw,relatime,fd=29,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=29681 0 0
-hugetlbfs /dev/hugepages hugetlbfs rw,relatime,pagesize=2M 0 0
-mqueue /dev/mqueue mqueue rw,nosuid,nodev,noexec,relatime 0 0
-debugfs /sys/kernel/debug debugfs rw,nosuid,nodev,noexec,relatime 0 0
-tracefs /sys/kernel/tracing tracefs rw,nosuid,nodev,noexec,relatime 0 0
-fusectl /sys/fs/fuse/connections fusectl rw,nosuid,nodev,noexec,relatime 0 0
-configfs /sys/kernel/config configfs rw,nosuid,nodev,noexec,relatime 0 0
-none /run/credentials/systemd-sysusers.service ramfs ro,nosuid,nodev,noexec,relatime,mode=700 0 0
-/dev/nvme0n1p3 /boot ext4 rw,nosuid,nodev,noexec,relatime 0 0
-/dev/nvme0n1p2 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro 0 0
-tmpfs /run/qemu tmpfs rw,nosuid,nodev,relatime,mode=755,inode64 0 0
-/dev/mapper/vg-root_home /home ext4 rw,nosuid,nodev,relatime 0 0
-/dev/mapper/vg-root_tmp /tmp ext4 rw,nosuid,nodev,relatime 0 0
-/dev/mapper/vg-root_var /var ext4 rw,nosuid,nodev,relatime 0 0
-binfmt_misc /proc/sys/fs/binfmt_misc binfmt_misc rw,nosuid,nodev,noexec,relatime 0 0
-overlay /var/lib/docker/overlay2/d4cea28ac9d244e0d966e9298f2bfec6b51e3dbca19c63be5f25797145e7ae37/merged overlay rw,relatime,lowerdir=/var/lib/docker/overlay2/l/PSA4WM7MRV7OTYBH47EXU5XBNL:/var/lib/docker/overlay2/l/O47GWLQIRN2RDBHNBIT4MQSXHY,upperdir=/var/lib/docker/overlay2/d4cea28ac9d244e0d966e9298f2bfec6b51e3dbca19c63be5f25797145e7ae37/diff,workdir=/var/lib/docker/overlay2/d4cea28ac9d244e0d966e9298f2bfec6b51e3dbca19c63be5f25797145e7ae37/work 0 0
-nsfs /run/docker/netns/f5019077c595 nsfs rw 0 0
-tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime,size=3253728k,nr_inodes=813432,mode=700,uid=1000,gid=1000,inode64 0 0
-portal /run/user/1000/doc fuse.portal rw,nosuid,nodev,relatime,user_id=1000,group_id=1000 0 0`: false,
-		`/dev/root / ext4 rw,relatime,discard,errors=remount-ro 0 0
-devtmpfs /dev devtmpfs rw,relatime,size=4065432k,nr_inodes=1016358,mode=755,inode64 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-securityfs /sys/kernel/security securityfs rw,nosuid,nodev,noexec,relatime 0 0
-tmpfs /dev/shm tmpfs rw,nosuid,nodev,inode64 0 0
-devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
-tmpfs /run tmpfs rw,nosuid,nodev,size=1627848k,nr_inodes=819200,mode=755,inode64 0 0
-tmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k,inode64 0 0
-tmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,size=4096k,nr_inodes=1024,mode=755,inode64 0 0
-cgroup2 /sys/fs/cgroup/unified cgroup2 rw,nosuid,nodev,noexec,relatime 0 0
-cgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,name=systemd 0 0
-pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
-efivarfs /sys/firmware/efi/efivars efivarfs rw,nosuid,nodev,noexec,relatime 0 0
-bpf /sys/fs/bpf bpf rw,nosuid,nodev,noexec,relatime,mode=700 0 0
-cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
-cgroup /sys/fs/cgroup/rdma cgroup rw,nosuid,nodev,noexec,relatime,rdma 0 0
-cgroup /sys/fs/cgroup/misc cgroup rw,nosuid,nodev,noexec,relatime,misc 0 0
-cgroup /sys/fs/cgroup/net_cls,net_prio cgroup rw,nosuid,nodev,noexec,relatime,net_cls,net_prio 0 0
-cgroup /sys/fs/cgroup/blkio cgroup rw,nosuid,nodev,noexec,relatime,blkio 0 0
-cgroup /sys/fs/cgroup/freezer cgroup rw,nosuid,nodev,noexec,relatime,freezer 0 0
-cgroup /sys/fs/cgroup/pids cgroup rw,nosuid,nodev,noexec,relatime,pids 0 0
-cgroup /sys/fs/cgroup/memory cgroup rw,nosuid,nodev,noexec,relatime,memory 0 0
-cgroup /sys/fs/cgroup/cpuset cgroup rw,nosuid,nodev,noexec,relatime,cpuset 0 0
-cgroup /sys/fs/cgroup/hugetlb cgroup rw,nosuid,nodev,noexec,relatime,hugetlb 0 0
-cgroup /sys/fs/cgroup/perf_event cgroup rw,nosuid,nodev,noexec,relatime,perf_event 0 0
-cgroup /sys/fs/cgroup/devices cgroup rw,nosuid,nodev,noexec,relatime,devices 0 0
-systemd-1 /proc/sys/fs/binfmt_misc autofs rw,relatime,fd=31,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=14210 0 0
-hugetlbfs /dev/hugepages hugetlbfs rw,relatime,pagesize=2M 0 0
-mqueue /dev/mqueue mqueue rw,nosuid,nodev,noexec,relatime 0 0
-debugfs /sys/kernel/debug debugfs rw,nosuid,nodev,noexec,relatime 0 0
-tracefs /sys/kernel/tracing tracefs rw,nosuid,nodev,noexec,relatime 0 0
-fusectl /sys/fs/fuse/connections fusectl rw,nosuid,nodev,noexec,relatime 0 0
-configfs /sys/kernel/config configfs rw,nosuid,nodev,noexec,relatime 0 0
-none /run/credentials/systemd-sysusers.service ramfs ro,nosuid,nodev,noexec,relatime,mode=700 0 0
-/dev/sda15 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro 0 0
-sunrpc /run/rpc_pipefs rpc_pipefs rw,relatime 0 0
-/dev/root /home/kubernetes/bin ext4 rw,relatime,discard,errors=remount-ro 0 0
-/dev/root /home/kubernetes/flexvolume ext4 rw,relatime,discard,errors=remount-ro 0 0
-binfmt_misc /proc/sys/fs/binfmt_misc binfmt_misc rw,nosuid,nodev,noexec,relatime 0 0
-/dev/root /var/lib/kubelet ext4 rw,relatime,discard,errors=remount-ro 0 0
-tmpfs /var/lib/kubelet/pki tmpfs rw,relatime,inode64 0 0
-tmpfs /var/lib/kubelet/pki tmpfs rw,relatime,inode64 0 0
-/dev/root /home/containerd ext4 ro,relatime,discard,errors=remount-ro 0 0
-/dev/root /home/kubernetes/containerized_mounter ext4 rw,relatime,discard,errors=remount-ro 0 0
-/dev/root /home/kubernetes/containerized_mounter/rootfs/var/lib/kubelet ext4 rw,relatime,discard,errors=remount-ro 0 0
-tmpfs /home/kubernetes/containerized_mounter/rootfs/var/lib/kubelet/pki tmpfs rw,relatime,inode64 0 0
-/dev/root /home/kubernetes/containerized_mounter/rootfs/var/lib/kubelet ext4 rw,relatime,discard,errors=remount-ro 0 0
-tmpfs /home/kubernetes/containerized_mounter/rootfs/var/lib/kubelet/pki tmpfs rw,relatime,inode64 0 0
-proc /home/kubernetes/containerized_mounter/rootfs/proc proc ro,relatime 0 0
-proc /home/kubernetes/containerized_mounter/rootfs/proc proc rw,nosuid,nodev,noexec,relatime 0 0
-devtmpfs /home/kubernetes/containerized_mounter/rootfs/dev devtmpfs ro,relatime,size=4065432k,nr_inodes=1016358,mode=755,inode64 0 0
-devtmpfs /home/kubernetes/containerized_mounter/rootfs/dev devtmpfs rw,relatime,size=4065432k,nr_inodes=1016358,mode=755,inode64 0 0`: true,
-	} {
-		tmpFile, err := ioutil.TempFile("", "mounts-")
-		assert.NoError(t, err)
+func TestParsegroupControllerPath(t *testing.T) {
+	// Test cases
+	cases := []struct {
+		name     string
+		content  string
+		expected map[string]string
+	}{
+		{
+			name:     "cgroup2 normal case",
+			content:  `0::/`,
+			expected: map[string]string{"": "/"},
+		},
+		{
+			name: "hybrid",
+			content: `other_line
+0::/
+1:memory:/docker/abc123`,
+			expected: map[string]string{
+				"":       "/",
+				"memory": "/docker/abc123",
+			},
+		},
+		{
+			name: "with other controllers",
+			content: `other_line
+12:pids:/docker/abc123
+11:hugetlb:/docker/abc123
+10:net_cls,net_prio:/docker/abc123
+0::/docker/abc123
+`,
+			expected: map[string]string{
+				"": "/docker/abc123",
+			},
+		},
+		{
+			name:     "no controller",
+			content:  "empty",
+			expected: map[string]string{},
+		},
+	}
 
-		defer os.Remove(tmpFile.Name())
+	// Run test cases
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			reader := strings.NewReader(c.content)
+			result := parseCgroupNodePath(reader)
+			require.Equal(t, c.expected, result)
+		})
+	}
+}
 
-		_, err = tmpFile.WriteString(input)
-		assert.NoError(t, err)
+func TestGetCgroupInode(t *testing.T) {
+	tests := []struct {
+		description           string
+		cgroupNodeDir         string
+		procSelfCgroupContent string
+		expectedResult        string
+		controller            string
+	}{
+		{
+			description:           "matching entry in /proc/self/cgroup and /proc/mounts - cgroup2 only",
+			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: "0::/system.slice/docker-abcdef0123456789abcdef0123456789.scope\n",
+			expectedResult:        "in-%d", // Will be formatted with inode number
+		},
+		{
+			description:   "matching entry in /proc/self/cgroup and /proc/mounts - cgroup/hybrid only",
+			cgroupNodeDir: "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: `
+3:memory:/system.slice/docker-abcdef0123456789abcdef0123456789.scope
+2:net_cls,net_prio:c
+1:name=systemd:b
+0::a
+`,
+			expectedResult: "in-%d",
+			controller:     cgroupV1BaseController,
+		},
+		{
+			description:   "non memory or empty controller",
+			cgroupNodeDir: "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: `
+3:cpu:/system.slice/docker-abcdef0123456789abcdef0123456789.scope
+2:net_cls,net_prio:c
+1:name=systemd:b
+0::a
+`,
+			expectedResult: "",
+			controller:     "cpu",
+		},
+		{
+			description:   "path does not exist",
+			cgroupNodeDir: "dummy.scope",
+			procSelfCgroupContent: `
+3:memory:/system.slice/docker-abcdef0123456789abcdef0123456789.scope
+2:net_cls,net_prio:c
+1:name=systemd:b
+0::a
+`,
+			expectedResult: "",
+		},
+		{
+			description:           "no entry in /proc/self/cgroup",
+			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: "nothing",
+			expectedResult:        "",
+		},
+	}
 
-		assert.Equal(t, expectedResult, isCgroupV1(tmpFile.Name()))
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			sysFsCgroupPath := path.Join(os.TempDir(), "sysfscgroup")
+			groupControllerPath := path.Join(sysFsCgroupPath, tc.controller, tc.cgroupNodeDir)
+			err := os.MkdirAll(groupControllerPath, 0755)
+			require.NoError(t, err)
+			defer os.RemoveAll(groupControllerPath)
 
-		err = tmpFile.Close()
-		assert.NoError(t, err)
+			stat, err := os.Stat(groupControllerPath)
+			require.NoError(t, err)
+			expectedInode := ""
+			if tc.expectedResult != "" {
+				expectedInode = fmt.Sprintf(tc.expectedResult, stat.Sys().(*syscall.Stat_t).Ino)
+			}
+
+			procSelfCgroup, err := ioutil.TempFile("", "procselfcgroup")
+			require.NoError(t, err)
+			defer os.Remove(procSelfCgroup.Name())
+			_, err = procSelfCgroup.WriteString(tc.procSelfCgroupContent)
+			require.NoError(t, err)
+			err = procSelfCgroup.Close()
+			require.NoError(t, err)
+
+			result := getCgroupInode(sysFsCgroupPath, procSelfCgroup.Name())
+			require.Equal(t, expectedInode, result)
+		})
 	}
 }
