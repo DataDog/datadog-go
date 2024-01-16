@@ -192,8 +192,8 @@ func TestUDSStreamPartialWrite(t *testing.T) {
 	address, err := net.ResolveUnixAddr("unix", socketPath)
 	require.NoError(t, err)
 	listener, err := net.ListenUnix("unix", address)
-	defer listener.Close()
 	require.NoError(t, err)
+	defer listener.Close()
 	err = os.Chmod(socketPath, 0722)
 	require.NoError(t, err)
 
