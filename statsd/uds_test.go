@@ -208,7 +208,7 @@ func TestUDSStreamPartialWrite(t *testing.T) {
 	defer conn.Close()
 
 	// Set a very low buffer size to force a partial write, but still enough to write the header
-	w.conn.(*net.UnixConn).SetWriteBuffer(1)
+	require.NoError(w.conn.(*net.UnixConn).SetWriteBuffer(1))
 	// On linux we need to force a timeout this way
 	w.connectTimeout = -1 * time.Millisecond
 
