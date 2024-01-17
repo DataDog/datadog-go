@@ -204,11 +204,11 @@ func TestUDSStreamPartialWrite(t *testing.T) {
 	// Force a connection
 	w.ensureConnection()
 	conn, err := listener.Accept()
-	require.NoError(err)
+	require.NoError(t, err)
 	defer conn.Close()
 
 	// Set a very low buffer size to force a partial write, but still enough to write the header
-	require.NoError(w.conn.(*net.UnixConn).SetWriteBuffer(1))
+	require.NoError(t, w.conn.(*net.UnixConn).SetWriteBuffer(1))
 	// On linux we need to force a timeout this way
 	w.connectTimeout = -1 * time.Millisecond
 
