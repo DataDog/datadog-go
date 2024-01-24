@@ -8,7 +8,7 @@
 # 5.5.0 / 2024-01-23
 
 - [FEATURE] Added support for Origin Detection when the container-id is unavailable from inside the application container only with `cgroupv2`. See [#291][].
-- [FEATURE] Added `DistributionSamples` which is similar to `Distribution`, but it lets the client deal with the sampling. The rate is passed to the Agent and not used for further sampling. See [#296][].
+- [FEATURE] Added `DistributionSamples` which is similar to `Distribution`, but it lets the client handle the sampling. The rate is passed to the Agent and not used for further sampling. See [#296][].
 - [IMPROVEMENT] The Aggregator no longer allocates memory if there are no tags present. See [#297][].
 
 # 5.4.0 / 2023-12-07
