@@ -2,8 +2,14 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.5.0 / xxxx-xx-xx
+# 5.6.0 / xxxx-xx-xx
 
+
+# 5.5.0 / 2024-01-23
+
+- [FEATURE] Added support for Origin Detection when the container-id is unavailable from inside the application container, only applies to `cgroupv2`. See [#291][].
+- [FEATURE] Added `DistributionSamples` which is similar to `Distribution`, but it lets the client handle the sampling. The rate is passed to the Agent and not used for further sampling. See [#296][].
+- [IMPROVEMENT] The Aggregator no longer allocates memory if there are no tags present. See [#297][].
 
 # 5.4.0 / 2023-12-07
 
@@ -419,6 +425,11 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#262]: https://github.com/DataDog/datadog-go/pull/262
 [#269]: https://github.com/DataDog/datadog-go/pull/269
 [#273]: https://github.com/DataDog/datadog-go/pull/273
+[#283]: https://github.com/DataDog/datadog-go/pull/283
+[#291]: https://github.com/DataDog/datadog-go/pull/291
+[#292]: https://github.com/DataDog/datadog-go/pull/292
+[#296]: https://github.com/DataDog/datadog-go/pull/296
+[#297]: https://github.com/DataDog/datadog-go/pull/297
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
