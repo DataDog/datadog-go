@@ -886,9 +886,6 @@ func (c *Client) Close() error {
 // - o.originDetection is explicitly set to false, which is true by default
 func isOriginDetectionEnabled(o *Options) bool {
 	if !o.originDetection || o.containerID != "" {
-		// originDetection is explicitly disabled
-		// or DD_ENTITY_ID was found
-		// or a user-defined container ID was provided
 		return false
 	}
 
