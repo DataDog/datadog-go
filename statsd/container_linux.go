@@ -190,20 +190,27 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 		fmt.Println("containerID = ", containerID)
 	}()
 	initOnce.Do(func() {
+		fmt.Println("userProvidedID = ", userProvidedID)
 		if userProvidedID != "" {
 			containerID = userProvidedID
 			return
 		}
 
+		fmt.Println("cgroupFallback = ", cgroupFallback)
 		if cgroupFallback {
 			isHostCgroupNs := isHostCgroupNamespace()
+			fmt.Println("isHostCgroupNs = ", isHostCgroupNs)
 			if isHostCgroupNs {
 				containerID = readContainerID(cgroupPath)
+				fmt.Println("containerID A = ", containerID)
 				return
 			}
 			containerID = readMountinfo(selfMountInfoPath)
+			fmt.Println("containerID B = ", containerID)
+
 			if containerID != "" {
 				containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
+				fmt.Println("containerID C = ", containerID)
 			}
 		}
 	})
