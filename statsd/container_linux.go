@@ -155,13 +155,16 @@ func getCgroupInode(cgroupMountPath, procSelfCgroupPath string) string {
 	}
 	defer f.Close()
 	cgroupControllersPaths := parseCgroupNodePath(f)
+	fmt.Println("cgroupControllersPaths = ", cgroupControllersPaths)
 	// Retrieve the cgroup inode from /sys/fs/cgroup+controller+cgroupNodePath
 	for _, controller := range []string{cgroupV1BaseController, ""} {
 		cgroupNodePath, ok := cgroupControllersPaths[controller]
 		if !ok {
 			continue
 		}
-		inode := inodeForPath(path.Join(cgroupMountPath, controller, cgroupNodePath))
+		path := path.Join(cgroupMountPath, controller, cgroupNodePath)
+		fmt.Println("path = ", path)
+		inode := inodeForPath(path)
 		if inode != "" {
 			return inode
 		}
@@ -173,8 +176,10 @@ func getCgroupInode(cgroupMountPath, procSelfCgroupPath string) string {
 func inodeForPath(path string) string {
 	fi, err := os.Stat(path)
 	if err != nil {
+		fmt.Println("err = ", err)
 		return ""
 	}
+	fmt.Println("fi = ", fi)
 	stats, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
 		return ""
