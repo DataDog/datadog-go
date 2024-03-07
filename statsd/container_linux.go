@@ -184,23 +184,27 @@ func inodeForPath(path string) string {
 
 // internalInitContainerID initializes the container ID.
 // It can either be provided by the user or read from cgroups.
-func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
+func internalInitContainerID(userProvidedID string, cgroupFallback, isHostCgroupNs bool) {
 	initOnce.Do(func() {
-		if userProvidedID != "" {
-			containerID = userProvidedID
+		readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath, cgroupFallback, isHostCgroupNs)
+	})
+}
+
+// readCIDOrInode reads the container ID from the user provided ID, cgroups or mountinfo.
+func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath string, cgroupFallback, isHostCgroupNs bool) {
+	if userProvidedID != "" {
+		containerID = userProvidedID
+		return
+	}
+
+	if cgroupFallback {
+		if isHostCgroupNs {
+			containerID = readContainerID(cgroupPath)
 			return
 		}
-
-		if cgroupFallback {
-			isHostCgroupNs := isHostCgroupNamespace()
-			if isHostCgroupNs {
-				containerID = readContainerID(cgroupPath)
-				return
-			}
-			containerID = readMountinfo(selfMountInfoPath)
-			if containerID != "" {
-				containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
-			}
+		containerID = readMountinfo(selfMountInfoPath)
+		if containerID == "" {
+			containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
 		}
-	})
+	}
 }

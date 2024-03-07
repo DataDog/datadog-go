@@ -466,7 +466,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 	}
 
 	if !hasEntityID {
-		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID))
+		initContainerID(o.containerID, isOriginDetectionEnabled(o, hasEntityID), isHostCgroupNamespace())
 	}
 
 	isUDS := writerName == writerNameUDS
