@@ -213,7 +213,7 @@ func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
 			containerID = readMountinfo(selfMountInfoPath)
 			fmt.Println("containerID B = ", containerID)
 
-			if containerID != "" {
+			if containerID == "" {
 				containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
 				fmt.Println("containerID C = ", containerID)
 			}
