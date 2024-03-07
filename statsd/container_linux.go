@@ -185,6 +185,10 @@ func inodeForPath(path string) string {
 // internalInitContainerID initializes the container ID.
 // It can either be provided by the user or read from cgroups.
 func internalInitContainerID(userProvidedID string, cgroupFallback bool) {
+	fmt.Println("calling internalInitContainerID")
+	defer func() {
+		fmt.Println("containerID = ", containerID)
+	}()
 	initOnce.Do(func() {
 		if userProvidedID != "" {
 			containerID = userProvidedID
