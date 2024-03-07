@@ -423,6 +423,7 @@ func TestReadCIDOrInode(t *testing.T) {
 			expectedResult:   "fc7038bc73a8d3850c66ddbfb0b2901afa378bfcbb942cc384b051767e4ac6b0",
 		},
 		{
+			description:           "extract inode",
 			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
 			procSelfCgroupContent: "0::/system.slice/docker-abcdef0123456789abcdef0123456789.scope\n",
 			expectedResult:        "in-%d",
