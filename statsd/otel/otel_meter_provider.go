@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.opentelemetry.io/otel/metric"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
@@ -29,7 +29,7 @@ type MeterProvider struct {
 	meters  cache[instrumentation.Scope, *meter]
 }
 
-var _ metric.MeterProvider = (*MeterProvider)(nil)
+var _ otelmetric.MeterProvider = (*MeterProvider)(nil)
 
 func NewMeterProvider(options ...OTELOption) (*MeterProvider, error) {
 	cfg := newConfig(options...)
@@ -50,7 +50,7 @@ func NewMeterProvider(options ...OTELOption) (*MeterProvider, error) {
 	return mp, nil
 }
 
-func (mp *MeterProvider) Meter(name string, opts ...metric.MeterOption) metric.Meter {
+func (mp *MeterProvider) Meter(name string, opts ...otelmetric.MeterOption) otelmetric.Meter {
 	if name == "" {
 		mp.logger.Warn("Invalid Meter name.", "name", name)
 	}
@@ -59,7 +59,7 @@ func (mp *MeterProvider) Meter(name string, opts ...metric.MeterOption) metric.M
 		return noop.Meter{}
 	}
 
-	c := metric.NewMeterConfig(opts...)
+	c := otelmetric.NewMeterConfig(opts...)
 
 	s := instrumentation.Scope{
 		Name:      name,

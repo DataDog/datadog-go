@@ -3,7 +3,7 @@ package otel
 import (
 	"context"
 
-	"go.opentelemetry.io/otel/metric"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 )
 
@@ -19,8 +19,8 @@ type int64Inst struct {
 	isGauge bool
 }
 
-func (i *int64Inst) Add(_ context.Context, incr int64, options ...metric.AddOption) {
-	c := metric.NewAddConfig(options)
+func (i *int64Inst) Add(_ context.Context, incr int64, options ...otelmetric.AddOption) {
+	c := otelmetric.NewAddConfig(options)
 	tags := attrsToTags(c.Attributes(), i.meter.res.Attributes())
 
 	var err error
@@ -34,8 +34,8 @@ func (i *int64Inst) Add(_ context.Context, incr int64, options ...metric.AddOpti
 	}
 }
 
-func (i *int64Inst) Record(_ context.Context, value int64, options ...metric.RecordOption) {
-	c := metric.NewRecordConfig(options)
+func (i *int64Inst) Record(_ context.Context, value int64, options ...otelmetric.RecordOption) {
+	c := otelmetric.NewRecordConfig(options)
 	tags := attrsToTags(c.Attributes(), i.meter.res.Attributes())
 	if err := i.meter.client.Histogram(i.name, float64(value), tags, 1); err != nil {
 		i.meter.errHandler(err)
@@ -54,8 +54,8 @@ type float64Inst struct {
 	isGauge bool
 }
 
-func (i *float64Inst) Add(_ context.Context, incr float64, options ...metric.AddOption) {
-	c := metric.NewAddConfig(options)
+func (i *float64Inst) Add(_ context.Context, incr float64, options ...otelmetric.AddOption) {
+	c := otelmetric.NewAddConfig(options)
 	tags := attrsToTags(c.Attributes(), i.meter.res.Attributes())
 
 	var err error
@@ -69,10 +69,13 @@ func (i *float64Inst) Add(_ context.Context, incr float64, options ...metric.Add
 	}
 }
 
-func (i *float64Inst) Record(_ context.Context, value float64, options ...metric.RecordOption) {
-	c := metric.NewRecordConfig(options)
+func (i *float64Inst) Record(_ context.Context, value float64, options ...otelmetric.RecordOption) {
+	c := otelmetric.NewRecordConfig(options)
 	tags := attrsToTags(c.Attributes(), i.meter.res.Attributes())
 	if err := i.meter.client.Histogram(i.name, value, tags, 1); err != nil {
 		i.meter.errHandler(err)
 	}
+}
+
+type observable[T int64 | float64] struct {
 }

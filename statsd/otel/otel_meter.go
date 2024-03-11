@@ -1,7 +1,7 @@
 package otel
 
 import (
-	"go.opentelemetry.io/otel/metric"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -20,7 +20,7 @@ type meter struct {
 	errHandler  func(error)
 }
 
-var _ metric.Meter = (*meter)(nil)
+var _ otelmetric.Meter = (*meter)(nil)
 
 func newMeter(s instrumentation.Scope, res *resource.Resource, client *statsd.Client, errHandler func(error)) *meter {
 	return &meter{
@@ -31,8 +31,8 @@ func newMeter(s instrumentation.Scope, res *resource.Resource, client *statsd.Cl
 	}
 }
 
-func (m *meter) Int64Counter(name string, options ...metric.Int64CounterOption) (metric.Int64Counter, error) {
-	cfg := metric.NewInt64CounterConfig(options...)
+func (m *meter) Int64Counter(name string, options ...otelmetric.Int64CounterOption) (otelmetric.Int64Counter, error) {
+	cfg := otelmetric.NewInt64CounterConfig(options...)
 	return m.cacheInts.Lookup(name, func() (*int64Inst, error) {
 		return &int64Inst{
 			name:    name,
@@ -44,8 +44,8 @@ func (m *meter) Int64Counter(name string, options ...metric.Int64CounterOption) 
 	})
 }
 
-func (m *meter) Int64UpDownCounter(name string, options ...metric.Int64UpDownCounterOption) (metric.Int64UpDownCounter, error) {
-	cfg := metric.NewInt64UpDownCounterConfig(options...)
+func (m *meter) Int64UpDownCounter(name string, options ...otelmetric.Int64UpDownCounterOption) (otelmetric.Int64UpDownCounter, error) {
+	cfg := otelmetric.NewInt64UpDownCounterConfig(options...)
 	return m.cacheInts.Lookup(name, func() (*int64Inst, error) {
 		return &int64Inst{
 			name:    name,
@@ -57,8 +57,8 @@ func (m *meter) Int64UpDownCounter(name string, options ...metric.Int64UpDownCou
 	})
 }
 
-func (m *meter) Int64Histogram(name string, options ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
-	cfg := metric.NewInt64HistogramConfig(options...)
+func (m *meter) Int64Histogram(name string, options ...otelmetric.Int64HistogramOption) (otelmetric.Int64Histogram, error) {
+	cfg := otelmetric.NewInt64HistogramConfig(options...)
 	return m.cacheInts.Lookup(name, func() (*int64Inst, error) {
 		return &int64Inst{
 			name:    name,
@@ -70,8 +70,8 @@ func (m *meter) Int64Histogram(name string, options ...metric.Int64HistogramOpti
 	})
 }
 
-func (m *meter) Float64Counter(name string, options ...metric.Float64CounterOption) (metric.Float64Counter, error) {
-	cfg := metric.NewFloat64CounterConfig(options...)
+func (m *meter) Float64Counter(name string, options ...otelmetric.Float64CounterOption) (otelmetric.Float64Counter, error) {
+	cfg := otelmetric.NewFloat64CounterConfig(options...)
 	return m.cacheFloats.Lookup(name, func() (*float64Inst, error) {
 		return &float64Inst{
 			name:    name,
@@ -83,8 +83,8 @@ func (m *meter) Float64Counter(name string, options ...metric.Float64CounterOpti
 	})
 }
 
-func (m *meter) Float64UpDownCounter(name string, options ...metric.Float64UpDownCounterOption) (metric.Float64UpDownCounter, error) {
-	cfg := metric.NewFloat64UpDownCounterConfig(options...)
+func (m *meter) Float64UpDownCounter(name string, options ...otelmetric.Float64UpDownCounterOption) (otelmetric.Float64UpDownCounter, error) {
+	cfg := otelmetric.NewFloat64UpDownCounterConfig(options...)
 	return m.cacheFloats.Lookup(name, func() (*float64Inst, error) {
 		return &float64Inst{
 			name:    name,
@@ -96,8 +96,8 @@ func (m *meter) Float64UpDownCounter(name string, options ...metric.Float64UpDow
 	})
 }
 
-func (m *meter) Float64Histogram(name string, options ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {
-	cfg := metric.NewFloat64HistogramConfig(options...)
+func (m *meter) Float64Histogram(name string, options ...otelmetric.Float64HistogramOption) (otelmetric.Float64Histogram, error) {
+	cfg := otelmetric.NewFloat64HistogramConfig(options...)
 	return m.cacheFloats.Lookup(name, func() (*float64Inst, error) {
 		return &float64Inst{
 			name:    name,
@@ -109,37 +109,37 @@ func (m *meter) Float64Histogram(name string, options ...metric.Float64Histogram
 	})
 }
 
-func (m *meter) Int64ObservableCounter(name string, options ...metric.Int64ObservableCounterOption) (metric.Int64ObservableCounter, error) {
+func (m *meter) Int64ObservableCounter(name string, options ...otelmetric.Int64ObservableCounterOption) (otelmetric.Int64ObservableCounter, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *meter) Int64ObservableUpDownCounter(name string, options ...metric.Int64ObservableUpDownCounterOption) (metric.Int64ObservableUpDownCounter, error) {
+func (m *meter) Int64ObservableUpDownCounter(name string, options ...otelmetric.Int64ObservableUpDownCounterOption) (otelmetric.Int64ObservableUpDownCounter, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *meter) Int64ObservableGauge(name string, options ...metric.Int64ObservableGaugeOption) (metric.Int64ObservableGauge, error) {
+func (m *meter) Int64ObservableGauge(name string, options ...otelmetric.Int64ObservableGaugeOption) (otelmetric.Int64ObservableGauge, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *meter) Float64ObservableCounter(name string, options ...metric.Float64ObservableCounterOption) (metric.Float64ObservableCounter, error) {
+func (m *meter) Float64ObservableCounter(name string, options ...otelmetric.Float64ObservableCounterOption) (otelmetric.Float64ObservableCounter, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *meter) Float64ObservableUpDownCounter(name string, options ...metric.Float64ObservableUpDownCounterOption) (metric.Float64ObservableUpDownCounter, error) {
+func (m *meter) Float64ObservableUpDownCounter(name string, options ...otelmetric.Float64ObservableUpDownCounterOption) (otelmetric.Float64ObservableUpDownCounter, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *meter) Float64ObservableGauge(name string, options ...metric.Float64ObservableGaugeOption) (metric.Float64ObservableGauge, error) {
+func (m *meter) Float64ObservableGauge(name string, options ...otelmetric.Float64ObservableGaugeOption) (otelmetric.Float64ObservableGauge, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *meter) RegisterCallback(f metric.Callback, instruments ...metric.Observable) (metric.Registration, error) {
+func (m *meter) RegisterCallback(f otelmetric.Callback, instruments ...otelmetric.Observable) (otelmetric.Registration, error) {
 	//TODO implement me
 	panic("implement me")
 }
