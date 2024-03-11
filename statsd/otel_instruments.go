@@ -3,8 +3,6 @@ package statsd
 import (
 	"context"
 	"errors"
-	"sync/atomic"
-	"time"
 
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
@@ -72,11 +70,7 @@ func (i *float64Inst) Add(_ context.Context, incr float64, options ...otelmetric
 	if i.Kind == sdkmetric.InstrumentKindUpDownCounter {
 		err = i.meter.client.Gauge(i.Name, incr, tags, 1)
 	} else {
-		atomic.AddUint64(&i.meter.client.telemetry.totalMetricsCount, 1)
-		// TODO: Possible to maybe send this as a float instead of casting?
-		err = i.meter.client.send(metric{metricType: count, name: i.Name, fvalue: incr, tags: tags, rate: 1, globalTags: i.meter.client.tags, namespace: i.meter.client.namespace})
-		// If not, we use this.
-		//err = i.meter.client.Count(i.name, int64(incr), tags, 1)
+		err = i.meter.client.Count(i.Name, int64(incr), tags, 1)
 	}
 	if err != nil {
 		i.meter.errHandler(err)
@@ -98,10 +92,7 @@ var (
 type int64Observable struct {
 	otelmetric.Int64Observable
 	meter *meter
-	kind  sdkmetric.InstrumentKind
-	name  string
-	desc  string
-	unit  string
+	instID
 
 	embedded.Int64Observer
 	embedded.Int64ObservableCounter
@@ -109,41 +100,40 @@ type int64Observable struct {
 	embedded.Int64ObservableGauge
 }
 
-func newInt64Observable(m *meter, kind sdkmetric.InstrumentKind, name, desc, u string) int64Observable {
+func newInt64Observable(m *meter, id instID) int64Observable {
 	return int64Observable{
-		meter: m,
-		kind:  kind,
-		name:  name,
-		desc:  desc,
-		unit:  u,
+		meter:  m,
+		instID: id,
 	}
 }
 
 func (o int64Observable) Observe(val int64, opts ...otelmetric.ObserveOption) {
 	c := otelmetric.NewObserveConfig(opts)
 	tags := attrsToTags(c.Attributes(), o.meter.cfg.res.Attributes())
-	m := metric{tags: tags, name: o.name, ivalue: val, rate: 1, globalTags: o.meter.client.tags, namespace: o.meter.client.namespace, timestamp: time.Now().Unix()}
-	switch o.kind {
-	case sdkmetric.InstrumentKindObservableCounter, sdkmetric.InstrumentKindObservableUpDownCounter:
-		m.metricType = count
-	case sdkmetric.InstrumentKindObservableGauge:
-		m.metricType = gauge
+	var err error
+	switch {
+	case o.Unit == "s":
+		val *= 1000
+		fallthrough
+	case o.Unit == "ms":
+		err = o.meter.client.TimeInMilliseconds(o.Name, float64(val), tags, 1)
+	case o.Kind == sdkmetric.InstrumentKindObservableCounter || o.Kind == sdkmetric.InstrumentKindObservableUpDownCounter:
+		err = o.meter.client.Count(o.Name, val, tags, 1)
+	case o.Kind == sdkmetric.InstrumentKindObservableGauge:
+		err = o.meter.client.Gauge(o.Name, float64(val), tags, 1)
 	default:
-		o.meter.errHandler(errInvalidObserverKind)
-		return
+		err = errInvalidObserverKind
 	}
-	if err := o.meter.client.send(m); err != nil {
+	if err != nil {
 		o.meter.errHandler(err)
+		return
 	}
 }
 
 type float64Observable struct {
 	otelmetric.Float64Observable
 	meter *meter
-	kind  sdkmetric.InstrumentKind
-	name  string
-	desc  string
-	unit  string
+	instID
 
 	embedded.Float64Observer
 	embedded.Float64ObservableCounter
@@ -151,31 +141,33 @@ type float64Observable struct {
 	embedded.Float64ObservableGauge
 }
 
-func newFloat64Observable(m *meter, kind sdkmetric.InstrumentKind, name, desc, u string) float64Observable {
+func newFloat64Observable(m *meter, id instID) float64Observable {
 	return float64Observable{
-		meter: m,
-		kind:  kind,
-		name:  name,
-		desc:  desc,
-		unit:  u,
+		meter:  m,
+		instID: id,
 	}
 }
 
 func (o float64Observable) Observe(val float64, opts ...otelmetric.ObserveOption) {
 	c := otelmetric.NewObserveConfig(opts)
 	tags := attrsToTags(c.Attributes(), o.meter.cfg.res.Attributes())
-	m := metric{tags: tags, name: o.name, fvalue: val, rate: 1, globalTags: o.meter.client.tags, namespace: o.meter.client.namespace, timestamp: time.Now().Unix()}
-	switch o.kind {
-	case sdkmetric.InstrumentKindObservableCounter, sdkmetric.InstrumentKindObservableUpDownCounter:
-		m.metricType = count
-	case sdkmetric.InstrumentKindObservableGauge:
-		m.metricType = gauge
+	var err error
+	switch {
+	case o.Unit == "s":
+		val *= 1000
+		fallthrough
+	case o.Unit == "ms":
+		err = o.meter.client.TimeInMilliseconds(o.Name, val, tags, 1)
+	case o.Kind == sdkmetric.InstrumentKindObservableCounter || o.Kind == sdkmetric.InstrumentKindObservableUpDownCounter:
+		err = o.meter.client.Count(o.Name, int64(val), tags, 1)
+	case o.Kind == sdkmetric.InstrumentKindObservableGauge:
+		err = o.meter.client.Gauge(o.Name, val, tags, 1)
 	default:
-		o.meter.errHandler(errInvalidObserverKind)
-		return
+		err = errInvalidObserverKind
 	}
-	if err := o.meter.client.send(m); err != nil {
+	if err != nil {
 		o.meter.errHandler(err)
+		return
 	}
 }
 
@@ -204,7 +196,7 @@ func (m *meter) int64ObservableInstrument(id sdkmetric.Instrument, callbacks []o
 		warnRepeatedObservableCallbacks(m.errHandler, id)
 	}
 	return m.int64Observables.Lookup(key, func() (int64Observable, error) {
-		inst := newInt64Observable(m, id.Kind, id.Name, id.Description, id.Unit)
+		inst := newInt64Observable(m, key)
 
 		for _, callback := range callbacks {
 			m.callbacks = append(m.callbacks, func(ctx context.Context) error {
@@ -227,7 +219,7 @@ func (m *meter) float64ObservableInstrument(id sdkmetric.Instrument, callbacks [
 		warnRepeatedObservableCallbacks(m.errHandler, id)
 	}
 	return m.float64Observables.Lookup(key, func() (float64Observable, error) {
-		inst := newFloat64Observable(m, id.Kind, id.Name, id.Description, id.Unit)
+		inst := newFloat64Observable(m, key)
 
 		for _, callback := range callbacks {
 			m.callbacks = append(m.callbacks, func(ctx context.Context) error {
