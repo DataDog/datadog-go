@@ -4,6 +4,7 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -33,11 +34,11 @@ func (m *meter) Int64Counter(name string, options ...otelmetric.Int64CounterOpti
 	cfg := otelmetric.NewInt64CounterConfig(options...)
 	return m.cacheInts.Lookup(name, func() (*int64Inst, error) {
 		return &int64Inst{
-			name:    name,
-			unit:    cfg.Unit(),
-			desc:    cfg.Description(),
-			meter:   m,
-			isGauge: false,
+			name:  name,
+			unit:  cfg.Unit(),
+			desc:  cfg.Description(),
+			meter: m,
+			kind:  sdkmetric.InstrumentKindCounter,
 		}, nil
 	})
 }
@@ -46,11 +47,11 @@ func (m *meter) Int64UpDownCounter(name string, options ...otelmetric.Int64UpDow
 	cfg := otelmetric.NewInt64UpDownCounterConfig(options...)
 	return m.cacheInts.Lookup(name, func() (*int64Inst, error) {
 		return &int64Inst{
-			name:    name,
-			unit:    cfg.Unit(),
-			desc:    cfg.Description(),
-			meter:   m,
-			isGauge: true,
+			name:  name,
+			unit:  cfg.Unit(),
+			desc:  cfg.Description(),
+			meter: m,
+			kind:  sdkmetric.InstrumentKindUpDownCounter,
 		}, nil
 	})
 }
@@ -59,11 +60,11 @@ func (m *meter) Int64Histogram(name string, options ...otelmetric.Int64Histogram
 	cfg := otelmetric.NewInt64HistogramConfig(options...)
 	return m.cacheInts.Lookup(name, func() (*int64Inst, error) {
 		return &int64Inst{
-			name:    name,
-			unit:    cfg.Unit(),
-			desc:    cfg.Description(),
-			meter:   m,
-			isGauge: false,
+			name:  name,
+			unit:  cfg.Unit(),
+			desc:  cfg.Description(),
+			meter: m,
+			kind:  sdkmetric.InstrumentKindHistogram,
 		}, nil
 	})
 }
@@ -85,11 +86,11 @@ func (m *meter) Float64Counter(name string, options ...otelmetric.Float64Counter
 	cfg := otelmetric.NewFloat64CounterConfig(options...)
 	return m.cacheFloats.Lookup(name, func() (*float64Inst, error) {
 		return &float64Inst{
-			name:    name,
-			unit:    cfg.Unit(),
-			desc:    cfg.Description(),
-			meter:   m,
-			isGauge: false,
+			name:  name,
+			unit:  cfg.Unit(),
+			desc:  cfg.Description(),
+			meter: m,
+			kind:  sdkmetric.InstrumentKindCounter,
 		}, nil
 	})
 }
@@ -98,11 +99,11 @@ func (m *meter) Float64UpDownCounter(name string, options ...otelmetric.Float64U
 	cfg := otelmetric.NewFloat64UpDownCounterConfig(options...)
 	return m.cacheFloats.Lookup(name, func() (*float64Inst, error) {
 		return &float64Inst{
-			name:    name,
-			unit:    cfg.Unit(),
-			desc:    cfg.Description(),
-			meter:   m,
-			isGauge: true,
+			name:  name,
+			unit:  cfg.Unit(),
+			desc:  cfg.Description(),
+			meter: m,
+			kind:  sdkmetric.InstrumentKindUpDownCounter,
 		}, nil
 	})
 }
@@ -111,11 +112,11 @@ func (m *meter) Float64Histogram(name string, options ...otelmetric.Float64Histo
 	cfg := otelmetric.NewFloat64HistogramConfig(options...)
 	return m.cacheFloats.Lookup(name, func() (*float64Inst, error) {
 		return &float64Inst{
-			name:    name,
-			unit:    cfg.Unit(),
-			desc:    cfg.Description(),
-			meter:   m,
-			isGauge: false,
+			name:  name,
+			unit:  cfg.Unit(),
+			desc:  cfg.Description(),
+			meter: m,
+			kind:  sdkmetric.InstrumentKindHistogram,
 		}, nil
 	})
 }
