@@ -1,19 +1,17 @@
-package otel
+package statsd
 
 import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
-
-	"github.com/DataDog/datadog-go/v5/statsd"
 )
 
 type meter struct {
 	embedded.Meter
 	res    *resource.Resource
 	scope  instrumentation.Scope
-	client *statsd.Client
+	client *Client
 
 	cacheInts   cacheWithErr[string, *int64Inst]
 	cacheFloats cacheWithErr[string, *float64Inst]
@@ -22,7 +20,7 @@ type meter struct {
 
 var _ otelmetric.Meter = (*meter)(nil)
 
-func newMeter(s instrumentation.Scope, res *resource.Resource, client *statsd.Client, errHandler func(error)) *meter {
+func newMeter(s instrumentation.Scope, res *resource.Resource, client *Client, errHandler func(error)) *meter {
 	return &meter{
 		scope:      s,
 		res:        res,

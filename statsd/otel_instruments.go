@@ -1,7 +1,8 @@
-package otel
+package statsd
 
 import (
 	"context"
+	"sync/atomic"
 
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
@@ -62,7 +63,11 @@ func (i *float64Inst) Add(_ context.Context, incr float64, options ...otelmetric
 	if i.isGauge {
 		err = i.meter.client.Gauge(i.name, incr, tags, 1)
 	} else {
-		err = i.meter.client.Count(i.name, int64(incr), tags, 1)
+		atomic.AddUint64(&i.meter.client.telemetry.totalMetricsCount, 1)
+		// TODO: Possible to maybe send this as a float instead of casting?
+		err = i.meter.client.send(metric{metricType: count, name: i.name, fvalue: incr, tags: tags, rate: 1, globalTags: i.meter.client.tags, namespace: i.meter.client.namespace})
+		// If not, we use this.
+		//err = i.meter.client.Count(i.name, int64(incr), tags, 1)
 	}
 	if err != nil {
 		i.meter.errHandler(err)

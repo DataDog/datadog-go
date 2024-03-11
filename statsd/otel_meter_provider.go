@@ -1,7 +1,6 @@
-package otel
+package statsd
 
 import (
-	"fmt"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -11,14 +10,12 @@ import (
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
-
-	"github.com/DataDog/datadog-go/v5/statsd"
 )
 
 type MeterProvider struct {
 	embedded.MeterProvider
 
-	client *statsd.Client
+	client *Client
 	logger *slog.Logger
 	res    *resource.Resource
 
@@ -35,13 +32,13 @@ func NewMeterProvider(options ...OTELOption) (*MeterProvider, error) {
 	cfg := newConfig(options...)
 
 	if cfg.client == nil {
-		return nil, fmt.Errorf("required statsd client missing in config")
+		return nil, ErrNoClient
 	}
 
 	mp := &MeterProvider{
 		client:     cfg.client,
 		logger:     cfg.logger,
-		errHandler: cfg.errHandler,
+		errHandler: cfg.client.errorHandler,
 		errChan:    make(chan error, 10),
 	}
 

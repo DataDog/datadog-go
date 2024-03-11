@@ -1,18 +1,15 @@
-package otel
+package statsd
 
 import (
 	"log/slog"
 
 	"go.opentelemetry.io/otel/sdk/resource"
-
-	"github.com/DataDog/datadog-go/v5/statsd"
 )
 
 type Config struct {
-	client     *statsd.Client
-	logger     *slog.Logger
-	res        *resource.Resource
-	errHandler func(error)
+	client *Client
+	logger *slog.Logger
+	res    *resource.Resource
 }
 
 // OTELOption applies a configuration option to the MeterProvider.
@@ -28,7 +25,7 @@ func newConfig(options ...OTELOption) Config {
 	return cfg
 }
 
-func WithClient(client *statsd.Client) OTELOption {
+func WithClient(client *Client) OTELOption {
 	return func(cfg Config) Config {
 		cfg.client = client
 		return cfg
@@ -45,13 +42,6 @@ func WithLogger(logger *slog.Logger) OTELOption {
 func WithResource(res *resource.Resource) OTELOption {
 	return func(cfg Config) Config {
 		cfg.res = res
-		return cfg
-	}
-}
-
-func WithErrorHandler(f func(error)) OTELOption {
-	return func(cfg Config) Config {
-		cfg.errHandler = f
 		return cfg
 	}
 }
