@@ -54,9 +54,6 @@ func newMeter(s instrumentation.Scope, cfg Config, errHandler func(error)) *mete
 
 func (m *meter) Int64Counter(name string, options ...otelmetric.Int64CounterOption) (otelmetric.Int64Counter, error) {
 	cfg := otelmetric.NewInt64CounterConfig(options...)
-	if err := validateInstrumentName(name); err != nil {
-		return nil, err
-	}
 	id := instID{
 		Name:        name,
 		Description: cfg.Description(),
@@ -67,15 +64,12 @@ func (m *meter) Int64Counter(name string, options ...otelmetric.Int64CounterOpti
 		return &int64Inst{
 			instID: id,
 			meter:  m,
-		}, nil
+		}, validateInstrumentName(name)
 	})
 }
 
 func (m *meter) Int64UpDownCounter(name string, options ...otelmetric.Int64UpDownCounterOption) (otelmetric.Int64UpDownCounter, error) {
 	cfg := otelmetric.NewInt64UpDownCounterConfig(options...)
-	if err := validateInstrumentName(name); err != nil {
-		return nil, err
-	}
 	id := instID{
 		Name:        name,
 		Description: cfg.Description(),
@@ -86,15 +80,12 @@ func (m *meter) Int64UpDownCounter(name string, options ...otelmetric.Int64UpDow
 		return &int64Inst{
 			instID: id,
 			meter:  m,
-		}, nil
+		}, validateInstrumentName(name)
 	})
 }
 
 func (m *meter) Int64Histogram(name string, options ...otelmetric.Int64HistogramOption) (otelmetric.Int64Histogram, error) {
 	cfg := otelmetric.NewInt64HistogramConfig(options...)
-	if err := validateInstrumentName(name); err != nil {
-		return nil, err
-	}
 	id := instID{
 		Name:        name,
 		Description: cfg.Description(),
@@ -105,7 +96,7 @@ func (m *meter) Int64Histogram(name string, options ...otelmetric.Int64Histogram
 		return &int64Inst{
 			instID: id,
 			meter:  m,
-		}, nil
+		}, validateInstrumentName(name)
 	})
 }
 
@@ -126,51 +117,50 @@ var (
 	errPrecisionLoss = errors.New("warning: float counters are converted to int and will lose precision")
 )
 
+func checkPrecisionLoss(errHandler ErrorHandler, unit string) {
+	if unit != "ms" && unit != "s" {
+		errHandler(errPrecisionLoss)
+	}
+}
+
 func (m *meter) Float64Counter(name string, options ...otelmetric.Float64CounterOption) (otelmetric.Float64Counter, error) {
 	cfg := otelmetric.NewFloat64CounterConfig(options...)
-	m.errHandler(errPrecisionLoss)
-	if err := validateInstrumentName(name); err != nil {
-		return nil, err
-	}
+	unit := cfg.Unit()
+	checkPrecisionLoss(m.errHandler, unit)
 	id := instID{
 		Name:        name,
 		Description: cfg.Description(),
-		Unit:        cfg.Unit(),
+		Unit:        unit,
 		Kind:        sdkmetric.InstrumentKindCounter,
 	}
 	return m.cacheFloats.Lookup(id, func() (*float64Inst, error) {
 		return &float64Inst{
 			instID: id,
 			meter:  m,
-		}, nil
+		}, validateInstrumentName(name)
 	})
 }
 
 func (m *meter) Float64UpDownCounter(name string, options ...otelmetric.Float64UpDownCounterOption) (otelmetric.Float64UpDownCounter, error) {
 	cfg := otelmetric.NewFloat64UpDownCounterConfig(options...)
-	m.errHandler(errPrecisionLoss)
-	if err := validateInstrumentName(name); err != nil {
-		return nil, err
-	}
+	unit := cfg.Unit()
+	checkPrecisionLoss(m.errHandler, unit)
 	id := instID{
 		Name:        name,
 		Description: cfg.Description(),
-		Unit:        cfg.Unit(),
+		Unit:        unit,
 		Kind:        sdkmetric.InstrumentKindUpDownCounter,
 	}
 	return m.cacheFloats.Lookup(id, func() (*float64Inst, error) {
 		return &float64Inst{
 			instID: id,
 			meter:  m,
-		}, nil
+		}, validateInstrumentName(name)
 	})
 }
 
 func (m *meter) Float64Histogram(name string, options ...otelmetric.Float64HistogramOption) (otelmetric.Float64Histogram, error) {
 	cfg := otelmetric.NewFloat64HistogramConfig(options...)
-	if err := validateInstrumentName(name); err != nil {
-		return nil, err
-	}
 	id := instID{
 		Name:        name,
 		Description: cfg.Description(),
@@ -181,7 +171,7 @@ func (m *meter) Float64Histogram(name string, options ...otelmetric.Float64Histo
 		return &float64Inst{
 			instID: id,
 			meter:  m,
-		}, nil
+		}, validateInstrumentName(name)
 	})
 }
 
@@ -236,11 +226,12 @@ func (m *meter) Int64ObservableGauge(name string, options ...otelmetric.Int64Obs
 
 func (m *meter) Float64ObservableCounter(name string, options ...otelmetric.Float64ObservableCounterOption) (otelmetric.Float64ObservableCounter, error) {
 	cfg := otelmetric.NewFloat64ObservableCounterConfig(options...)
-	m.errHandler(errPrecisionLoss)
+	unit := cfg.Unit()
+	checkPrecisionLoss(m.errHandler, unit)
 	id := sdkmetric.Instrument{
 		Name:        name,
 		Description: cfg.Description(),
-		Unit:        cfg.Unit(),
+		Unit:        unit,
 		Kind:        sdkmetric.InstrumentKindObservableCounter,
 		Scope:       m.scope,
 	}
@@ -249,11 +240,12 @@ func (m *meter) Float64ObservableCounter(name string, options ...otelmetric.Floa
 
 func (m *meter) Float64ObservableUpDownCounter(name string, options ...otelmetric.Float64ObservableUpDownCounterOption) (otelmetric.Float64ObservableUpDownCounter, error) {
 	cfg := otelmetric.NewFloat64ObservableUpDownCounterConfig(options...)
-	m.errHandler(errPrecisionLoss)
+	unit := cfg.Unit()
+	checkPrecisionLoss(m.errHandler, unit)
 	id := sdkmetric.Instrument{
 		Name:        name,
 		Description: cfg.Description(),
-		Unit:        cfg.Unit(),
+		Unit:        unit,
 		Kind:        sdkmetric.InstrumentKindObservableUpDownCounter,
 		Scope:       m.scope,
 	}
