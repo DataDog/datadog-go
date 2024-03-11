@@ -9,18 +9,16 @@ import (
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
-	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 type MeterProvider struct {
 	embedded.MeterProvider
 
-	client *Client
-	logger *slog.Logger
-	res    *resource.Resource
+	errorHandler ErrorHandler
+	logger       *slog.Logger
 
-	errChan    chan error
-	errHandler func(error)
+	errChan chan error
+	cfg     Config
 
 	stopped atomic.Bool
 	meters  cache[instrumentation.Scope, *meter]
@@ -36,10 +34,10 @@ func NewMeterProvider(options ...OTELOption) (*MeterProvider, error) {
 	}
 
 	mp := &MeterProvider{
-		client:     cfg.client,
-		logger:     cfg.logger,
-		errHandler: cfg.client.errorHandler,
-		errChan:    make(chan error, 10),
+		errorHandler: cfg.client.errorHandler,
+		logger:       cfg.logger,
+		cfg:          cfg,
+		errChan:      make(chan error, 10),
 	}
 
 	go mp.processErrors()
@@ -65,7 +63,7 @@ func (mp *MeterProvider) Meter(name string, opts ...otelmetric.MeterOption) otel
 	}
 
 	return mp.meters.Lookup(s, func() *meter {
-		return newMeter(s, mp.res, mp.client, mp.handleError)
+		return newMeter(s, mp.cfg, mp.handleError)
 	})
 }
 
@@ -85,7 +83,7 @@ func (mp *MeterProvider) processErrors() {
 		select {
 		case <-time.After(time.Second):
 		case err := <-mp.errChan:
-			mp.errHandler(err)
+			mp.errorHandler(err)
 		}
 	}
 }
