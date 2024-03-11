@@ -3,7 +3,6 @@ package statsd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	otelmetric "go.opentelemetry.io/otel/metric"
@@ -270,8 +269,6 @@ func (m *meter) RegisterCallback(f otelmetric.Callback, instruments ...otelmetri
 }
 
 func (m *meter) collect() []metric {
-	fmt.Println("collected", m.scope)
-
 	ctx, cancel := context.WithTimeout(context.Background(), m.cfg.observerCollectionTimeout)
 	defer cancel()
 
@@ -281,5 +278,6 @@ func (m *meter) collect() []metric {
 		}
 	}
 
+	// Currently opting to send to the workers inside the callbacks
 	return nil
 }
