@@ -45,6 +45,26 @@ func TestParseContainerID(t *testing.T) {
 	}
 }
 
+func TestMyTest(t *testing.T) {
+	for input, expectedResult := range map[string]string{
+		`11:pids:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+10:freezer:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+9:devices:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+8:cpuset:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+7:cpu,cpuacct:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+6:net_cls,net_prio:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+5:perf_event:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+4:blkio:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+3:memory:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+2:hugetlb:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+1:name=systemd:/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope
+0::/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod405d93ce_718c_4640_9ef8_54e40fbed4ca.slice/cri-containerd-656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07.scope`: `656c256a0e1c184e2337ea1199864c99c1c7d004979788878b41929b386f9f07`,
+	} {
+		id := parseContainerID(strings.NewReader(input))
+		assert.Equal(t, expectedResult, id)
+	}
+}
+
 func TestReadContainerID(t *testing.T) {
 	cid := "8c046cb0b72cd4c99f51b5591cd5b095967f58ee003710a45280c28ee1a9c7fa"
 	cgroupContents := "10:hugetlb:/kubepods/burstable/podfd52ef25-a87d-11e9-9423-0800271a638e/" + cid

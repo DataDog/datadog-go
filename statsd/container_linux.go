@@ -200,11 +200,14 @@ func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroup
 	if cgroupFallback {
 		if isHostCgroupNs {
 			containerID = readContainerID(cgroupPath)
+			fmt.Println("read container id from cgroupPath " + containerID)
 			return
 		}
 		containerID = readMountinfo(selfMountInfoPath)
+		fmt.Println("read container id from mountinfo " + containerID)
 		if containerID == "" {
 			containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
+			fmt.Println("read container id from getCgroupInode " + containerID)
 		}
 	}
 }
