@@ -124,6 +124,8 @@ func isHostCgroupNamespace() bool {
 
 	inode := fi.Sys().(*syscall.Stat_t).Ino
 
+	fmt.Printf("inode: %d, hostCgroup %d\n", inode, hostCgroupNamespaceInode)
+
 	return inode == hostCgroupNamespaceInode
 }
 
@@ -151,17 +153,22 @@ func getCgroupInode(cgroupMountPath, procSelfCgroupPath string) string {
 	// Parse /proc/self/cgroup to retrieve the paths to the memory controller (cgroupv1) and the cgroup node (cgroupv2)
 	f, err := os.Open(procSelfCgroupPath)
 	if err != nil {
+		fmt.Printf("error opening cgroup file: %s\n", err)
 		return ""
 	}
 	defer f.Close()
 	cgroupControllersPaths := parseCgroupNodePath(f)
+	fmt.Printf("cgroupControllersPaths: %v\n", cgroupControllersPaths)
 	// Retrieve the cgroup inode from /sys/fs/cgroup+controller+cgroupNodePath
 	for _, controller := range []string{cgroupV1BaseController, ""} {
 		cgroupNodePath, ok := cgroupControllersPaths[controller]
 		if !ok {
 			continue
 		}
+		p := path.Join(cgroupMountPath, controller, cgroupNodePath)
+		fmt.Printf("path: %s\n", p)
 		inode := inodeForPath(path.Join(cgroupMountPath, controller, cgroupNodePath))
+		fmt.Printf("inode: %s\n", inode)
 		if inode != "" {
 			return inode
 		}
