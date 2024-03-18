@@ -204,7 +204,13 @@ func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroup
 		}
 
 		containerID = readMountinfo(selfMountInfoPath)
-		if containerID != "" || isHostCgroupNs {
+		if containerID != "" {
+			return
+		}
+
+		// If we're in the host cgroup namespace, the cid should be retrievable in /proc/self/cgroup
+		// In private cgroup namespace, we can retrieve the cgroup controller inode.
+		if containerID == "" && isHostCgroupNs {
 			return
 		}
 
