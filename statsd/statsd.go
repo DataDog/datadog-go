@@ -886,6 +886,27 @@ func (c *Client) Close() error {
 	return c.sender.close()
 }
 
+func (c *Client) collectMeter(interval time.Duration, f func() []metric) {
+	go func() {
+		for {
+			if c.isClosed {
+				return
+			}
+
+			ticker := time.NewTicker(interval)
+			select {
+			case <-ticker.C:
+				metrics := f()
+				for _, m := range metrics {
+					if err := c.send(m); err != nil {
+						c.errorHandler(err)
+					}
+				}
+			}
+		}
+	}()
+}
+
 // isOriginDetectionEnabled returns whether the clients should fill the container field.
 //
 // If DD_ENTITY_ID is set, we don't send the container ID
