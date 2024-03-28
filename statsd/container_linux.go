@@ -35,9 +35,9 @@ const (
 
 	// ContainerRegexpStr defines the regexp used to match container IDs
 	// ([0-9a-f]{64}) is standard container id used pretty much everywhere
-	// ([0-9a-f]{32}-[0-9]{10}) is container id used by AWS ECS
+	// ([0-9a-f]{32}-\d+) is container id used by AWS ECS
 	// ([0-9a-f]{8}(-[0-9a-f]{4}){4}$) is container id used by Garden
-	containerRegexpStr = "([0-9a-f]{64})|([0-9a-f]{32}-[0-9]{10})|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
+	containerRegexpStr = "([0-9a-f]{64})|([0-9a-f]{32}-\\d+)|([0-9a-f]{8}(-[0-9a-f]{4}){4}$)"
 	// cIDRegexpStr defines the regexp used to match container IDs in /proc/self/mountinfo
 	cIDRegexpStr = `.*/([^\s/]+)/(` + containerRegexpStr + `)/[\S]*hostname`
 
