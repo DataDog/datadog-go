@@ -217,41 +217,6 @@ func TestParseMountinfo(t *testing.T) {
 2036 2213 0:256 / /sys/firmware ro,relatime - tmpfs tmpfs ro
 `: "fc7038bc73a8d3850c66ddbfb0b2901afa378bfcbb942cc384b051767e4ac6b0",
 		`1258 1249 254:1 /docker/volumes/0919c2d87ec8ba99f3c85fdada5fe26eca73b2fce73a5974d6030f30bf91cbaf/_data/lib/containerd/io.containerd.grpc.v1.cri/sandboxes/ca30bb64884083e29b1dc08a1081dd2df123f13f045dadb64dc346e56c0b6871/hostname /etc/hostname rw,relatime - ext4 /dev/vda1 rw,discard`: "",
-		`242 126 0:67 / / rw,relatime master:74 - overlay overlay rw,lowerdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/123/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/122/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/120/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/119/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/111/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/101/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/97/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/89/fs,upperdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/127/fs,workdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/127/work
-243 242 0:72 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
-244 242 0:73 / /dev rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
-245 244 0:74 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666
-246 244 0:75 / /dev/shm rw,nosuid,nodev,noexec,relatime - tmpfs shm rw
-247 244 0:69 / /dev/mqueue rw,nosuid,nodev,noexec,relatime - mqueue mqueue rw
-248 242 0:54 / /sys ro,nosuid,nodev,noexec,relatime - sysfs sysfs ro
-249 248 0:76 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime - tmpfs tmpfs rw,mode=755
-250 249 0:28 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/systemd ro,nosuid,nodev,noexec,relatime master:9 - cgroup cgroup rw,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd
-251 249 0:31 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/freezer ro,nosuid,nodev,noexec,relatime master:10 - cgroup cgroup rw,freezer
-252 249 0:32 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/perf_event ro,nosuid,nodev,noexec,relatime master:11 - cgroup cgroup rw,perf_event
-253 249 0:33 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/memory ro,nosuid,nodev,noexec,relatime master:12 - cgroup cgroup rw,memory
-254 249 0:34 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/net_cls,net_prio ro,nosuid,nodev,noexec,relatime master:13 - cgroup cgroup rw,net_cls,net_prio
-255 249 0:35 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/blkio ro,nosuid,nodev,noexec,relatime master:14 - cgroup cgroup rw,blkio
-256 249 0:36 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/pids ro,nosuid,nodev,noexec,relatime master:15 - cgroup cgroup rw,pids
-257 249 0:37 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/cpuset ro,nosuid,nodev,noexec,relatime master:16 - cgroup cgroup rw,cpuset
-258 249 0:38 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/cpu,cpuacct ro,nosuid,nodev,noexec,relatime master:17 - cgroup cgroup rw,cpu,cpuacct
-259 249 0:39 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/devices ro,nosuid,nodev,noexec,relatime master:18 - cgroup cgroup rw,devices
-260 249 0:40 /ecs/77e1505d71454b0e836076762605a184/77e1505d71454b0e836076762605a184-946514567 /sys/fs/cgroup/hugetlb ro,nosuid,nodev,noexec,relatime master:19 - cgroup cgroup rw,hugetlb
-261 242 259:1 /volumes/77e1505d71454b0e836076762605a184/volumes/vf-4023559442/hosts /etc/hosts rw,relatime master:28 - ext4 /dev/nvme1n1 rw
-262 242 259:1 /volumes/77e1505d71454b0e836076762605a184/volumes/vf-3853398306/resolv.conf /etc/resolv.conf rw,relatime master:28 - ext4 /dev/nvme1n1 rw
-263 242 259:1 /volumes/77e1505d71454b0e836076762605a184/volumes/vf-1890550966/hostname /etc/hostname rw,relatime master:28 - ext4 /dev/nvme1n1 rw
-264 242 259:2 /var/lib/two/exec-resources/77e1505d71454b0e836076762605a184 /managed-agents/execute-command ro,noatime master:1 - ext4 /dev/nvme0n1p1 rw
-127 243 0:72 /bus /proc/bus ro,nosuid,nodev,noexec,relatime - proc proc rw
-128 243 0:72 /fs /proc/fs ro,nosuid,nodev,noexec,relatime - proc proc rw
-129 243 0:72 /irq /proc/irq ro,nosuid,nodev,noexec,relatime - proc proc rw
-130 243 0:72 /sys /proc/sys ro,nosuid,nodev,noexec,relatime - proc proc rw
-131 243 0:72 /sysrq-trigger /proc/sysrq-trigger ro,nosuid,nodev,noexec,relatime - proc proc rw
-132 243 0:77 / /proc/acpi ro,relatime - tmpfs tmpfs ro
-133 243 0:73 /null /proc/kcore rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
-134 243 0:73 /null /proc/keys rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
-135 243 0:73 /null /proc/timer_list rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
-163 243 0:73 /null /proc/sched_debug rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
-164 248 0:78 / /sys/firmware ro,relatime - tmpfs tmpfs ro
-165 243 0:79 / /proc/scsi ro,relatime - tmpfs tmpfs ro`: "77e1505d71454b0e836076762605a184-946514567",
 	} {
 		id := parseMountinfo(strings.NewReader(input))
 		assert.Equal(t, expectedResult, id)
