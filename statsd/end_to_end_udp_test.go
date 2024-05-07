@@ -110,7 +110,10 @@ func TestContainerIDWithEntityID(t *testing.T) {
 	resetContainerID()
 
 	entityIDEnvName := "DD_ENTITY_ID"
-	defer func() { os.Unsetenv(entityIDEnvName) }()
+	defer func() {
+		os.Unsetenv(entityIDEnvName)
+		resetContainerID()
+	}()
 	os.Setenv(entityIDEnvName, "pod-uid")
 
 	expectedTags := []string{"dd.internal.entity_id:pod-uid"}
@@ -123,13 +126,17 @@ func TestContainerIDWithEntityID(t *testing.T) {
 
 	sort.Strings(client.tags)
 	assert.Equal(t, expectedTags, client.tags)
-	ts.assertContainerID(t, "")
+	ts.assertContainerID(t, "fake-container-id")
 	ts.sendAllAndAssert(t, client)
 }
 
 func TestContainerIDWithoutEntityID(t *testing.T) {
 	resetContainerID()
 	os.Unsetenv("DD_ENTITY_ID")
+
+	defer func() {
+		resetContainerID()
+	}()
 
 	ts, client := newClientAndTestServer(t,
 		"udp",
@@ -164,7 +171,10 @@ func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
 	resetContainerID()
 
 	entityIDEnvName := "DD_ENTITY_ID"
-	defer func() { os.Unsetenv(entityIDEnvName) }()
+	defer func() {
+		os.Unsetenv(entityIDEnvName)
+		resetContainerID()
+	}()
 	os.Setenv(entityIDEnvName, "pod-uid")
 
 	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
@@ -181,7 +191,7 @@ func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
 
 	sort.Strings(client.tags)
 	assert.Equal(t, expectedTags, client.tags)
-	ts.assertContainerID(t, "")
+	ts.assertContainerID(t, "fake-container-id")
 	ts.sendAllAndAssert(t, client)
 }
 

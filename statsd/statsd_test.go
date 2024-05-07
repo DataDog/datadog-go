@@ -311,49 +311,36 @@ func Test_isOriginDetectionEnabled(t *testing.T) {
 	tests := []struct {
 		name              string
 		o                 *Options
-		hasEntityID       bool
 		configEnvVarValue string
 		want              bool
 	}{
 		{
 			name:              "nominal case",
 			o:                 &Options{originDetection: defaultOriginDetection},
-			hasEntityID:       false,
 			configEnvVarValue: "",
 			want:              true,
 		},
 		{
-			name:              "has entity ID",
-			o:                 &Options{originDetection: defaultOriginDetection},
-			hasEntityID:       true,
-			configEnvVarValue: "",
-			want:              false,
-		},
-		{
 			name:              "has user-provided container ID",
 			o:                 &Options{containerID: "user-provided"},
-			hasEntityID:       true,
 			configEnvVarValue: "",
 			want:              false,
 		},
 		{
 			name:              "originDetection option disabled",
 			o:                 &Options{originDetection: false},
-			hasEntityID:       false,
 			configEnvVarValue: "",
 			want:              false,
 		},
 		{
 			name:              "DD_ORIGIN_DETECTION_ENABLED=false",
 			o:                 &Options{originDetection: defaultOriginDetection},
-			hasEntityID:       false,
 			configEnvVarValue: "false",
 			want:              false,
 		},
 		{
 			name:              "invalid DD_ORIGIN_DETECTION_ENABLED value",
 			o:                 &Options{originDetection: defaultOriginDetection},
-			hasEntityID:       false,
 			configEnvVarValue: "invalid",
 			want:              true,
 		},
@@ -363,7 +350,7 @@ func Test_isOriginDetectionEnabled(t *testing.T) {
 			os.Setenv("DD_ORIGIN_DETECTION_ENABLED", tt.configEnvVarValue)
 			defer os.Unsetenv("DD_ORIGIN_DETECTION_ENABLED")
 
-			assert.Equal(t, tt.want, isOriginDetectionEnabled(tt.o, tt.hasEntityID))
+			assert.Equal(t, tt.want, isOriginDetectionEnabled(tt.o))
 		})
 	}
 }
