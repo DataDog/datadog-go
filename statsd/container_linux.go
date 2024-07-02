@@ -70,7 +70,7 @@ func parseContainerID(r io.Reader) string {
 			continue
 		}
 		if parts := expContainerID.FindStringSubmatch(path[1]); len(parts) == 2 {
-			return parts[1]
+			return fmt.Sprintf("ci-%d", parts[1])
 		}
 	}
 	return ""
@@ -84,36 +84,6 @@ func readContainerID(fpath string) string {
 	}
 	defer f.Close()
 	return parseContainerID(f)
-}
-
-// Parsing /proc/self/mountinfo is not always reliable in Kubernetes+containerd (at least)
-// We're still trying to use it as it may help in some cgroupv2 configurations (Docker, ECS, raw containerd)
-func parseMountinfo(r io.Reader) string {
-	scn := bufio.NewScanner(r)
-	for scn.Scan() {
-		line := scn.Text()
-		allMatches := cIDMountInfoRegexp.FindAllStringSubmatch(line, -1)
-		if len(allMatches) == 0 {
-			continue
-		}
-
-		// We're interest in rightmost match
-		matches := allMatches[len(allMatches)-1]
-		if len(matches) > 0 && matches[1] != containerdSandboxPrefix {
-			return matches[2]
-		}
-	}
-
-	return ""
-}
-
-func readMountinfo(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	return parseMountinfo(f)
 }
 
 func isHostCgroupNamespace() bool {
@@ -199,11 +169,6 @@ func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroup
 
 	if cgroupFallback {
 		containerID = readContainerID(cgroupPath)
-		if containerID != "" {
-			return
-		}
-
-		containerID = readMountinfo(selfMountInfoPath)
 		if containerID != "" {
 			return
 		}
