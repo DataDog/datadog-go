@@ -400,3 +400,90 @@ func TestGetCgroupInode(t *testing.T) {
 		})
 	}
 }
+
+func TestReadCIDOrInode(t *testing.T) {
+	tests := []struct {
+		description           string
+		procSelfCgroupContent string
+		mountInfoContent      string
+		isHostCgroupNs        bool
+		expectedResult        string
+		cgroupNodeDir         string
+	}{
+		{
+			description:           "extract container-id from /proc/self/cgroup",
+			procSelfCgroupContent: "4:blkio:/kubepods/burstable/podfd52ef25-a87d-11e9-9423-0800271a638e/8c046cb0b72cd4c99f51b5591cd5b095967f58ee003710a45280c28ee1a9c7fa\n",
+			isHostCgroupNs:        true,
+			expectedResult:        "8c046cb0b72cd4c99f51b5591cd5b095967f58ee003710a45280c28ee1a9c7fa", // Will be formatted with inode number
+		},
+		{
+			description:           "extract container-id from /proc/self/cgroup in private cgroup ns",
+			procSelfCgroupContent: "4:blkio:/kubepods/burstable/podfd52ef25-a87d-11e9-9423-0800271a638e/8c046cb0b72cd4c99f51b5591cd5b095967f58ee003710a45280c28ee1a9c7fa\n",
+			expectedResult:        "8c046cb0b72cd4c99f51b5591cd5b095967f58ee003710a45280c28ee1a9c7fa", // Will be formatted with inode number
+		},
+		{
+			description:      "extract container-id from mountinfo in private cgroup ns",
+			mountInfoContent: "2282 2269 8:1 /var/lib/containerd/io.containerd.grpc.v1.cri/sandboxes/c0a82a3506b0366c9666f6dbe71c783abeb26ba65e312e918a49e10a277196d0/hostname /host/var/run/containerd/io.containerd.runtime.v2.task/k8s.io/fc7038bc73a8d3850c66ddbfb0b2901afa378bfcbb942cc384b051767e4ac6b0/rootfs/etc/hostname rw,nosuid,nodev,relatime - ext4 /dev/sda1 rw,commit=30\n",
+			expectedResult:   "fc7038bc73a8d3850c66ddbfb0b2901afa378bfcbb942cc384b051767e4ac6b0",
+		},
+		{
+			description:      "extract container-id from mountinfo",
+			mountInfoContent: "2282 2269 8:1 /var/lib/containerd/io.containerd.grpc.v1.cri/sandboxes/c0a82a3506b0366c9666f6dbe71c783abeb26ba65e312e918a49e10a277196d0/hostname /host/var/run/containerd/io.containerd.runtime.v2.task/k8s.io/fc7038bc73a8d3850c66ddbfb0b2901afa378bfcbb942cc384b051767e4ac6b0/rootfs/etc/hostname rw,nosuid,nodev,relatime - ext4 /dev/sda1 rw,commit=30\n",
+			expectedResult:   "fc7038bc73a8d3850c66ddbfb0b2901afa378bfcbb942cc384b051767e4ac6b0",
+			isHostCgroupNs:   true,
+		},
+		{
+			description:           "extract inode only in private cgroup ns",
+			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: "0::/system.slice/docker-abcdef0123456789abcdef0123456789.scope\n",
+			expectedResult:        "in-%d",
+		},
+		{
+			description:           "do not extract inode in host cgroup ns",
+			cgroupNodeDir:         "system.slice/docker-abcdef0123456789abcdef0123456789.scope",
+			procSelfCgroupContent: "0::/system.slice/docker-abcdef0123456789abcdef0123456789.scope\n",
+			isHostCgroupNs:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			prevContainerID := containerID
+			defer func() {
+				containerID = prevContainerID
+			}()
+
+			sysFsCgroupPath := path.Join(os.TempDir(), "sysfscgroup")
+			groupControllerPath := path.Join(sysFsCgroupPath, tc.cgroupNodeDir)
+			err := os.MkdirAll(groupControllerPath, 0755)
+			require.NoError(t, err)
+			defer os.RemoveAll(groupControllerPath)
+
+			stat, err := os.Stat(groupControllerPath)
+			require.NoError(t, err)
+			expectedResult := tc.expectedResult
+			if strings.HasPrefix(tc.expectedResult, "in-") {
+				expectedResult = fmt.Sprintf(tc.expectedResult, stat.Sys().(*syscall.Stat_t).Ino)
+			}
+
+			procSelfCgroup, err := ioutil.TempFile("", "procselfcgroup")
+			require.NoError(t, err)
+			defer os.Remove(procSelfCgroup.Name())
+			_, err = procSelfCgroup.WriteString(tc.procSelfCgroupContent)
+			require.NoError(t, err)
+			err = procSelfCgroup.Close()
+			require.NoError(t, err)
+
+			mountInfo, err := ioutil.TempFile("", "mountInfo")
+			require.NoError(t, err)
+			defer os.Remove(mountInfo.Name())
+			_, err = mountInfo.WriteString(tc.mountInfoContent)
+			require.NoError(t, err)
+			err = mountInfo.Close()
+			require.NoError(t, err)
+
+			readCIDOrInode("", procSelfCgroup.Name(), mountInfo.Name(), sysFsCgroupPath, true, tc.isHostCgroupNs)
+			require.Equal(t, expectedResult, containerID)
+		})
+	}
+}
