@@ -12,6 +12,7 @@ type int64Inst struct {
 	embedded.Int64Counter
 	embedded.Int64UpDownCounter
 	embedded.Int64Histogram
+	embedded.Int64Gauge
 
 	name    string
 	meter   *meter
@@ -19,6 +20,11 @@ type int64Inst struct {
 	desc    string
 	isGauge bool
 }
+
+var _ otelmetric.Int64Counter = (*int64Inst)(nil)
+var _ otelmetric.Int64UpDownCounter = (*int64Inst)(nil)
+var _ otelmetric.Int64Histogram = (*int64Inst)(nil)
+var _ otelmetric.Int64Gauge = (*int64Inst)(nil)
 
 func (i *int64Inst) Add(_ context.Context, incr int64, options ...otelmetric.AddOption) {
 	c := otelmetric.NewAddConfig(options)
@@ -47,6 +53,7 @@ type float64Inst struct {
 	embedded.Float64Counter
 	embedded.Float64UpDownCounter
 	embedded.Float64Histogram
+	embedded.Float64Gauge
 
 	name    string
 	meter   *meter
@@ -54,6 +61,11 @@ type float64Inst struct {
 	desc    string
 	isGauge bool
 }
+
+var _ otelmetric.Float64Counter = (*float64Inst)(nil)
+var _ otelmetric.Float64UpDownCounter = (*float64Inst)(nil)
+var _ otelmetric.Float64Histogram = (*float64Inst)(nil)
+var _ otelmetric.Float64Gauge = (*float64Inst)(nil)
 
 func (i *float64Inst) Add(_ context.Context, incr float64, options ...otelmetric.AddOption) {
 	c := otelmetric.NewAddConfig(options)
