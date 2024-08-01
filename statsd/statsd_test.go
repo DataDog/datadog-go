@@ -206,6 +206,25 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	assert.Len(t, cloneClient.options, 3)
 }
 
+func TestCloneWithExtraOptionsAddressFromEnvironment(t *testing.T) {
+	hostInitialValue, hostInitiallySet := os.LookupEnv(agentHostEnvVarName)
+	if hostInitiallySet {
+		defer os.Setenv(agentHostEnvVarName, hostInitialValue)
+	} else {
+		defer os.Unsetenv(agentHostEnvVarName)
+	}
+
+	_ = os.Setenv(agentHostEnvVarName, "localhost:1201")
+	client, err := New("", WithTags([]string{"tag1", "tag2"}))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"tag1", "tag2"}, client.tags)
+
+	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"tag1", "tag2"}, cloneClient.tags)
+	assert.Equal(t, "test.", cloneClient.namespace)
+}
+
 func TestResolveAddressFromEnvironment(t *testing.T) {
 	hostInitialValue, hostInitiallySet := os.LookupEnv(agentHostEnvVarName)
 	if hostInitiallySet {
