@@ -2,8 +2,12 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.6.0 / xxxx-xx-xx
+# 5.7.0 / xxxx-xx-xx
 
+# 5.6.0 / 2024-12-10
+- [IMPROVEMENT] Make sure we retrieve the cgroup inode when the cid is not found. See [#302][].
+- [BUGFIX] Fix `cgroup` parsing in ECS Fargate. See [#305][].
+- [BUGFIX] Fix cloning clients that use `DD_AGENT_HOST`. See [#314][].
 
 # 5.5.0 / 2024-01-23
 
@@ -430,6 +434,9 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#292]: https://github.com/DataDog/datadog-go/pull/292
 [#296]: https://github.com/DataDog/datadog-go/pull/296
 [#297]: https://github.com/DataDog/datadog-go/pull/297
+[#302]: https://github.com/DataDog/datadog-go/pull/302
+[#305]: https://github.com/DataDog/datadog-go/pull/305
+[#314]: https://github.com/DataDog/datadog-go/pull/314
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
