@@ -7,7 +7,7 @@
 
 `datadog-go` is a library that provides a [DogStatsD](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go) client in Golang.
 
-Go 1.12+ is officially supported. Older versions might work but are not tested.
+Go 1.13+ is officially supported. Older versions might work but are not tested.
 
 The following documentation is available:
 
@@ -250,6 +250,15 @@ func main() {
 Run the tests with:
 
     $ go test
+
+### Mocks 
+The most recent commands to regenerate the mocks are in the mock files, but as of writing they are: 
+
+```zsh
+go install go.uber.org/mock/mockgen@latest
+mockgen -source=statsd/statsd.go -destination=statsd/mocks/statsd.go              
+mockgen -source=statsd/statsd_direct.go -destination=statsd/mocks/statsd_direct.go       
+```
 
 ## License
 
