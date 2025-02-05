@@ -1,4 +1,6 @@
-# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
+---
+# We use github actions to test the code on windows and linux amd64.
+# Circleci is used for linux arm64.
 #
 version: 2.1
 
@@ -9,7 +11,7 @@ executors:
   linux_arm64:
     description: "arm64"
     machine:
-      image: ubuntu-2204:2023.07.2
+      image: ubuntu-2404:current
     resource_class: arm.medium
 
 commands:
@@ -72,4 +74,15 @@ workflows:
       - tests_arm64:
           matrix:
             parameters:
-              go-version: ["1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21.5"]
+              go-version:
+                - "1.13"
+                - "1.14"
+                - "1.15"
+                - "1.16"
+                - "1.17"
+                - "1.18"
+                - "1.19"
+                - "1.20.14"
+                - "1.21.13"
+                - "1.22.12"
+                - "1.23.6"
