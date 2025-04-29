@@ -1,17 +1,13 @@
 package statsd
 
 import (
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-)
 
-type (
-	countsMap         map[string]*countMetric
-	gaugesMap         map[string]*gaugeMetric
-	setsMap           map[string]*setMetric
-	bufferedMetricMap map[string]*bufferedMetric
+	"github.com/puzpuzpuz/xsync"
 )
 
 type aggregator struct {
@@ -23,9 +19,9 @@ type aggregator struct {
 	gaugesM sync.RWMutex
 	setsM   sync.RWMutex
 
-	gauges        gaugesMap
-	counts        countsMap
-	sets          setsMap
+	gauges        *xsync.MapOf[string, *gaugeMetric]
+	counts        *xsync.MapOf[string, *countMetric]
+	sets          *xsync.MapOf[string, *setMetric]
 	histograms    bufferedMetricContexts
 	distributions bufferedMetricContexts
 	timings       bufferedMetricContexts
@@ -46,9 +42,9 @@ type aggregator struct {
 func newAggregator(c *Client, maxSamplesPerContext int64) *aggregator {
 	return &aggregator{
 		client:          c,
-		counts:          countsMap{},
-		gauges:          gaugesMap{},
-		sets:            setsMap{},
+		counts:          xsync.NewMapOf[*countMetric](),
+		gauges:          xsync.NewMapOf[*gaugeMetric](),
+		sets:            xsync.NewMapOf[*setMetric](),
 		histograms:      newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
 		distributions:   newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
 		timings:         newBufferedContexts(newTimingMetric, maxSamplesPerContext),
@@ -130,45 +126,61 @@ func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 }
 
 func (a *aggregator) flushMetrics() []metric {
-	metrics := []metric{}
+	metrics := make([]metric, 0, a.sets.Size()+a.gauges.Size()+a.counts.Size())
 
-	// We reset the values to avoid sending 'zero' values for metrics not
-	// sampled during this flush interval
+	setContexts := 0
+	a.sets.Range(func(key string, v *setMetric) bool {
+		if v.data.Size() == 0 {
+			vv, loaded := a.sets.LoadAndDelete(key)
+			if !loaded || vv.data.Size() == 0 {
+				return true
+			}
 
-	a.setsM.Lock()
-	sets := a.sets
-	a.sets = setsMap{}
-	a.setsM.Unlock()
+			v = vv
+		}
 
-	for _, s := range sets {
-		metrics = append(metrics, s.flushUnsafe()...)
-	}
+		setContexts++
+		metrics = append(metrics, v.flushUnsafe()...)
+		return true
+	})
 
-	a.gaugesM.Lock()
-	gauges := a.gauges
-	a.gauges = gaugesMap{}
-	a.gaugesM.Unlock()
+	gaugeContexts := 0
+	a.gauges.Range(func(key string, v *gaugeMetric) bool {
+		if atomic.LoadUint64(&v.value) == math.MaxUint64 {
+			vv, ok := a.gauges.LoadAndDelete(key)
+			if !ok || vv.value == math.MaxUint64 {
+				return true
+			}
+			v = vv
+		}
 
-	for _, g := range gauges {
-		metrics = append(metrics, g.flushUnsafe())
-	}
+		gaugeContexts++
+		metrics = append(metrics, v.flushResetUnsafe())
+		return true
+	})
 
-	a.countsM.Lock()
-	counts := a.counts
-	a.counts = countsMap{}
-	a.countsM.Unlock()
+	counterContexts := 0
+	a.counts.Range(func(key string, v *countMetric) bool {
+		if atomic.LoadInt64(&v.value) == 0 {
+			vv, ok := a.counts.LoadAndDelete(key)
+			if !ok || vv.value == 0 {
+				return true
+			}
+			v = vv
+		}
 
-	for _, c := range counts {
-		metrics = append(metrics, c.flushUnsafe())
-	}
+		counterContexts++
+		metrics = append(metrics, v.flushResetUnsafe())
+		return true
+	})
 
 	metrics = a.histograms.flush(metrics)
 	metrics = a.distributions.flush(metrics)
 	metrics = a.timings.flush(metrics)
 
-	atomic.AddUint64(&a.nbContextCount, uint64(len(counts)))
-	atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
-	atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
+	atomic.AddUint64(&a.nbContextCount, uint64(counterContexts))
+	atomic.AddUint64(&a.nbContextGauge, uint64(gaugeContexts))
+	atomic.AddUint64(&a.nbContextSet, uint64(setContexts))
 	return metrics
 }
 
@@ -211,70 +223,55 @@ func getContextAndTags(name string, tags []string) (string, string) {
 
 func (a *aggregator) count(name string, value int64, tags []string) error {
 	context := getContext(name, tags)
-	a.countsM.RLock()
-	if count, found := a.counts[context]; found {
-		count.sample(value)
-		a.countsM.RUnlock()
-		return nil
-	}
-	a.countsM.RUnlock()
 
-	a.countsM.Lock()
-	// Check if another goroutines hasn't created the value betwen the RUnlock and 'Lock'
-	if count, found := a.counts[context]; found {
-		count.sample(value)
-		a.countsM.Unlock()
+	v, loaded := a.counts.Load(context)
+	if loaded {
+		v.sample(value)
 		return nil
 	}
 
-	a.counts[context] = newCountMetric(name, value, tags)
-	a.countsM.Unlock()
+	v, loaded = a.counts.LoadOrStore(context, newCountMetric(name, value, tags))
+
+	if loaded {
+		v.sample(value)
+	}
+
 	return nil
 }
 
 func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	context := getContext(name, tags)
-	a.gaugesM.RLock()
-	if gauge, found := a.gauges[context]; found {
-		gauge.sample(value)
-		a.gaugesM.RUnlock()
+
+	v, loaded := a.gauges.Load(context)
+	if loaded {
+		v.sample(value)
 		return nil
 	}
-	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags)
+	v, loaded = a.gauges.LoadOrStore(context, newGaugeMetric(name, value, tags))
 
-	a.gaugesM.Lock()
-	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if gauge, found := a.gauges[context]; found {
-		gauge.sample(value)
-		a.gaugesM.Unlock()
-		return nil
+	if loaded {
+		v.sample(value)
 	}
-	a.gauges[context] = gauge
-	a.gaugesM.Unlock()
+
 	return nil
 }
 
 func (a *aggregator) set(name string, value string, tags []string) error {
 	context := getContext(name, tags)
-	a.setsM.RLock()
-	if set, found := a.sets[context]; found {
-		set.sample(value)
-		a.setsM.RUnlock()
-		return nil
-	}
-	a.setsM.RUnlock()
 
-	a.setsM.Lock()
-	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if set, found := a.sets[context]; found {
-		set.sample(value)
-		a.setsM.Unlock()
+	v, loaded := a.sets.Load(context)
+	if loaded {
+		v.sample(value)
 		return nil
 	}
-	a.sets[context] = newSetMetric(name, value, tags)
-	a.setsM.Unlock()
+
+	v, loaded = a.sets.LoadOrStore(context, newSetMetric(name, value, tags))
+
+	if loaded {
+		v.sample(value)
+	}
+
 	return nil
 }
 

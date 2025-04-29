@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -17,32 +18,46 @@ func TestAggregatorSample(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		a.gauge("gaugeTest", 21, tags)
-		assert.Len(t, a.gauges, 1)
-		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+		assert.Equal(t, a.gauges.Size(), 1)
+
+		_, loaded := a.gauges.Load("gaugeTest:tag1,tag2")
+		assert.True(t, loaded)
 
 		a.count("countTest", 21, tags)
-		assert.Len(t, a.counts, 1)
-		assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		assert.Equal(t, a.counts.Size(), 1)
+
+		_, loaded = a.counts.Load("countTest:tag1,tag2")
+		assert.True(t, loaded)
 
 		a.set("setTest", "value1", tags)
-		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		assert.Equal(t, a.sets.Size(), 1)
+
+		_, loaded = a.sets.Load("setTest:tag1,tag2")
+		assert.True(t, loaded)
 
 		a.set("setTest", "value1", tags)
-		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		assert.Equal(t, a.sets.Size(), 1)
+
+		_, loaded = a.sets.Load("setTest:tag1,tag2")
+		assert.True(t, loaded)
 
 		a.histogram("histogramTest", 21, tags, 1)
-		assert.Len(t, a.histograms.values, 1)
-		assert.Contains(t, a.histograms.values, "histogramTest:tag1,tag2")
+		assert.Equal(t, a.histograms.values.Size(), 1)
+
+		_, loaded = a.histograms.values.Load("histogramTest:tag1,tag2")
+		assert.True(t, loaded)
 
 		a.distribution("distributionTest", 21, tags, 1)
-		assert.Len(t, a.distributions.values, 1)
-		assert.Contains(t, a.distributions.values, "distributionTest:tag1,tag2")
+		assert.Equal(t, a.distributions.values.Size(), 1)
+
+		_, loaded = a.distributions.values.Load("distributionTest:tag1,tag2")
+		assert.True(t, loaded)
 
 		a.timing("timingTest", 21, tags, 1)
-		assert.Len(t, a.timings.values, 1)
-		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
+		assert.Equal(t, a.timings.values.Size(), 1)
+
+		_, loaded = a.timings.values.Load("timingTest:tag1,tag2")
+		assert.True(t, loaded)
 	}
 }
 
@@ -78,12 +93,41 @@ func TestAggregatorFlush(t *testing.T) {
 
 	metrics := a.flushMetrics()
 
-	assert.Len(t, a.gauges, 0)
-	assert.Len(t, a.counts, 0)
-	assert.Len(t, a.sets, 0)
-	assert.Len(t, a.histograms.values, 0)
-	assert.Len(t, a.distributions.values, 0)
-	assert.Len(t, a.timings.values, 0)
+	assert.Equal(t, a.gauges.Size(), 2)
+	a.gauges.Range(func(key string, value *gaugeMetric) bool {
+		assert.Equal(t, value.value, uint64(math.MaxUint64))
+		return true
+	})
+
+	assert.Equal(t, a.counts.Size(), 2)
+	a.counts.Range(func(key string, value *countMetric) bool {
+		assert.Equal(t, value.value, int64(0))
+		return true
+	})
+
+	assert.Equal(t, a.sets.Size(), 2)
+	a.sets.Range(func(key string, value *setMetric) bool {
+		assert.Equal(t, value.data.Size(), 0)
+		return true
+	})
+
+	assert.Equal(t, a.histograms.values.Size(), 2)
+	a.histograms.values.Range(func(key string, value *histogramMetric) bool {
+		assert.Equal(t, value.data.flushToArray(), []float64{})
+		return true
+	})
+
+	assert.Equal(t, a.distributions.values.Size(), 2)
+	a.distributions.values.Range(func(key string, value *histogramMetric) bool {
+		assert.Equal(t, value.data.flushToArray(), []float64{})
+		return true
+	})
+
+	assert.Equal(t, a.timings.values.Size(), 2)
+	a.timings.values.Range(func(key string, value *histogramMetric) bool {
+		assert.Equal(t, value.data.flushToArray(), []float64{})
+		return true
+	})
 
 	assert.Len(t, metrics, 13)
 
@@ -99,100 +143,113 @@ func TestAggregatorFlush(t *testing.T) {
 		return metrics[i].metricType < metrics[j].metricType
 	})
 
-	assert.Equal(t, []metric{
-		metric{
+	expectedMetrics := []metric{
+		{
 			metricType: gauge,
 			name:       "gaugeTest1",
 			tags:       tags,
 			rate:       1,
 			fvalue:     float64(10),
 		},
-		metric{
+		{
 			metricType: gauge,
 			name:       "gaugeTest2",
 			tags:       tags,
 			rate:       1,
 			fvalue:     float64(15),
 		},
-		metric{
+		{
 			metricType: count,
 			name:       "countTest1",
 			tags:       tags,
 			rate:       1,
 			ivalue:     int64(31),
 		},
-		metric{
+		{
 			metricType: count,
 			name:       "countTest2",
 			tags:       tags,
 			rate:       1,
 			ivalue:     int64(1),
 		},
-		metric{
+		{
 			metricType: histogramAggregated,
 			name:       "histogramTest1",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{21.0, 22.0},
 		},
-		metric{
+		{
 			metricType: histogramAggregated,
 			name:       "histogramTest2",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{23.0},
 		},
-		metric{
+		{
 			metricType: distributionAggregated,
 			name:       "distributionTest1",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{21.0, 22.0},
 		},
-		metric{
+		{
 			metricType: distributionAggregated,
 			name:       "distributionTest2",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{23.0},
 		},
-		metric{
+		{
 			metricType: set,
 			name:       "setTest1",
 			tags:       tags,
 			rate:       1,
 			svalue:     "value1",
 		},
-		metric{
+		{
 			metricType: set,
 			name:       "setTest1",
 			tags:       tags,
 			rate:       1,
 			svalue:     "value2",
 		},
-		metric{
+		{
 			metricType: set,
 			name:       "setTest2",
 			tags:       tags,
 			rate:       1,
 			svalue:     "value1",
 		},
-		metric{
+		{
 			metricType: timingAggregated,
 			name:       "timingTest1",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{21.0, 22.0},
 		},
-		metric{
+		{
 			metricType: timingAggregated,
 			name:       "timingTest2",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       1,
 			fvalues:    []float64{23.0},
 		},
-	},
-		metrics)
+	}
+
+	for i, m := range metrics {
+		assert.Equal(t, expectedMetrics[i].metricType, m.metricType)
+		assert.Equal(t, expectedMetrics[i].name, m.name)
+		assert.Equal(t, expectedMetrics[i].tags, m.tags)
+		if m.metricType == timingAggregated || m.metricType == histogramAggregated || m.metricType == distributionAggregated {
+			assert.Equal(t, expectedMetrics[i].rate, float64(len(m.fvalues))/float64(len(expectedMetrics[i].fvalues)))
+			assert.ElementsMatch(t, expectedMetrics[i].fvalues, m.fvalues)
+		} else {
+			assert.Equal(t, expectedMetrics[i].rate, m.rate)
+			assert.Equal(t, expectedMetrics[i].fvalues, m.fvalues)
+		}
+	}
+
 }
 
 func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
@@ -228,12 +285,12 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 
 	metrics := a.flushMetrics()
 
-	assert.Len(t, a.gauges, 0)
-	assert.Len(t, a.counts, 0)
-	assert.Len(t, a.sets, 0)
-	assert.Len(t, a.histograms.values, 0)
-	assert.Len(t, a.distributions.values, 0)
-	assert.Len(t, a.timings.values, 0)
+	assert.Equal(t, a.gauges.Size(), 1)
+	assert.Equal(t, a.counts.Size(), 1)
+	assert.Equal(t, a.sets.Size(), 1)
+	assert.Equal(t, a.histograms.values.Size(), 1)
+	assert.Equal(t, a.distributions.values.Size(), 1)
+	assert.Equal(t, a.timings.values.Size(), 1)
 
 	assert.Len(t, metrics, 7)
 
@@ -250,49 +307,49 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 	})
 
 	expectedMetrics := []metric{
-		metric{
+		{
 			metricType: gauge,
 			name:       "gaugeTest1",
 			tags:       tags,
 			rate:       1,
 			fvalue:     float64(10),
 		},
-		metric{
+		{
 			metricType: count,
 			name:       "countTest1",
 			tags:       tags,
 			rate:       1,
 			ivalue:     int64(31),
 		},
-		metric{
+		{
 			metricType: histogramAggregated,
 			name:       "histogramTest1",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       float64(maxSamples) / 3,
 			fvalues:    []float64{21.0, 22.0, 23.0},
 		},
-		metric{
+		{
 			metricType: distributionAggregated,
 			name:       "distributionTest1",
 			stags:      strings.Join(tags, tagSeparatorSymbol),
 			rate:       float64(maxSamples) / 3,
 			fvalues:    []float64{21.0, 22.0, 23.0},
 		},
-		metric{
+		{
 			metricType: set,
 			name:       "setTest1",
 			tags:       tags,
 			rate:       1,
 			svalue:     "value1",
 		},
-		metric{
+		{
 			metricType: set,
 			name:       "setTest1",
 			tags:       tags,
 			rate:       1,
 			svalue:     "value2",
 		},
-		metric{
+		{
 			metricType: timingAggregated,
 			name:       "timingTest1",
 			stags:      strings.Join(tags, tagSeparatorSymbol),

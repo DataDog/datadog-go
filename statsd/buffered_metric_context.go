@@ -1,10 +1,11 @@
 package statsd
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"sync/atomic"
-	"time"
+
+	"github.com/puzpuzpuz/xsync"
 )
 
 // bufferedMetricContexts represent the contexts for Histograms, Distributions
@@ -13,21 +14,15 @@ import (
 type bufferedMetricContexts struct {
 	nbContext uint64
 	mutex     sync.RWMutex
-	values    bufferedMetricMap
+	values    *xsync.MapOf[string, *bufferedMetric]
 	newMetric func(string, float64, string, float64) *bufferedMetric
 
-	// Each bufferedMetricContexts uses its own random source and random
-	// lock to prevent goroutines from contending for the lock on the
-	// "math/rand" package-global random source (e.g. calls like
-	// "rand.Float64()" must acquire a shared lock to get the next
-	// pseudorandom number).
-	random     *rand.Rand
-	randomLock sync.Mutex
+	random *rand.Rand
 }
 
 func newBufferedContexts(newMetric func(string, float64, string, int64, float64) *bufferedMetric, maxSamples int64) bufferedMetricContexts {
 	return bufferedMetricContexts{
-		values: bufferedMetricMap{},
+		values: xsync.NewMapOf[*bufferedMetric](),
 		newMetric: func(name string, value float64, stringTags string, rate float64) *bufferedMetric {
 			return newMetric(name, value, stringTags, maxSamples, rate)
 		},
@@ -35,27 +30,36 @@ func newBufferedContexts(newMetric func(string, float64, string, int64, float64)
 		// very similar values. That's fine for seeding the worker-specific random
 		// source because we just need an evenly distributed stream of float values.
 		// Do not use this random source for cryptographic randomness.
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
+		random: rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
 }
 
 func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
-	bc.mutex.Lock()
-	values := bc.values
-	bc.values = bufferedMetricMap{}
-	bc.mutex.Unlock()
+	var nbContext uint64
 
-	for _, d := range values {
-		d.Lock()
-		metrics = append(metrics, d.flushUnsafe())
-		d.Unlock()
-	}
-	atomic.AddUint64(&bc.nbContext, uint64(len(values)))
+	bc.values.Range(func(key string, v *bufferedMetric) bool {
+		if atomic.LoadInt64(&v.totalSamples) == 0 {
+			vv, loaded := bc.values.LoadAndDelete(key)
+			if !loaded || atomic.LoadInt64(&vv.totalSamples) == 0 {
+				// We don't need to flush this metric, we can just
+				// remove it from the map.
+				return true
+			}
+
+			v = vv
+		}
+
+		nbContext++
+		metrics = append(metrics, v.flushResetUnsafe())
+		return true
+	})
+
+	atomic.AddUint64(&bc.nbContext, nbContext)
 	return metrics
 }
 
 func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64) error {
-	keepingSample := shouldSample(rate, bc.random, &bc.randomLock)
+	keepingSample := shouldSample(rate, bc.random)
 
 	// If we don't keep the sample, return early. If we do keep the sample
 	// we end up storing the *first* observed sampling rate in the metric.
@@ -68,30 +72,19 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	}
 
 	context, stringTags := getContextAndTags(name, tags)
-	var v *bufferedMetric
-
-	bc.mutex.RLock()
-	v, _ = bc.values[context]
-	bc.mutex.RUnlock()
-
-	// Create it if it wasn't found
-	if v == nil {
-		bc.mutex.Lock()
-		// It might have been created by another goroutine since last call
-		v, _ = bc.values[context]
-		if v == nil {
-			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
-			bc.values[context] = bc.newMetric(name, value, stringTags, rate)
-			// We added a new value, we need to unlock the mutex and quit
-			bc.mutex.Unlock()
+	v, loaded := bc.values.Load(context)
+	if !loaded {
+		// We need to create a new metric
+		v, loaded = bc.values.LoadOrStore(context, bc.newMetric(name, value, stringTags, rate))
+		if !loaded {
+			// We created a new metric, it's been sampled already.
 			return nil
 		}
-		bc.mutex.Unlock()
 	}
 
 	// Now we can keep the sample or skip it
 	if keepingSample {
-		v.maybeKeepSample(value, bc.random, &bc.randomLock)
+		v.sampleUnsafe(value)
 	} else {
 		v.skipSample()
 	}

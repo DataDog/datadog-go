@@ -88,7 +88,7 @@ func TestFlushUnsafeGaugeMetricSample(t *testing.T) {
 
 func TestNewSetMetric(t *testing.T) {
 	s := newSetMetric("test", "value1", []string{"tag1", "tag2"})
-	assert.Equal(t, s.data, map[string]struct{}{"value1": struct{}{}})
+	assert.Equal(t, s.toMap(), map[string]struct{}{"value1": {}})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, []string{"tag1", "tag2"})
 }
@@ -96,7 +96,7 @@ func TestNewSetMetric(t *testing.T) {
 func TestSetMetricSample(t *testing.T) {
 	s := newSetMetric("test", "value1", []string{"tag1", "tag2"})
 	s.sample("value2")
-	assert.Equal(t, s.data, map[string]struct{}{"value1": struct{}{}, "value2": struct{}{}})
+	assert.Equal(t, s.toMap(), map[string]struct{}{"value1": {}, "value2": {}})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, []string{"tag1", "tag2"})
 }
@@ -133,7 +133,7 @@ func TestFlushUnsafeSetMetricSample(t *testing.T) {
 
 func TestNewHistogramMetric(t *testing.T) {
 	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0)
-	assert.Equal(t, s.data, []float64{1.0})
+	assert.Equal(t, s.data.flushToArray(), []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, histogramAggregated)
@@ -142,7 +142,7 @@ func TestNewHistogramMetric(t *testing.T) {
 func TestHistogramMetricSample(t *testing.T) {
 	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0)
 	s.sample(123.45)
-	assert.Equal(t, s.data, []float64{1.0, 123.45})
+	assert.Equal(t, s.data.flushToArray(), []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, histogramAggregated)
@@ -163,7 +163,7 @@ func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
 	m = s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, histogramAggregated)
-	assert.Equal(t, m.fvalues, []float64{1.0, 21.0, 123.45})
+	assert.ElementsMatch(t, m.fvalues, []float64{1.0, 21.0, 123.45})
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
@@ -171,7 +171,7 @@ func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
 
 func TestNewDistributionMetric(t *testing.T) {
 	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0)
-	assert.Equal(t, s.data, []float64{1.0})
+	assert.Equal(t, s.data.flushToArray(), []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, distributionAggregated)
@@ -180,7 +180,7 @@ func TestNewDistributionMetric(t *testing.T) {
 func TestDistributionMetricSample(t *testing.T) {
 	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0)
 	s.sample(123.45)
-	assert.Equal(t, s.data, []float64{1.0, 123.45})
+	assert.Equal(t, s.data.flushToArray(), []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, distributionAggregated)
@@ -201,7 +201,7 @@ func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
 	m = s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, distributionAggregated)
-	assert.Equal(t, m.fvalues, []float64{1.0, 21.0, 123.45})
+	assert.ElementsMatch(t, m.fvalues, []float64{1.0, 21.0, 123.45})
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
@@ -209,7 +209,7 @@ func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
 
 func TestNewTimingMetric(t *testing.T) {
 	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0)
-	assert.Equal(t, s.data, []float64{1.0})
+	assert.Equal(t, s.data.flushToArray(), []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, timingAggregated)
@@ -218,7 +218,7 @@ func TestNewTimingMetric(t *testing.T) {
 func TestTimingMetricSample(t *testing.T) {
 	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0)
 	s.sample(123.45)
-	assert.Equal(t, s.data, []float64{1.0, 123.45})
+	assert.Equal(t, s.data.flushToArray(), []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, timingAggregated)
@@ -239,7 +239,7 @@ func TestFlushUnsafeTimingMetricSample(t *testing.T) {
 	m = s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, timingAggregated)
-	assert.Equal(t, m.fvalues, []float64{1.0, 21.0, 123.45})
+	assert.ElementsMatch(t, m.fvalues, []float64{1.0, 21.0, 123.45})
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)

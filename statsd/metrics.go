@@ -2,9 +2,9 @@ package statsd
 
 import (
 	"math"
-	"math/rand"
-	"sync"
 	"sync/atomic"
+
+	"github.com/puzpuzpuz/xsync"
 )
 
 /*
@@ -38,7 +38,17 @@ func (c *countMetric) flushUnsafe() metric {
 		name:       c.name,
 		tags:       c.tags,
 		rate:       1,
-		ivalue:     c.value,
+		ivalue:     atomic.LoadInt64(&c.value),
+	}
+}
+
+func (c *countMetric) flushResetUnsafe() metric {
+	return metric{
+		metricType: count,
+		name:       c.name,
+		tags:       c.tags,
+		rate:       1,
+		ivalue:     atomic.SwapInt64(&c.value, 0),
 	}
 }
 
@@ -68,66 +78,85 @@ func (g *gaugeMetric) flushUnsafe() metric {
 		name:       g.name,
 		tags:       g.tags,
 		rate:       1,
-		fvalue:     math.Float64frombits(g.value),
+		fvalue:     math.Float64frombits(atomic.LoadUint64(&g.value)),
+	}
+}
+
+func (g *gaugeMetric) flushResetUnsafe() metric {
+	return metric{
+		metricType: gauge,
+		name:       g.name,
+		tags:       g.tags,
+		rate:       1,
+		fvalue:     math.Float64frombits(atomic.SwapUint64(&g.value, math.MaxUint64)),
 	}
 }
 
 // Set
 
 type setMetric struct {
-	data map[string]struct{}
+	data *xsync.MapOf[string, struct{}]
 	name string
 	tags []string
-	sync.Mutex
 }
 
 func newSetMetric(name string, value string, tags []string) *setMetric {
 	set := &setMetric{
-		data: map[string]struct{}{},
+		data: xsync.NewMapOf[struct{}](),
 		name: name,
 		tags: copySlice(tags),
 	}
-	set.data[value] = struct{}{}
+	set.data.Store(value, struct{}{})
 	return set
 }
 
 func (s *setMetric) sample(v string) {
-	s.Lock()
-	defer s.Unlock()
-	s.data[v] = struct{}{}
+	s.data.Store(v, struct{}{})
 }
 
 // Sets are aggregated on the agent side too. We flush the keys so a set from
 // multiple application can be correctly aggregated on the agent side.
 func (s *setMetric) flushUnsafe() []metric {
-	if len(s.data) == 0 {
+	if s.data.Size() == 0 {
 		return nil
 	}
 
-	metrics := make([]metric, len(s.data))
-	i := 0
-	for value := range s.data {
-		metrics[i] = metric{
-			metricType: set,
-			name:       s.name,
-			tags:       s.tags,
-			rate:       1,
-			svalue:     value,
+	metrics := make([]metric, 0, s.data.Size())
+
+	s.data.Range(func(key string, _ struct{}) bool {
+		_, loaded := s.data.LoadAndDelete(key)
+		if loaded {
+			metrics = append(metrics, metric{
+				metricType: set,
+				name:       s.name,
+				tags:       s.tags,
+				rate:       1,
+				svalue:     key,
+			})
 		}
-		i++
-	}
+
+		return true
+	})
+
 	return metrics
+}
+
+func (s *setMetric) toMap() map[string]struct{} {
+	m := make(map[string]struct{}, s.data.Size())
+	s.data.Range(func(key string, _ struct{}) bool {
+		m[key] = struct{}{}
+		return true
+	})
+
+	return m
 }
 
 // Histograms, Distributions and Timings
 
 type bufferedMetric struct {
-	sync.Mutex
-
 	// Kept samples (after sampling)
-	data []float64
-	// Total stored samples (after sampling)
-	storedSamples int64
+	data data
+
 	// Total number of observed samples (before sampling). This is used to keep
 	// the sampling rate correct.
 	totalSamples int64
@@ -138,49 +167,19 @@ type bufferedMetric struct {
 	tags  string
 	mtype metricType
 
-	// maxSamples is the maximum number of samples we keep in memory
-	maxSamples int64
-
 	// The first observed user-specified sample rate. When specified
 	// it is used because we don't know better.
 	specifiedRate float64
 }
 
 func (s *bufferedMetric) sample(v float64) {
-	s.Lock()
-	defer s.Unlock()
 	s.sampleUnsafe(v)
 }
 
 func (s *bufferedMetric) sampleUnsafe(v float64) {
-	s.data = append(s.data, v)
-	s.storedSamples++
+	s.data.sample(v)
 	// Total samples needs to be incremented though an atomic because it can be accessed without the lock.
 	atomic.AddInt64(&s.totalSamples, 1)
-}
-
-func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *sync.Mutex) {
-	s.Lock()
-	defer s.Unlock()
-	if s.maxSamples > 0 {
-		if s.storedSamples >= s.maxSamples {
-			// We reached the maximum number of samples we can keep in memory, so we randomly
-			// replace a sample.
-			randLock.Lock()
-			i := rand.Int63n(atomic.LoadInt64(&s.totalSamples))
-			randLock.Unlock()
-			if i < s.maxSamples {
-				s.data[i] = v
-			}
-		} else {
-			s.data[s.storedSamples] = v
-			s.storedSamples++
-		}
-		s.totalSamples++
-	} else {
-		// This code path appends to the slice since we did not pre-allocate memory in this case.
-		s.sampleUnsafe(v)
-	}
 }
 
 func (s *bufferedMetric) skipSample() {
@@ -191,13 +190,15 @@ func (s *bufferedMetric) flushUnsafe() metric {
 	totalSamples := atomic.LoadInt64(&s.totalSamples)
 	var rate float64
 
+	fValues := s.data.flushToArray()
+
 	// If the user had a specified rate send it because we don't know better.
 	// This code should be removed once we can also remove the early return at the top of
 	// `bufferedMetricContexts.sample`
 	if s.specifiedRate != 1.0 {
 		rate = s.specifiedRate
 	} else {
-		rate = float64(s.storedSamples) / float64(totalSamples)
+		rate = float64(len(fValues)) / float64(totalSamples)
 	}
 
 	return metric{
@@ -205,7 +206,31 @@ func (s *bufferedMetric) flushUnsafe() metric {
 		name:       s.name,
 		stags:      s.tags,
 		rate:       rate,
-		fvalues:    s.data[:s.storedSamples],
+		fvalues:    fValues[:],
+	}
+}
+
+func (s *bufferedMetric) flushResetUnsafe() metric {
+	totalSamples := atomic.SwapInt64(&s.totalSamples, 0)
+	var rate float64
+
+	fValues := s.data.flushResetToArray()
+
+	// If the user had a specified rate send it because we don't know better.
+	// This code should be removed once we can also remove the early return at the top of
+	// `bufferedMetricContexts.sample`
+	if s.specifiedRate != 1.0 {
+		rate = s.specifiedRate
+	} else {
+		rate = float64(len(fValues)) / float64(totalSamples)
+	}
+
+	return metric{
+		metricType: s.mtype,
+		name:       s.name,
+		stags:      s.tags,
+		rate:       rate,
+		fvalues:    fValues[:],
 	}
 }
 
@@ -215,11 +240,9 @@ func newHistogramMetric(name string, value float64, stringTags string, maxSample
 	return &histogramMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
-		storedSamples: 1,
 		name:          name,
 		tags:          stringTags,
 		mtype:         histogramAggregated,
-		maxSamples:    maxSamples,
 		specifiedRate: rate,
 	}
 }
@@ -230,11 +253,9 @@ func newDistributionMetric(name string, value float64, stringTags string, maxSam
 	return &distributionMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
-		storedSamples: 1,
 		name:          name,
 		tags:          stringTags,
 		mtype:         distributionAggregated,
-		maxSamples:    maxSamples,
 		specifiedRate: rate,
 	}
 }
@@ -245,11 +266,9 @@ func newTimingMetric(name string, value float64, stringTags string, maxSamples i
 	return &timingMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
-		storedSamples: 1,
 		name:          name,
 		tags:          stringTags,
 		mtype:         timingAggregated,
-		maxSamples:    maxSamples,
 		specifiedRate: rate,
 	}
 }
@@ -257,12 +276,155 @@ func newTimingMetric(name string, value float64, stringTags string, maxSamples i
 // newData creates a new slice of float64 with the given capacity. If maxSample
 // is less than or equal to 0, it returns a slice with the given value as the
 // only element.
-func newData(value float64, maxSample int64) []float64 {
+func newData(value float64, maxSample int64) data {
 	if maxSample <= 0 {
-		return []float64{value}
+		d := &unlimitedData{
+			data: xsync.NewTypedMapOf[float64, *atomic.Uint64](func(f float64) uint64 {
+				return math.Float64bits(f)
+			}),
+		}
+
+		d.sample(value)
+
+		return d
 	} else {
-		data := make([]float64, maxSample)
-		data[0] = value
-		return data
+		d := &limitedData{
+			data: make(chan float64, maxSample),
+		}
+
+		d.sample(value)
+
+		return d
+	}
+}
+
+type data interface {
+	sample(float64)
+	flushToArray() []float64
+	flushResetToArray() []float64
+}
+
+type unlimitedData struct {
+	data *xsync.MapOf[float64, *atomic.Uint64]
+}
+
+// flushToArray flushes the data to an array of float64. It uses a
+// Range function to iterate over the map and load and delete each value.
+func (d *unlimitedData) flushToArray() []float64 {
+	arr := make([]float64, 0, d.data.Size())
+
+	d.data.Range(func(k float64, value *atomic.Uint64) bool {
+		for i := 0; i < int(value.Load()); i++ {
+			arr = append(arr, k)
+		}
+
+		return true
+	})
+
+	return arr
+}
+
+// flushToArray flushes the data to an array of float64. It uses a
+// Range function to iterate over the map and load and delete each value.
+func (d *unlimitedData) flushResetToArray() []float64 {
+	arr := make([]float64, 0, d.data.Size())
+
+	d.data.Range(func(k float64, _ *atomic.Uint64) bool {
+		value, _ := d.data.LoadAndDelete(k)
+
+		for i := 0; i < int(value.Load()); i++ {
+			arr = append(arr, k)
+		}
+
+		return true
+	})
+
+	return arr
+}
+
+// sample adds a sample to the data. It uses LoadOrStore to get the
+// atomic.Uint64 for the given value. If it doesn't exist, it creates a new
+// one. Then it increments the value by 1.
+func (d *unlimitedData) sample(v float64) {
+	vv, _ := d.data.LoadOrStore(v, &atomic.Uint64{})
+	vv.Add(1)
+}
+
+type limitedData struct {
+	data chan float64
+}
+
+// flushToArray flushes the data to an array of float64. It uses a
+// for loop to read from the channel until it is empty or the length of
+// the array is equal to the length of the data.
+func (d *limitedData) flushToArray() []float64 {
+	l := len(d.data)
+
+	arr := make([]float64, 0, l)
+
+	c := true
+	for c && len(arr) < l {
+		select {
+		case v := <-d.data:
+			arr = append(arr, v)
+			d.sample(v)
+		default:
+			// we're done reading from the channel
+			c = false
+		}
+	}
+
+	return arr
+}
+
+// flushToArray flushes the data to an array of float64. It uses a
+// for loop to read from the channel until it is empty or the length of
+// the array is equal to the length of the data.
+func (d *limitedData) flushResetToArray() []float64 {
+	l := len(d.data)
+
+	arr := make([]float64, 0, l)
+
+	c := true
+	for c && len(arr) < l {
+		select {
+		case v := <-d.data:
+			arr = append(arr, v)
+		default:
+			// we're done reading from the channel
+			c = false
+		}
+	}
+
+	return arr
+}
+
+func (d *limitedData) sample(v float64) {
+	// Try to send the sample to the channel. If it is full, we need to drop
+	// the oldest sample to make room for the new one. If we can't send to the
+	// channel, after dropping the oldest sample, we drop the new sample.
+
+	select {
+	case d.data <- v:
+		// We can send the sample to the channel.
+	default:
+		// We can't send the sample to the channel because it is full.
+
+		select {
+		case <-d.data:
+			// We've dropped the oldest sample to make room for the new one.
+			select {
+			case d.data <- v:
+			default:
+				// We can't send the sample to the channel because it is full, drop
+			}
+		default:
+			// Channel appears to be empty, we can send the sample to the channel.
+			select {
+			case d.data <- v:
+			default:
+				// We can't send the sample to the channel because it is full, drop
+			}
+		}
 	}
 }

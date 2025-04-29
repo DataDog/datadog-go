@@ -1,17 +1,15 @@
 package statsd
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"sync"
-	"time"
 )
 
 type worker struct {
-	pool       *bufferPool
-	buffer     *statsdBuffer
-	sender     *sender
-	random     *rand.Rand
-	randomLock sync.Mutex
+	pool   *bufferPool
+	buffer *statsdBuffer
+	sender *sender
+	random *rand.Rand
 	sync.Mutex
 
 	inputMetrics chan metric
@@ -19,16 +17,7 @@ type worker struct {
 }
 
 func newWorker(pool *bufferPool, sender *sender) *worker {
-	// Each worker uses its own random source and random lock to prevent
-	// workers in separate goroutines from contending for the lock on the
-	// "math/rand" package-global random source (e.g. calls like
-	// "rand.Float64()" must acquire a shared lock to get the next
-	// pseudorandom number).
-	// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
-	// very similar values. That's fine for seeding the worker-specific random
-	// source because we just need an evenly distributed stream of float values.
-	// Do not use this random source for cryptographic randomness.
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	random := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
 	return &worker{
 		pool:   pool,
 		sender: sender,
@@ -51,7 +40,7 @@ func (w *worker) pullMetric() {
 	for {
 		select {
 		case m := <-w.inputMetrics:
-			w.processMetric(m)
+			_ = w.processMetric(m)
 		case <-w.stop:
 			return
 		}
@@ -61,7 +50,7 @@ func (w *worker) pullMetric() {
 func (w *worker) processMetric(m metric) error {
 	// Aggregated metrics are already sampled.
 	if m.metricType != distributionAggregated && m.metricType != histogramAggregated && m.metricType != timingAggregated {
-		if !shouldSample(m.rate, w.random, &w.randomLock) {
+		if !shouldSample(m.rate, w.random) {
 			return nil
 		}
 	}

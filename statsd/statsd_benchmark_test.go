@@ -79,6 +79,7 @@ func benchmarkStatsdDifferentMetrics(b *testing.B, transport string, extraOption
 	defer conn.Close()
 
 	n := int32(0)
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -101,6 +102,7 @@ func benchmarkStatsdSameMetrics(b *testing.B, transport string, extraOptions ...
 	client, conn := setupClient(b, transport, extraOptions)
 	defer conn.Close()
 
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
