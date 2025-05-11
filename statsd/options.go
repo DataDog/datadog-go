@@ -326,12 +326,18 @@ func WithAggregationSmoothFlush() Option {
 	}
 }
 
-func WithRecommendedAggregationOptions() Option {
+// WithRecommendedAggregationOptionsWithTimestamps sets the client to mimic the agent's
+// aggregator while reducing the pressure on it as much as possible.
+func WithRecommendedAggregationOptionsWithTimestamps() Option {
 	return func(o *Options) error {
 		o.aggregationSendWithTimestamps = true
-		o.aggregationSmoothFlush = true
+		// To mimic the reporting interval of the agent.
 		o.aggregationFlushInterval = defaultAggregationIntervalWithTimestamps
+		// To reduce the pressure on the agent in the first part of the reporting interval.
+		o.aggregationSmoothFlush = true
 		o.aggregationOffsetFLush = defaultAggregationOffsetFlushWithTimestamps
+		// To make sure each container is reported as a unique origins
+		o.originDetection = true
 		return nil
 	}
 }
