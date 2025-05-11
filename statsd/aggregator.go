@@ -25,6 +25,7 @@ type aggregator struct {
 
 	gauges        gaugesMap
 	counts        countsMap
+	prevCounts    countsMap
 	sets          setsMap
 	histograms    bufferedMetricContexts
 	distributions bufferedMetricContexts
@@ -41,32 +42,54 @@ type aggregator struct {
 	inputMetrics    chan metric
 	stopChannelMode chan struct{}
 	wg              sync.WaitGroup
+
+	sendWithTimestamps bool
+	sendSmoothly       bool
 }
 
-func newAggregator(c *Client, maxSamplesPerContext int64) *aggregator {
+func newAggregator(c *Client, maxSamplesPerContext int64, sendWithTimestamps bool, sendSmoothly bool) *aggregator {
 	return &aggregator{
-		client:          c,
-		counts:          countsMap{},
-		gauges:          gaugesMap{},
-		sets:            setsMap{},
-		histograms:      newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
-		distributions:   newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
-		timings:         newBufferedContexts(newTimingMetric, maxSamplesPerContext),
-		closed:          make(chan struct{}),
-		stopChannelMode: make(chan struct{}),
+		client:             c,
+		counts:             countsMap{},
+		prevCounts:         countsMap{},
+		gauges:             gaugesMap{},
+		sets:               setsMap{},
+		histograms:         newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
+		distributions:      newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
+		timings:            newBufferedContexts(newTimingMetric, maxSamplesPerContext),
+		closed:             make(chan struct{}),
+		stopChannelMode:    make(chan struct{}),
+		sendWithTimestamps: sendWithTimestamps,
+		sendSmoothly:       sendSmoothly,
 	}
 }
 
-func (a *aggregator) start(flushInterval time.Duration) {
-	ticker := time.NewTicker(flushInterval)
+func sleepUntilFirstTick(interval time.Duration, offset time.Duration) {
+	now := time.Now().UnixNano()
+	intNs := interval.Nanoseconds()
+	offNs := offset.Nanoseconds()
+	elapsed := now % intNs // since the last interval boundary
+	sleep := 0 * time.Nanosecond
+	if elapsed <= offNs { // we haven't passed the offset, sleep till it
+		sleep = time.Duration(offNs - elapsed)
+	} else { // we passed the offset, sleep till next interval+offset
+		sleep = time.Duration((intNs - elapsed) + offNs)
+	}
+	time.Sleep(sleep)
+}
 
+func (a *aggregator) start(interval time.Duration, offset time.Duration) {
 	go func() {
+		if offset >= 0 { // Sleep till the specified offset past the interval.
+			sleepUntilFirstTick(interval, offset)
+		}
+		ticker := time.NewTicker(interval)
+
 		for {
 			select {
 			case <-ticker.C:
-				a.flush()
+				a.flush(interval)
 			case <-a.closed:
-				ticker.Stop()
 				return
 			}
 		}
@@ -109,9 +132,63 @@ func (a *aggregator) pullMetric() {
 	}
 }
 
-func (a *aggregator) flush() {
-	for _, m := range a.flushMetrics() {
+func (a *aggregator) canSendWithTimestamp(m metric) bool {
+	if !a.sendWithTimestamps {
+		return false
+	}
+
+	if m.metricType == count || m.metricType == gauge {
+		// FIXME: check tags (low card, origin detection, etc..)
+		return true
+	}
+
+	return false
+}
+
+func getThrottleDuration(reported, total int, elapsed, target time.Duration) time.Duration {
+	if reported == total {
+		return 0
+	}
+	t := time.Millisecond * time.Duration(int(float64(target.Milliseconds())/float64(total)*float64(reported)))
+	remaining := t - elapsed
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+func throttleReporting(reported, total int, elapsed, target time.Duration) time.Duration {
+	remaining := getThrottleDuration(reported, total, elapsed, target)
+	if remaining > 0 {
+		time.Sleep(remaining)
+		return remaining
+	}
+	return 0
+}
+
+func (a *aggregator) flush(targetDuration time.Duration) {
+	metrics := a.flushMetrics()
+	total := len(metrics)
+	reported := 0
+	start := time.Now()
+
+	ts := start.Unix()
+
+	for _, m := range metrics {
+		if a.canSendWithTimestamp(m) {
+			m.timestamp = ts
+		}
 		a.client.sendBlocking(m)
+
+		reported++
+
+		// If we are throttling, we should sleep to make sure we report the metrics evenly
+		// over the reporting interval. Only do this if we have a target duration and every few metrics.
+		if a.sendSmoothly && targetDuration > 0 && total%100 == 0 {
+			elapsed := time.Since(start)
+			throttleReporting(total, reported, elapsed, targetDuration)
+		}
+
 	}
 }
 
@@ -154,12 +231,23 @@ func (a *aggregator) flushMetrics() []metric {
 	}
 
 	a.countsM.Lock()
+	// We need to keep the previous counts to eventually send trailing 0s.
+	prevCounts := a.prevCounts
 	counts := a.counts
+	a.prevCounts = a.counts
 	a.counts = countsMap{}
 	a.countsM.Unlock()
 
 	for _, c := range counts {
 		metrics = append(metrics, c.flushUnsafe())
+	}
+	// We only send trailing 0s if we are sending with timestamps because that is what the agent would have done.
+	if a.sendWithTimestamps {
+		// We know that counts can't be in both counts and prevCounts, we still need to flush
+		// them.
+		for _, c := range prevCounts {
+			metrics = append(metrics, c.flushUnsafe())
+		}
 	}
 
 	metrics = a.histograms.flush(metrics)
@@ -227,6 +315,17 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 		return nil
 	}
 
+	if a.sendWithTimestamps {
+		// If we are sending with timestamps, we need to keep the previous counts to eventually send trailing 0s.
+		// Meaning we can re-use the previous count metric instead of creating a new one.
+		if prevCount, found := a.prevCounts[context]; found {
+			prevCount.set(value)
+			a.counts[context] = prevCount
+			delete(a.prevCounts, context)
+			a.countsM.Unlock()
+			return nil
+		}
+	}
 	a.counts[context] = newCountMetric(name, value, tags)
 	a.countsM.Unlock()
 	return nil

@@ -500,8 +500,8 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 	}
 
 	if o.aggregation || o.extendedAggregation || o.maxBufferedSamplesPerContext > 0 {
-		c.agg = newAggregator(&c, int64(o.maxBufferedSamplesPerContext))
-		c.agg.start(o.aggregationFlushInterval)
+		c.agg = newAggregator(&c, int64(o.maxBufferedSamplesPerContext), o.aggregationSendWithTimestamps, o.aggregationSmoothFlush)
+		c.agg.start(o.aggregationFlushInterval, o.aggregationOffsetFLush)
 
 		if o.extendedAggregation {
 			c.aggExtended = c.agg
@@ -571,7 +571,7 @@ func (c *Client) Flush() error {
 		return ErrNoClient
 	}
 	if c.agg != nil {
-		c.agg.flush()
+		c.agg.flush(0)
 	}
 	for _, w := range c.workers {
 		w.pause()
