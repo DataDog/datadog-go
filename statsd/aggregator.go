@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const ddInternalCardPrefix = "dd.internal.card:"
+
 type (
 	countsMap         map[string]*countMetric
 	gaugesMap         map[string]*gaugeMetric
@@ -14,10 +16,24 @@ type (
 	bufferedMetricMap map[string]*bufferedMetric
 )
 
+type Clock interface {
+	Now() time.Time
+	Since(t time.Time) time.Duration
+	Sleep(d time.Duration)
+}
+
+type RealClock struct{}
+
+func (RealClock) Now() time.Time                  { return time.Now() }
+func (RealClock) Since(t time.Time) time.Duration { return time.Since(t) }
+func (RealClock) Sleep(d time.Duration)           { time.Sleep(d) }
+
 type aggregator struct {
-	nbContextGauge uint64
-	nbContextCount uint64
-	nbContextSet   uint64
+	nbContextGauge       uint64
+	nbContextCount       uint64
+	nbCountWithTimestamp uint64
+	nbGaugeWithTimestamp uint64
+	nbContextSet         uint64
 
 	countsM sync.RWMutex
 	gaugesM sync.RWMutex
@@ -45,9 +61,11 @@ type aggregator struct {
 
 	sendWithTimestamps bool
 	sendSmoothly       bool
+
+	clock Clock
 }
 
-func newAggregator(c *Client, maxSamplesPerContext int64, sendWithTimestamps bool, sendSmoothly bool) *aggregator {
+func newAggregatorWithClock(c *Client, maxSamplesPerContext int64, sendWithTimestamps bool, sendSmoothly bool, clock Clock) *aggregator {
 	return &aggregator{
 		client:             c,
 		counts:             countsMap{},
@@ -61,11 +79,16 @@ func newAggregator(c *Client, maxSamplesPerContext int64, sendWithTimestamps boo
 		stopChannelMode:    make(chan struct{}),
 		sendWithTimestamps: sendWithTimestamps,
 		sendSmoothly:       sendSmoothly,
+		clock:              clock,
 	}
 }
 
-func sleepUntilFirstTick(interval time.Duration, offset time.Duration) {
-	now := time.Now().UnixNano()
+func newAggregator(c *Client, maxSamplesPerContext int64, sendWithTimestamps bool, sendSmoothly bool) *aggregator {
+	return newAggregatorWithClock(c, maxSamplesPerContext, sendWithTimestamps, sendSmoothly, RealClock{})
+}
+
+func (a *aggregator) sleepUntilFirstTick(interval time.Duration, offset time.Duration) {
+	now := a.clock.Now().UnixNano()
 	intNs := interval.Nanoseconds()
 	offNs := offset.Nanoseconds()
 	elapsed := now % intNs // since the last interval boundary
@@ -75,13 +98,13 @@ func sleepUntilFirstTick(interval time.Duration, offset time.Duration) {
 	} else { // we passed the offset, sleep till next interval+offset
 		sleep = time.Duration((intNs - elapsed) + offNs)
 	}
-	time.Sleep(sleep)
+	a.clock.Sleep(sleep)
 }
 
 func (a *aggregator) start(interval time.Duration, offset time.Duration) {
 	go func() {
 		if offset >= 0 { // Sleep till the specified offset past the interval.
-			sleepUntilFirstTick(interval, offset)
+			a.sleepUntilFirstTick(interval, offset)
 		}
 		ticker := time.NewTicker(interval)
 
@@ -137,8 +160,20 @@ func (a *aggregator) canSendWithTimestamp(m metric) bool {
 		return false
 	}
 
-	if m.metricType == count || m.metricType == gauge {
-		// FIXME: check tags (low card, origin detection, etc..)
+	if m.metricType == count {
+		// For counts we already expect to have either a unique origin tag and we told the user
+		// to enable origin detection. But if `dd.internal.card` is specified we're very likely to break
+		// something so we don't use a timestamp and ask the agent to do count aggregation as usual.
+		for _, tag := range m.tags {
+			if strings.HasPrefix(tag, ddInternalCardPrefix) {
+				return false
+			}
+		}
+		return true
+	}
+	if m.metricType == gauge {
+		// We assume that for gauges it's fine, because inside they agent they
+		// would have be overwritten too.
 		return true
 	}
 
@@ -157,10 +192,10 @@ func getThrottleDuration(reported, total int, elapsed, target time.Duration) tim
 	return remaining
 }
 
-func throttleReporting(reported, total int, elapsed, target time.Duration) time.Duration {
+func (a *aggregator) throttleReporting(reported, total int, elapsed, target time.Duration) time.Duration {
 	remaining := getThrottleDuration(reported, total, elapsed, target)
 	if remaining > 0 {
-		time.Sleep(remaining)
+		a.clock.Sleep(remaining)
 		return remaining
 	}
 	return 0
@@ -170,12 +205,13 @@ func (a *aggregator) flush(targetDuration time.Duration) {
 	metrics := a.flushMetrics()
 	total := len(metrics)
 	reported := 0
-	start := time.Now()
+	start := a.clock.Now()
 
 	ts := start.Unix()
 
 	for _, m := range metrics {
-		if a.canSendWithTimestamp(m) {
+		// FIXME: do something better.
+		if m.timestamp == -1 {
 			m.timestamp = ts
 		}
 		a.client.sendBlocking(m)
@@ -186,7 +222,7 @@ func (a *aggregator) flush(targetDuration time.Duration) {
 		// over the reporting interval. Only do this if we have a target duration and every few metrics.
 		if a.sendSmoothly && targetDuration > 0 && total%100 == 0 {
 			elapsed := time.Since(start)
-			throttleReporting(total, reported, elapsed, targetDuration)
+			a.throttleReporting(total, reported, elapsed, targetDuration)
 		}
 
 	}
@@ -204,10 +240,23 @@ func (a *aggregator) flushTelemetryMetrics(t *Telemetry) {
 	t.AggregationNbContextHistogram = a.histograms.getNbContext()
 	t.AggregationNbContextDistribution = a.distributions.getNbContext()
 	t.AggregationNbContextTiming = a.timings.getNbContext()
+	t.AggregationNbCountWithTimestamp = atomic.LoadUint64(&a.nbCountWithTimestamp)
+	t.AggregationNbGaugeWithTimestamp = atomic.LoadUint64(&a.nbGaugeWithTimestamp)
+}
+
+// flushMetricWithTimestamp handles the common pattern of flushing a metric and handling timestamps
+func (a *aggregator) flushMetricWithTimestamp(m metric) (metric, int) {
+	if a.canSendWithTimestamp(m) {
+		m.timestamp = -1
+		return m, 1
+	}
+	return m, 0
 }
 
 func (a *aggregator) flushMetrics() []metric {
 	metrics := []metric{}
+	nbCountWithTimestamp := 0
+	nbGaugeWithTimestamp := 0
 
 	// We reset the values to avoid sending 'zero' values for metrics not
 	// sampled during this flush interval
@@ -227,7 +276,9 @@ func (a *aggregator) flushMetrics() []metric {
 	a.gaugesM.Unlock()
 
 	for _, g := range gauges {
-		metrics = append(metrics, g.flushUnsafe())
+		m, hasTs := a.flushMetricWithTimestamp(g.flushUnsafe())
+		nbGaugeWithTimestamp += hasTs
+		metrics = append(metrics, m)
 	}
 
 	a.countsM.Lock()
@@ -239,14 +290,18 @@ func (a *aggregator) flushMetrics() []metric {
 	a.countsM.Unlock()
 
 	for _, c := range counts {
-		metrics = append(metrics, c.flushUnsafe())
+		m, hasTs := a.flushMetricWithTimestamp(c.flushUnsafe())
+		nbCountWithTimestamp += hasTs
+		metrics = append(metrics, m)
 	}
 	// We only send trailing 0s if we are sending with timestamps because that is what the agent would have done.
 	if a.sendWithTimestamps {
 		// We know that counts can't be in both counts and prevCounts, we still need to flush
 		// them.
 		for _, c := range prevCounts {
-			metrics = append(metrics, c.flushUnsafe())
+			m, hasTs := a.flushMetricWithTimestamp(c.flushUnsafe())
+			nbCountWithTimestamp += hasTs
+			metrics = append(metrics, m)
 		}
 	}
 
@@ -257,6 +312,8 @@ func (a *aggregator) flushMetrics() []metric {
 	atomic.AddUint64(&a.nbContextCount, uint64(len(counts)))
 	atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
 	atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
+	atomic.AddUint64(&a.nbCountWithTimestamp, uint64(nbCountWithTimestamp))
+	atomic.AddUint64(&a.nbGaugeWithTimestamp, uint64(nbGaugeWithTimestamp))
 	return metrics
 }
 

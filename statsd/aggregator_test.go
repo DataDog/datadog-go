@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -209,8 +210,27 @@ func sortMetrics(metrics []metric) {
 	})
 }
 
+type testClock struct {
+	now time.Time
+}
+
+func (c *testClock) Now() time.Time {
+	return c.now
+}
+
+func (c *testClock) Sleep(d time.Duration) {
+	c.now = c.now.Add(d)
+}
+
+func (c *testClock) Since(t time.Time) time.Duration {
+	return c.now.Sub(t)
+}
+
 func TestAggregatorFlushWithTimestamps(t *testing.T) {
-	a := newAggregator(nil, 0, true, false)
+	clock := &testClock{now: time.Now()}
+	ts := clock.Now().Unix()
+
+	a := newAggregatorWithClock(nil, 0, true, false, clock)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -221,6 +241,7 @@ func TestAggregatorFlushWithTimestamps(t *testing.T) {
 	a.count("countTest1", 21, tags)
 	a.count("countTest1", 10, tags)
 	a.count("countTest2", 1, tags)
+	a.count("countTest3", 1, append(tags, "dd.internal.card:low"))
 
 	a.distribution("distributionTest1", 21, tags, 1)
 	a.distribution("distributionTest1", 22, tags, 1)
@@ -243,6 +264,7 @@ func TestAggregatorFlushWithTimestamps(t *testing.T) {
 			tags:       tags,
 			rate:       1,
 			fvalue:     float64(10),
+			timestamp:  ts,
 		},
 		metric{
 			metricType: gauge,
@@ -250,6 +272,7 @@ func TestAggregatorFlushWithTimestamps(t *testing.T) {
 			tags:       tags,
 			rate:       1,
 			fvalue:     float64(15),
+			timestamp:  ts,
 		},
 		metric{
 			metricType: count,
@@ -257,11 +280,20 @@ func TestAggregatorFlushWithTimestamps(t *testing.T) {
 			tags:       tags,
 			rate:       1,
 			ivalue:     int64(31),
+			timestamp:  ts,
 		},
 		metric{
 			metricType: count,
 			name:       "countTest2",
 			tags:       tags,
+			rate:       1,
+			ivalue:     int64(1),
+			timestamp:  ts,
+		},
+		metric{
+			metricType: count,
+			name:       "countTest3",
+			tags:       append(tags, "dd.internal.card:low"),
 			rate:       1,
 			ivalue:     int64(1),
 		},
@@ -300,6 +332,7 @@ func TestAggregatorFlushWithTimestamps(t *testing.T) {
 			tags:       tags,
 			rate:       1,
 			ivalue:     int64(0),
+			timestamp:  ts,
 		},
 		metric{
 			metricType: count,
@@ -307,6 +340,7 @@ func TestAggregatorFlushWithTimestamps(t *testing.T) {
 			tags:       tags,
 			rate:       1,
 			ivalue:     int64(0),
+			timestamp:  ts,
 		},
 	}, metrics)
 
