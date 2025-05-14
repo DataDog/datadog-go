@@ -33,6 +33,9 @@ type testTelemetryData struct {
 	aggregated_distribution int
 	aggregated_timing       int
 
+	aggregated_count_with_timestamp int
+	aggregated_gauge_with_timestamp int
+
 	metric_dropped_on_receive int
 	packets_sent              int
 	packets_dropped           int
@@ -316,6 +319,8 @@ func (ts *testServer) getTelemetry() []string {
 			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:distribution", ts.telemetry.aggregated_distribution, tags) + containerID,
 			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:histogram", ts.telemetry.aggregated_histogram, tags) + containerID,
 			fmt.Sprintf("datadog.dogstatsd.client.aggregated_context_by_type:%d|c%s,metrics_type:timing", ts.telemetry.aggregated_timing, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_with_timestamp_by_type:%d|c%s,metrics_type:count", ts.telemetry.aggregated_count_with_timestamp, tags) + containerID,
+			fmt.Sprintf("datadog.dogstatsd.client.aggregated_with_timestamp_by_type:%d|c%s,metrics_type:gauge", ts.telemetry.aggregated_gauge_with_timestamp, tags) + containerID,
 		}...)
 	}
 	return metrics

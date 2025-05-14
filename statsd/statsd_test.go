@@ -324,6 +324,8 @@ func TestGetTelemetry(t *testing.T) {
 	assert.Equal(t, uint64(1), tlm.AggregationNbContextHistogram, "telmetry AggregationNbContextHistogram was wrong")
 	assert.Equal(t, uint64(1), tlm.AggregationNbContextDistribution, "telmetry AggregationNbContextDistribution was wrong")
 	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
+	assert.Equal(t, uint64(0), tlm.AggregationNbCountWithTimestamp, "telmetry AggregationNbCountWithTimestamp was wrong")
+	assert.Equal(t, uint64(0), tlm.AggregationNbGaugeWithTimestamp, "telmetry AggregationNbGaugeWithTimestamp was wrong")
 }
 
 func Test_isOriginDetectionEnabled(t *testing.T) {

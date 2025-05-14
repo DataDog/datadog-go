@@ -299,9 +299,13 @@ func (a *aggregator) flushMetrics() []metric {
 		// We know that counts can't be in both counts and prevCounts, we still need to flush
 		// them.
 		for _, c := range prevCounts {
-			m, hasTs := a.flushMetricWithTimestamp(c.flushUnsafe())
-			nbCountWithTimestamp += hasTs
-			metrics = append(metrics, m)
+			// If the count is not in the current counts, it means it wasn't sampled
+			// during this flush interval, so we send a 0 value.
+			if _, found := counts[c.name]; !found {
+				m, hasTs := a.flushMetricWithTimestamp(c.flushUnsafe())
+				nbCountWithTimestamp += hasTs
+				metrics = append(metrics, m)
+			}
 		}
 	}
 
@@ -378,7 +382,6 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 		if prevCount, found := a.prevCounts[context]; found {
 			prevCount.set(value)
 			a.counts[context] = prevCount
-			delete(a.prevCounts, context)
 			a.countsM.Unlock()
 			return nil
 		}
