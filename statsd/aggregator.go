@@ -211,6 +211,10 @@ func getContextAndTags(name string, tags []string) (string, string) {
 
 func (a *aggregator) count(name string, value int64, tags []string) error {
 	context := getContext(name, tags)
+	return a.countContext(context, name, value, tags)
+}
+
+func (a *aggregator) countContext(context string, name string, value int64, tags []string) error {
 	a.countsM.RLock()
 	if count, found := a.counts[context]; found {
 		count.sample(value)
@@ -234,6 +238,10 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 
 func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	context := getContext(name, tags)
+	return a.gaugeContext(context, name, value, tags)
+}
+
+func (a *aggregator) gaugeContext(context, name string, value float64, tags []string) error {
 	a.gaugesM.RLock()
 	if gauge, found := a.gauges[context]; found {
 		gauge.sample(value)
@@ -258,6 +266,10 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 
 func (a *aggregator) set(name string, value string, tags []string) error {
 	context := getContext(name, tags)
+	return a.setContext(context, name, value, tags)
+}
+
+func (a *aggregator) setContext(context string, name string, value string, tags []string) error {
 	a.setsM.RLock()
 	if set, found := a.sets[context]; found {
 		set.sample(value)

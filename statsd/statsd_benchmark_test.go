@@ -117,6 +117,28 @@ func benchmarkStatsdSameMetrics(b *testing.B, transport string, extraOptions ...
 	client.Close()
 }
 
+func benchmarkStatsdScope(b *testing.B, transport string, extraOptions ...statsd.Option) {
+	client, conn := setupClient(b, transport, extraOptions)
+	defer conn.Close()
+
+	tags := []string{"tag:tag"}
+	scope := client.Scope("test.metric", tags)
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			scope.Gauge(1, 1)
+		}
+	})
+	client.Flush()
+	t := client.GetTelemetry()
+	reportMetric(b, float64(t.TotalDroppedOnReceive)/float64(t.TotalMetrics)*100, "%_dropRate")
+
+	b.StopTimer()
+	client.Close()
+}
+
 /*
 UDP with the same metric
 */
@@ -139,6 +161,30 @@ func BenchmarkStatsdUDPSameMetricMutexAggregation(b *testing.B) {
 // dropping + aggregation
 func BenchmarkStatsdUDPSameMetricChannelAggregation(b *testing.B) {
 	benchmarkStatsdSameMetrics(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+}
+
+/*
+UDP using Scope
+*/
+
+// blocking + no aggregation
+func BenchmarkStatsdUDPScopeMutex(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
+}
+
+// dropping + no aggregation
+func BenchmarkStatsdUDPScopeChannel(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
+}
+
+// blocking + aggregation
+func BenchmarkStatsdUDPScopeMutexAggregation(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDP, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
+}
+
+// dropping + aggregation
+func BenchmarkStatsdUDPScopeChannelAggregation(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDP, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
 /*
@@ -186,6 +232,29 @@ func BenchmarkStatsdUDSSameMetricMutexAggregation(b *testing.B) {
 // dropping + aggregation
 func BenchmarkStatsdUDSSameMetricChannelAggregation(b *testing.B) {
 	benchmarkStatsdSameMetrics(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
+}
+
+/*
+UDS using Scope
+*/
+// blocking + no aggregation
+func BenchmarkStatsdUDSScopeMutex(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithoutClientSideAggregation())
+}
+
+// dropping + no aggregation
+func BenchmarkStatsdUDSScopeChannel(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithoutClientSideAggregation())
+}
+
+// blocking + aggregation
+func BenchmarkStatsdUDSScopeMutexAggregation(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDS, statsd.WithMutexMode(), statsd.WithClientSideAggregation())
+}
+
+// dropping + aggregation
+func BenchmarkStatsdUDSScopeChannelAggregation(b *testing.B) {
+	benchmarkStatsdScope(b, writerNameUDS, statsd.WithChannelMode(), statsd.WithClientSideAggregation())
 }
 
 /*
