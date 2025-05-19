@@ -5,13 +5,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAggregatorSample(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, false, false)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -47,7 +48,7 @@ func TestAggregatorSample(t *testing.T) {
 }
 
 func TestAggregatorFlush(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, false, false)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -195,10 +196,164 @@ func TestAggregatorFlush(t *testing.T) {
 		metrics)
 }
 
+func sortMetrics(metrics []metric) {
+	sort.Slice(metrics, func(i, j int) bool {
+		if metrics[i].metricType == metrics[j].metricType {
+			res := strings.Compare(metrics[i].name, metrics[j].name)
+			// this happens fo set
+			if res == 0 {
+				return strings.Compare(metrics[i].svalue, metrics[j].svalue) != 1
+			}
+			return res != 1
+		}
+		return metrics[i].metricType < metrics[j].metricType
+	})
+}
+
+type testClock struct {
+	now time.Time
+}
+
+func (c *testClock) Now() time.Time {
+	return c.now
+}
+
+func (c *testClock) Sleep(d time.Duration) {
+	c.now = c.now.Add(d)
+}
+
+func (c *testClock) Since(t time.Time) time.Duration {
+	return c.now.Sub(t)
+}
+
+func TestAggregatorFlushWithTimestamps(t *testing.T) {
+	clock := &testClock{now: time.Now()}
+	ts := clock.Now().Unix()
+
+	a := newAggregatorWithClock(nil, 0, true, false, clock)
+
+	tags := []string{"tag1", "tag2"}
+
+	a.gauge("gaugeTest1", 21, tags)
+	a.gauge("gaugeTest1", 10, tags)
+	a.gauge("gaugeTest2", 15, tags)
+
+	a.count("countTest1", 21, tags)
+	a.count("countTest1", 10, tags)
+	a.count("countTest2", 1, tags)
+	a.count("countTest3", 1, append(tags, "dd.internal.card:low"))
+
+	a.distribution("distributionTest1", 21, tags, 1)
+	a.distribution("distributionTest1", 22, tags, 1)
+	a.distribution("distributionTest2", 23, tags, 1)
+
+	metrics := a.flushMetrics()
+
+	assert.Len(t, a.gauges, 0)
+	assert.Len(t, a.counts, 0)
+	assert.Len(t, a.distributions.values, 0)
+
+	assert.Len(t, metrics, 6)
+
+	sortMetrics(metrics)
+
+	assert.Equal(t, []metric{
+		metric{
+			metricType: gauge,
+			name:       "gaugeTest1",
+			tags:       tags,
+			rate:       1,
+			fvalue:     float64(10),
+			timestamp:  ts,
+		},
+		metric{
+			metricType: gauge,
+			name:       "gaugeTest2",
+			tags:       tags,
+			rate:       1,
+			fvalue:     float64(15),
+			timestamp:  ts,
+		},
+		metric{
+			metricType: count,
+			name:       "countTest1",
+			tags:       tags,
+			rate:       1,
+			ivalue:     int64(31),
+			timestamp:  ts,
+		},
+		metric{
+			metricType: count,
+			name:       "countTest2",
+			tags:       tags,
+			rate:       1,
+			ivalue:     int64(1),
+			timestamp:  ts,
+		},
+		metric{
+			metricType: count,
+			name:       "countTest3",
+			tags:       append(tags, "dd.internal.card:low"),
+			rate:       1,
+			ivalue:     int64(1),
+		},
+		metric{
+			metricType: distributionAggregated,
+			name:       "distributionTest1",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{21.0, 22.0},
+		},
+		metric{
+			metricType: distributionAggregated,
+			name:       "distributionTest2",
+			stags:      strings.Join(tags, tagSeparatorSymbol),
+			rate:       1,
+			fvalues:    []float64{23.0},
+		},
+	},
+		metrics)
+
+	// Flush a second time to get the trailing 0s
+	metrics = a.flushMetrics()
+
+	assert.Len(t, a.gauges, 0)
+	assert.Len(t, a.counts, 0)
+	assert.Len(t, a.distributions.values, 0)
+
+	assert.Len(t, metrics, 2)
+
+	sortMetrics(metrics)
+
+	assert.Equal(t, []metric{
+		metric{
+			metricType: count,
+			name:       "countTest1",
+			tags:       tags,
+			rate:       1,
+			ivalue:     int64(0),
+			timestamp:  ts,
+		},
+		metric{
+			metricType: count,
+			name:       "countTest2",
+			tags:       tags,
+			rate:       1,
+			ivalue:     int64(0),
+			timestamp:  ts,
+		},
+	}, metrics)
+
+	// Flush a third time to check that nothing reports.
+	metrics = a.flushMetrics()
+
+	assert.Len(t, metrics, 0)
+}
+
 func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 	// In this test we keep only 2 samples per context for metrics where it's relevant.
 	maxSamples := int64(2)
-	a := newAggregator(nil, maxSamples)
+	a := newAggregator(nil, maxSamples, false, false)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -317,7 +472,7 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 }
 
 func TestAggregatorFlushConcurrency(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, false, false)
 
 	var wg sync.WaitGroup
 	wg.Add(10)
@@ -349,7 +504,7 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, false, false)
 	tags := []string{"tag1", "tag2"}
 
 	a.gauge("gauge", 21, tags)

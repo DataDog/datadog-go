@@ -8,76 +8,87 @@ import (
 )
 
 var (
-	defaultNamespace                    = ""
-	defaultTags                         = []string{}
-	defaultMaxBytesPerPayload           = 0
-	defaultMaxMessagesPerPayload        = math.MaxInt32
-	defaultBufferPoolSize               = 0
-	defaultBufferFlushInterval          = 100 * time.Millisecond
-	defaultWorkerCount                  = 32
-	defaultSenderQueueSize              = 0
-	defaultWriteTimeout                 = 100 * time.Millisecond
-	defaultConnectTimeout               = 1000 * time.Millisecond
-	defaultTelemetry                    = true
-	defaultReceivingMode                = mutexMode
-	defaultChannelModeBufferSize        = 4096
-	defaultAggregationFlushInterval     = 2 * time.Second
-	defaultAggregation                  = true
-	defaultExtendedAggregation          = false
-	defaultMaxBufferedSamplesPerContext = -1
-	defaultOriginDetection              = true
-	defaultChannelModeErrorsWhenFull    = false
-	defaultErrorHandler                 = func(error) {}
+	defaultNamespace                            = ""
+	defaultTags                                 = []string{}
+	defaultMaxBytesPerPayload                   = 0
+	defaultMaxMessagesPerPayload                = math.MaxInt32
+	defaultBufferPoolSize                       = 0
+	defaultBufferFlushInterval                  = 100 * time.Millisecond
+	defaultWorkerCount                          = 32
+	defaultSenderQueueSize                      = 0
+	defaultWriteTimeout                         = 100 * time.Millisecond
+	defaultConnectTimeout                       = 1000 * time.Millisecond
+	defaultTelemetry                            = true
+	defaultReceivingMode                        = mutexMode
+	defaultChannelModeBufferSize                = 4096
+	defaultAggregationFlushInterval             = 2 * time.Second
+	defaultAggregationOffsetFlush               = -1 * time.Second
+	defaultAggregation                          = true
+	defaultExtendedAggregation                  = false
+	defaultMaxBufferedSamplesPerContext         = -1
+	defaultOriginDetection                      = true
+	defaultChannelModeErrorsWhenFull            = false
+	defaultErrorHandler                         = func(error) {}
+	defaultAggregationSendWithTimestamps        = false
+	defaultAggregationIntervalWithTimestamps    = 10 * time.Second
+	defaultAggregationOffsetFlushWithTimestamps = 500 * time.Millisecond
+	defaultAggregationSmoothFlush               = false
 )
 
 // Options contains the configuration options for a client.
 type Options struct {
-	namespace                    string
-	tags                         []string
-	maxBytesPerPayload           int
-	maxMessagesPerPayload        int
-	bufferPoolSize               int
-	bufferFlushInterval          time.Duration
-	workersCount                 int
-	senderQueueSize              int
-	writeTimeout                 time.Duration
-	connectTimeout               time.Duration
-	telemetry                    bool
-	receiveMode                  receivingMode
-	channelModeBufferSize        int
-	aggregationFlushInterval     time.Duration
-	aggregation                  bool
-	extendedAggregation          bool
-	maxBufferedSamplesPerContext int
-	telemetryAddr                string
-	originDetection              bool
-	containerID                  string
-	channelModeErrorsWhenFull    bool
-	errorHandler                 ErrorHandler
+	namespace                     string
+	tags                          []string
+	maxBytesPerPayload            int
+	maxMessagesPerPayload         int
+	bufferPoolSize                int
+	bufferFlushInterval           time.Duration
+	workersCount                  int
+	senderQueueSize               int
+	writeTimeout                  time.Duration
+	connectTimeout                time.Duration
+	telemetry                     bool
+	receiveMode                   receivingMode
+	channelModeBufferSize         int
+	aggregationFlushInterval      time.Duration
+	aggregationOffsetFLush        time.Duration
+	aggregationSmoothFlush        bool
+	aggregation                   bool
+	extendedAggregation           bool
+	maxBufferedSamplesPerContext  int
+	telemetryAddr                 string
+	originDetection               bool
+	containerID                   string
+	channelModeErrorsWhenFull     bool
+	errorHandler                  ErrorHandler
+	aggregationSendWithTimestamps bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
 	o := &Options{
-		namespace:                    defaultNamespace,
-		tags:                         defaultTags,
-		maxBytesPerPayload:           defaultMaxBytesPerPayload,
-		maxMessagesPerPayload:        defaultMaxMessagesPerPayload,
-		bufferPoolSize:               defaultBufferPoolSize,
-		bufferFlushInterval:          defaultBufferFlushInterval,
-		workersCount:                 defaultWorkerCount,
-		senderQueueSize:              defaultSenderQueueSize,
-		writeTimeout:                 defaultWriteTimeout,
-		connectTimeout:               defaultConnectTimeout,
-		telemetry:                    defaultTelemetry,
-		receiveMode:                  defaultReceivingMode,
-		channelModeBufferSize:        defaultChannelModeBufferSize,
-		aggregationFlushInterval:     defaultAggregationFlushInterval,
-		aggregation:                  defaultAggregation,
-		extendedAggregation:          defaultExtendedAggregation,
-		maxBufferedSamplesPerContext: defaultMaxBufferedSamplesPerContext,
-		originDetection:              defaultOriginDetection,
-		channelModeErrorsWhenFull:    defaultChannelModeErrorsWhenFull,
-		errorHandler:                 defaultErrorHandler,
+		namespace:                     defaultNamespace,
+		tags:                          defaultTags,
+		maxBytesPerPayload:            defaultMaxBytesPerPayload,
+		maxMessagesPerPayload:         defaultMaxMessagesPerPayload,
+		bufferPoolSize:                defaultBufferPoolSize,
+		bufferFlushInterval:           defaultBufferFlushInterval,
+		workersCount:                  defaultWorkerCount,
+		senderQueueSize:               defaultSenderQueueSize,
+		writeTimeout:                  defaultWriteTimeout,
+		connectTimeout:                defaultConnectTimeout,
+		telemetry:                     defaultTelemetry,
+		receiveMode:                   defaultReceivingMode,
+		channelModeBufferSize:         defaultChannelModeBufferSize,
+		aggregationFlushInterval:      defaultAggregationFlushInterval,
+		aggregationOffsetFLush:        defaultAggregationOffsetFlush,
+		aggregationSmoothFlush:        defaultAggregationSmoothFlush,
+		aggregation:                   defaultAggregation,
+		extendedAggregation:           defaultExtendedAggregation,
+		maxBufferedSamplesPerContext:  defaultMaxBufferedSamplesPerContext,
+		originDetection:               defaultOriginDetection,
+		channelModeErrorsWhenFull:     defaultChannelModeErrorsWhenFull,
+		errorHandler:                  defaultErrorHandler,
+		aggregationSendWithTimestamps: defaultAggregationSendWithTimestamps,
 	}
 
 	for _, option := range options {
@@ -285,6 +296,48 @@ func WithoutChannelModeErrorsWhenFull() Option {
 func WithErrorHandler(errorHandler ErrorHandler) Option {
 	return func(o *Options) error {
 		o.errorHandler = errorHandler
+		return nil
+	}
+}
+
+// WithAggregationSendWithTimestamps sets the client to send timestamps with aggregated metrics.
+//
+// This feature allows to reduce the memory overhead of the agent by disabling in-agent
+// aggregation. When agents are handling multiple applications this can only be used
+// safely with origin detection enabled and each containers having a unique origin.
+//
+// This feature is automatically disabled when origin detection is disabled at the client
+// or metric level.
+//
+// To avoid changing the behavior on dashboards it is recommender to use WithAggregationInterval(10s).
+// To avoid spikes of metrics with bigger aggregation interval is recommender to use WithAggregationSmoothFlush().
+func WithAggregationSendWithTimestamps() Option {
+	return func(o *Options) error {
+		o.aggregationSendWithTimestamps = true
+		return nil
+	}
+}
+
+// WithAggregationSmoothFlush sets the client to report metrics every 10s.
+func WithAggregationSmoothFlush() Option {
+	return func(o *Options) error {
+		o.aggregationSmoothFlush = true
+		return nil
+	}
+}
+
+// WithRecommendedAggregationOptionsWithTimestamps sets the client to mimic the agent's
+// aggregator while reducing the pressure on it as much as possible.
+func WithRecommendedAggregationOptionsWithTimestamps() Option {
+	return func(o *Options) error {
+		o.aggregationSendWithTimestamps = true
+		// To mimic the reporting interval of the agent.
+		o.aggregationFlushInterval = defaultAggregationIntervalWithTimestamps
+		// To reduce the pressure on the agent in the first part of the reporting interval.
+		o.aggregationSmoothFlush = true
+		o.aggregationOffsetFLush = defaultAggregationOffsetFlushWithTimestamps
+		// To make sure each container is reported as a unique origins
+		o.originDetection = true
 		return nil
 	}
 }

@@ -32,14 +32,20 @@ func (c *countMetric) sample(v int64) {
 	atomic.AddInt64(&c.value, v)
 }
 
+func (c *countMetric) set(v int64) {
+	atomic.StoreInt64(&c.value, v)
+}
+
 func (c *countMetric) flushUnsafe() metric {
-	return metric{
+	m := metric{
 		metricType: count,
 		name:       c.name,
 		tags:       c.tags,
 		rate:       1,
 		ivalue:     c.value,
 	}
+	c.set(0)
+	return m
 }
 
 // Gauge

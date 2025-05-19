@@ -110,6 +110,10 @@ type Telemetry struct {
 	// AggregationNbContextTiming is the total number of contexts for timings flushed by the aggregator when either
 	// WithClientSideAggregation or WithExtendedClientSideAggregation options are enabled.
 	AggregationNbContextTiming uint64
+	// AggregationNbCountWithTimestamp is the total number of counts flushed by the aggregator with a timestamp.
+	AggregationNbCountWithTimestamp uint64
+	// AggregationNbGaugeWithTimestamp is the total number of gauges flushed by the aggregator with a timestamp.
+	AggregationNbGaugeWithTimestamp uint64
 }
 
 type telemetryClient struct {
@@ -299,6 +303,8 @@ func (t *telemetryClient) flush() []metric {
 		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(tlm.AggregationNbContextHistogram-t.lastSample.AggregationNbContextHistogram), t.tagsByType[histogram])
 		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(tlm.AggregationNbContextDistribution-t.lastSample.AggregationNbContextDistribution), t.tagsByType[distribution])
 		telemetryCount("datadog.dogstatsd.client.aggregated_context_by_type", int64(tlm.AggregationNbContextTiming-t.lastSample.AggregationNbContextTiming), t.tagsByType[timing])
+		telemetryCount("datadog.dogstatsd.client.aggregated_with_timestamp_by_type", int64(tlm.AggregationNbCountWithTimestamp-t.lastSample.AggregationNbCountWithTimestamp), t.tagsByType[count])
+		telemetryCount("datadog.dogstatsd.client.aggregated_with_timestamp_by_type", int64(tlm.AggregationNbGaugeWithTimestamp-t.lastSample.AggregationNbGaugeWithTimestamp), t.tagsByType[gauge])
 	}
 
 	t.lastSample = tlm
