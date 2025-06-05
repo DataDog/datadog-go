@@ -219,6 +219,8 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 	}
 	a.countsM.RUnlock()
 
+	metric := newCountMetric(name, value, tags)
+
 	a.countsM.Lock()
 	// Check if another goroutines hasn't created the value betwen the RUnlock and 'Lock'
 	if count, found := a.counts[context]; found {
@@ -227,7 +229,7 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 		return nil
 	}
 
-	a.counts[context] = newCountMetric(name, value, tags)
+	a.counts[context] = metric
 	a.countsM.Unlock()
 	return nil
 }
@@ -242,7 +244,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	}
 	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags)
+	metric := newGaugeMetric(name, value, tags)
 
 	a.gaugesM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
@@ -251,7 +253,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 		a.gaugesM.Unlock()
 		return nil
 	}
-	a.gauges[context] = gauge
+	a.gauges[context] = metric
 	a.gaugesM.Unlock()
 	return nil
 }
@@ -266,6 +268,8 @@ func (a *aggregator) set(name string, value string, tags []string) error {
 	}
 	a.setsM.RUnlock()
 
+	metric := newSetMetric(name, value, tags)
+
 	a.setsM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
 	if set, found := a.sets[context]; found {
@@ -273,7 +277,7 @@ func (a *aggregator) set(name string, value string, tags []string) error {
 		a.setsM.Unlock()
 		return nil
 	}
-	a.sets[context] = newSetMetric(name, value, tags)
+	a.sets[context] = metric
 	a.setsM.Unlock()
 	return nil
 }
