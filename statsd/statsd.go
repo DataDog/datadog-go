@@ -102,6 +102,10 @@ const (
 
 	// originDetectionEnabled specifies the env var to enable/disable sending the container ID field.
 	originDetectionEnabled = "DD_ORIGIN_DETECTION_ENABLED"
+
+	ddExternalEnvEnabled = "admission.datadoghq.com/enabled"
+
+	ddExternalEnvVarName = "DD_EXTERNAL_ENV"
 )
 
 /*
@@ -904,4 +908,13 @@ func isOriginDetectionEnabled(o *Options) bool {
 	}
 
 	return enabled
+}
+
+func isDDExternalEnvEnabled() bool {
+	envVarValue := os.Getenv(ddExternalEnvVarName)
+	if envVarValue == "" {
+		return false
+	}
+
+	return envVarValue == "true"
 }
