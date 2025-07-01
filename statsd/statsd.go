@@ -23,6 +23,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 )
 
 /*
@@ -102,8 +103,6 @@ const (
 
 	// originDetectionEnabled specifies the env var to enable/disable sending the container ID field.
 	originDetectionEnabled = "DD_ORIGIN_DETECTION_ENABLED"
-
-	ddExternalEnvEnabled = "admission.datadoghq.com/enabled"
 
 	ddExternalEnvVarName = "DD_EXTERNAL_ENV"
 )
@@ -292,6 +291,8 @@ type Client struct {
 	isClosed              bool
 	errorOnBlockedChannel bool
 	errorHandler          ErrorHandler
+	// externalEnv is appended to every metric if there is a DD_EXTERNAL_ENV value
+	externalEnv string
 }
 
 // statsdTelemetry contains telemetry metrics about the client
@@ -463,6 +464,10 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 		if value := os.Getenv(mapping.envName); value != "" {
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
+	}
+	// Inject value of DD_EXTERNAL_ENV as field
+	if value := os.Getenv(ddExternalEnvVarName); value != "" {
+		c.externalEnv = sanitizeExternalEnv(value)
 	}
 
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
@@ -910,11 +915,16 @@ func isOriginDetectionEnabled(o *Options) bool {
 	return enabled
 }
 
-func isDDExternalEnvEnabled() bool {
-	envVarValue := os.Getenv(ddExternalEnvVarName)
-	if envVarValue == "" {
-		return false
+func sanitizeExternalEnv(externalEnv string) string {
+	if externalEnv == "" {
+		return ""
+	}
+	var output string
+	for _, r := range externalEnv {
+		if unicode.IsPrint(r) && r != '|' {
+			output += string(r)
+		}
 	}
 
-	return envVarValue == "true"
+	return output
 }
