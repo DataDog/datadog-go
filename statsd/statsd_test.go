@@ -389,6 +389,7 @@ func withNoWorkers() Option {
 		return nil
 	}
 }
+
 func TestErrorsReturnedWithAggregator(t *testing.T) {
 	client, err := New("localhost:8765",
 		WithChannelMode(), WithExtendedClientSideAggregation(),
@@ -406,4 +407,60 @@ func TestErrorsReturnedWithAggregator(t *testing.T) {
 
 	err = client.Close()
 	require.NoError(t, err)
+}
+
+func TestSanitizeExternalEnv(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "normal string",
+			input:    "production-pod-123",
+			expected: "production-pod-123",
+		},
+		{
+			name:     "with pipe characters",
+			input:    "test|env|with|pipes",
+			expected: "testenvwithpipes",
+		},
+		{
+			name:     "with non-printable characters",
+			input:    "test\x00env\x01with\x02control",
+			expected: "testenvwithcontrol",
+		},
+		{
+			name:     "with unicode characters",
+			input:    "test-环境-123",
+			expected: "test-环境-123",
+		},
+		{
+			name:     "with spaces and special chars",
+			input:    "test env with spaces and | pipes",
+			expected: "test env with spaces and  pipes",
+		},
+		{
+			name:     "only pipe characters",
+			input:    "|||",
+			expected: "",
+		},
+		{
+			name:     "only non-printable characters",
+			input:    "\x00\x01\x02\x03",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := sanitizeExternalEnv(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
