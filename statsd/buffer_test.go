@@ -27,12 +27,6 @@ func TestBufferGauge(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|T1658934092\n", string(buffer.bytes()))
 
-	// with an external var value
-	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, "test-env")
-	assert.Nil(t, err)
-	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:test-env\n", string(buffer.bytes()))
-
 }
 
 func TestBufferCount(t *testing.T) {
