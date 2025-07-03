@@ -82,6 +82,15 @@ func TestBufferHistogram(t *testing.T) {
 	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferDistribution(t *testing.T) {
@@ -98,6 +107,15 @@ func TestBufferDistribution(t *testing.T) {
 	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 func TestBufferSet(t *testing.T) {
 	buffer := newStatsdBuffer(1024, 1)
@@ -113,6 +131,15 @@ func TestBufferSet(t *testing.T) {
 	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:value|s|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:value|s|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferTiming(t *testing.T) {
@@ -129,6 +156,15 @@ func TestBufferTiming(t *testing.T) {
 	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferEvent(t *testing.T) {
@@ -145,6 +181,15 @@ func TestBufferEvent(t *testing.T) {
 	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"})
 	assert.Nil(t, err)
 	assert.Equal(t, "_e{5,4}:title|text|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"})
+	assert.Nil(t, err)
+	assert.Equal(t, "_e{5,4}:title|text|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferServiceCheck(t *testing.T) {
@@ -161,6 +206,15 @@ func TestBufferServiceCheck(t *testing.T) {
 	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"})
 	assert.Nil(t, err)
 	assert.Equal(t, "_sc|name|0|#tag:tag|c:container-id\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"})
+	assert.Nil(t, err)
+	assert.Equal(t, "_sc|name|0|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferFullSize(t *testing.T) {
