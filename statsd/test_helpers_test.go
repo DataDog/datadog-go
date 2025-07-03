@@ -650,3 +650,8 @@ func resetContainerID() {
 	containerID = ""
 	initOnce = sync.Once{}
 }
+
+func resetExternalEnv() {
+	externalEnv = ""
+	os.Unsetenv(ddExternalEnvVarName)
+}

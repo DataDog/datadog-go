@@ -152,9 +152,7 @@ func TestGetExternalEnv(t *testing.T) {
 			result := getExternalEnv()
 			assert.Equal(t, tt.expectedResult, result)
 
-			defer func() {
-				os.Unsetenv(ddExternalEnvVarName)
-			}()
+			defer resetExternalEnv()
 		})
 	}
 }
