@@ -143,11 +143,7 @@ func TestGetExternalEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set the environment variable
-			if tt.envValue != "" {
-				os.Setenv(ddExternalEnvVarName, tt.envValue)
-			} else {
-				os.Unsetenv(ddExternalEnvVarName)
-			}
+			os.Setenv(ddExternalEnvVarName, tt.envValue)
 
 			// Re-initialize the external environment
 			initExternalEnv()
@@ -155,6 +151,9 @@ func TestGetExternalEnv(t *testing.T) {
 			// Test getExternalEnv
 			result := getExternalEnv()
 			assert.Equal(t, tt.expectedResult, result)
+
+			os.Unsetenv(ddExternalEnvVarName)
+
 		})
 	}
 }
