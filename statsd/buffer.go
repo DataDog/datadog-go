@@ -39,7 +39,7 @@ func newStatsdBuffer(maxSize, maxElements int) *statsdBuffer {
 	}
 }
 
-func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, timestamp int64, externalEnv string) error {
+func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, timestamp int64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -50,7 +50,7 @@ func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name st
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeCount(namespace string, globalTags []string, name string, value int64, tags []string, rate float64, timestamp int64, externalEnv string) error {
+func (b *statsdBuffer) writeCount(namespace string, globalTags []string, name string, value int64, tags []string, rate float64, timestamp int64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -61,7 +61,7 @@ func (b *statsdBuffer) writeCount(namespace string, globalTags []string, name st
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeHistogram(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, externalEnv string) error {
+func (b *statsdBuffer) writeHistogram(namespace string, globalTags []string, name string, value float64, tags []string, rate float64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -72,7 +72,7 @@ func (b *statsdBuffer) writeHistogram(namespace string, globalTags []string, nam
 }
 
 // writeAggregated serialized as many values as possible in the current buffer and return the position in values where it stopped.
-func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, globalTags []string, name string, values []float64, tags string, tagSize int, precision int, rate float64, externalEnv string) (int, error) {
+func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, globalTags []string, name string, values []float64, tags string, tagSize int, precision int, rate float64) (int, error) {
 	if b.elementCount >= b.maxElements {
 		return 0, errBufferFull
 	}
@@ -126,7 +126,7 @@ func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, gl
 
 }
 
-func (b *statsdBuffer) writeDistribution(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, externalEnv string) error {
+func (b *statsdBuffer) writeDistribution(namespace string, globalTags []string, name string, value float64, tags []string, rate float64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -136,7 +136,7 @@ func (b *statsdBuffer) writeDistribution(namespace string, globalTags []string, 
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeSet(namespace string, globalTags []string, name string, value string, tags []string, rate float64, externalEnv string) error {
+func (b *statsdBuffer) writeSet(namespace string, globalTags []string, name string, value string, tags []string, rate float64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -146,7 +146,7 @@ func (b *statsdBuffer) writeSet(namespace string, globalTags []string, name stri
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeTiming(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, externalEnv string) error {
+func (b *statsdBuffer) writeTiming(namespace string, globalTags []string, name string, value float64, tags []string, rate float64) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -156,7 +156,7 @@ func (b *statsdBuffer) writeTiming(namespace string, globalTags []string, name s
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeEvent(event *Event, globalTags []string, externalEnv string) error {
+func (b *statsdBuffer) writeEvent(event *Event, globalTags []string) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
@@ -166,7 +166,7 @@ func (b *statsdBuffer) writeEvent(event *Event, globalTags []string, externalEnv
 	return b.validateNewElement(originalBuffer)
 }
 
-func (b *statsdBuffer) writeServiceCheck(serviceCheck *ServiceCheck, globalTags []string, externalEnv string) error {
+func (b *statsdBuffer) writeServiceCheck(serviceCheck *ServiceCheck, globalTags []string) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
