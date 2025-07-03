@@ -653,6 +653,7 @@ func resetContainerID() {
 
 func patchExternalEnv(env string) {
 	os.Setenv(ddExternalEnvVarName, env)
+	initExternalEnv()
 }
 
 func resetExternalEnv() {

@@ -34,7 +34,7 @@ func TestBufferGauge(t *testing.T) {
 	buffer = newStatsdBuffer(1024, 1)
 	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
 	assert.Nil(t, err)
-	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|E:external-env\n", string(buffer.bytes()))
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferCount(t *testing.T) {
@@ -57,6 +57,15 @@ func TestBufferCount(t *testing.T) {
 	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, 1658934092)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id|T1658934092\n", string(buffer.bytes()))
+
+	// with an external environment
+	patchExternalEnv("external-env")
+	defer resetExternalEnv()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 }
 
 func TestBufferHistogram(t *testing.T) {
