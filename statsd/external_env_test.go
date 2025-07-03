@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -107,7 +108,6 @@ func TestSanitizeExternalEnv(t *testing.T) {
 	}
 }
 
-/*
 func TestGetExternalEnv(t *testing.T) {
 	// Save original environment variable value
 	originalValue := os.Getenv(ddExternalEnvVarName)
@@ -152,9 +152,9 @@ func TestGetExternalEnv(t *testing.T) {
 			result := getExternalEnv()
 			assert.Equal(t, tt.expectedResult, result)
 
-			os.Unsetenv(ddExternalEnvVarName)
-
+			defer func() {
+				os.Unsetenv(ddExternalEnvVarName)
+			}()
 		})
 	}
 }
-*/
