@@ -20,6 +20,7 @@ func initExternalEnv() {
 	}
 }
 
+// sanitizeExternalEnv removes non-printable characters and pipe characters from the external environment name.
 func sanitizeExternalEnv(externalEnv string) string {
 	if externalEnv == "" {
 		return ""
