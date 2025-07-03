@@ -14,7 +14,8 @@ var (
 
 // initExternalEnv initializes the external environment name.
 func initExternalEnv() {
-	if value := os.Getenv(ddExternalEnvVarName); value != "" {
+	var value = os.Getenv(ddExternalEnvVarName)
+	if value != "" {
 		externalEnv = sanitizeExternalEnv(value)
 	}
 }
