@@ -460,7 +460,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
 	}
-	// Inject value of DD_EXTERNAL_ENV as field
+
 	initExternalEnv()
 
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
