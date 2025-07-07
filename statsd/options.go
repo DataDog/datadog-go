@@ -418,6 +418,7 @@ func WithContainerID(id string) Option {
 	}
 }
 
+// WithCardinality sets the tag cardinality of the metric.
 func WithCardinality(card string) CardinalityOption {
 	return CardinalityOption{card: card}
 }
