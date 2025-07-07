@@ -288,8 +288,6 @@ type Client struct {
 	isClosed              bool
 	errorOnBlockedChannel bool
 	errorHandler          ErrorHandler
-	// externalEnv is appended to every metric if there is a DD_EXTERNAL_ENV value
-	externalEnv string
 }
 
 // statsdTelemetry contains telemetry metrics about the client
@@ -464,7 +462,6 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 	}
 	// Inject value of DD_EXTERNAL_ENV as field
 	initExternalEnv()
-	c.externalEnv = getExternalEnv()
 
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
