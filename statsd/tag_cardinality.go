@@ -16,18 +16,21 @@ type CardinalityOption struct {
 const ddTagCardinalityVarName = "DD_TAG_CARDINALITY"
 
 var (
+	// Global setting of the tag cardinality.
 	tagCardinality = CardinalityOption{card: ""}
 )
 
 // initTagCardinality initializes the tag cardinality.
-func initTagCardinality() {
-	var value = os.Getenv(ddTagCardinalityVarName)
-	tagCardinality = validateCardinality(value)
+func initTagCardinality(card string) {
+	// If the user has not provided a value, read the value from the DD_TAG_CARDINITY environment variable.
+	if card == "" {
+		card = os.Getenv(ddTagCardinalityVarName)
+	}
+	tagCardinality = validateCardinality(card)
 }
 
-// validCardinality checks if the tag cardinality is valid.
+// validCardinality checks if the tag cardinality is a valid value.
 func validateCardinality(tagCardinality string) CardinalityOption {
-
 	tagCardinality = strings.ToLower(tagCardinality)
 	validValues := []string{"none", "low", "orchestrator", "high"}
 	for _, valid := range validValues {
@@ -41,9 +44,4 @@ func validateCardinality(tagCardinality string) CardinalityOption {
 
 func getTagCardinality() string {
 	return tagCardinality.card
-}
-
-// WithCardinality sets the tag cardinality of the metric.
-func WithCardinality(card string) CardinalityOption {
-	return CardinalityOption{card: card}
 }

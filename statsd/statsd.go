@@ -463,6 +463,9 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 
 	initExternalEnv()
 
+	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_TAG_CARDINITY environment variable.
+	initTagCardinality(o.tagCardinality.card)
+
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 
