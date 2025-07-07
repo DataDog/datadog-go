@@ -104,6 +104,7 @@ func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globa
 	buffer = appendTags(buffer, globalTags, tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
+	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -116,6 +117,7 @@ func appendIntegerMetric(buffer []byte, typeSymbol []byte, namespace string, glo
 	buffer = appendTags(buffer, globalTags, tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
+	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -128,6 +130,7 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 	buffer = appendTags(buffer, globalTags, tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
+	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -219,6 +222,7 @@ func appendEvent(buffer []byte, event *Event, globalTags []string) []byte {
 	buffer = appendTags(buffer, globalTags, event.Tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
+	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -261,6 +265,7 @@ func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []
 
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
+	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -288,6 +293,14 @@ func appendExternalEnv(buffer []byte) []byte {
 	if externalEnv := getExternalEnv(); externalEnv != "" {
 		buffer = append(buffer, "|e:"...)
 		buffer = append(buffer, externalEnv...)
+	}
+	return buffer
+}
+
+func appendTagCardinality(buffer []byte) []byte {
+	if tagCardinality := getTagCardinality(); tagCardinality != "" {
+		buffer = append(buffer, "|card:"...)
+		buffer = append(buffer, tagCardinality...)
 	}
 	return buffer
 }
