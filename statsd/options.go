@@ -90,11 +90,6 @@ func resolveOptions(options []Option) (*Options, error) {
 	return o, nil
 }
 
-type ExtraOption interface{}
-type CardinalityOption struct {
-	card string
-}
-
 // Option is a client option. Can return an error if validation fails.
 type Option func(*Options) error
 
@@ -416,8 +411,4 @@ func WithContainerID(id string) Option {
 		o.containerID = id
 		return nil
 	}
-}
-
-func WithCardinality(card string) CardinalityOption {
-	return CardinalityOption{card: card}
 }
