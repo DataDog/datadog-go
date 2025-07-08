@@ -461,6 +461,8 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 		}
 	}
 
+	initExternalEnv()
+
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 

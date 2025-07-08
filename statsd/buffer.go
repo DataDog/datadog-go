@@ -115,6 +115,7 @@ func (b *statsdBuffer) writeAggregated(metricSymbol []byte, namespace string, gl
 	b.buffer = appendRate(b.buffer, rate)
 	b.buffer = appendTagsAggregated(b.buffer, globalTags, tags)
 	b.buffer = appendContainerID(b.buffer)
+	b.buffer = appendExternalEnv(b.buffer)
 	b.writeSeparator()
 	b.elementCount++
 
