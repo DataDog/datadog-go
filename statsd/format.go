@@ -131,7 +131,7 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
 	buffer = appendTagCardinality(buffer)
-	return buffer
+  return buffer
 }
 
 func appendGauge(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
