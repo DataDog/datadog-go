@@ -28,7 +28,7 @@ var (
 	defaultOriginDetection              = true
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
-	defaultTagCardinality               = CardinalityOption{card: ""}
+	defaultTagCardinality               = CardinalityParameter{card: ""}
 )
 
 // Options contains the configuration options for a client.
@@ -55,7 +55,7 @@ type Options struct {
 	containerID                  string
 	channelModeErrorsWhenFull    bool
 	errorHandler                 ErrorHandler
-	tagCardinality               CardinalityOption
+	tagCardinality               CardinalityParameter
 }
 
 func resolveOptions(options []Option) (*Options, error) {

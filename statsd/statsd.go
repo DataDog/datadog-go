@@ -150,20 +150,21 @@ const (
 const noTimestamp = int64(0)
 
 type metric struct {
-	metricType metricType
-	namespace  string
-	globalTags []string
-	name       string
-	fvalue     float64
-	fvalues    []float64
-	ivalue     int64
-	svalue     string
-	evalue     *Event
-	scvalue    *ServiceCheck
-	tags       []string
-	stags      string
-	rate       float64
-	timestamp  int64
+	metricType  metricType
+	namespace   string
+	globalTags  []string
+	name        string
+	fvalue      float64
+	fvalues     []float64
+	ivalue      int64
+	svalue      string
+	evalue      *Event
+	scvalue     *ServiceCheck
+	tags        []string
+	stags       string
+	rate        float64
+	timestamp   int64
+	cardinality CardinalityParameter
 }
 
 type noClientErr string
