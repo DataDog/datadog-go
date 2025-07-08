@@ -22,7 +22,7 @@ func (c *Client) Gauge_Bench(name string, value float64, tags []string, rate flo
 			cardinality = c
 		}
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, cardinality: cardinality})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, tagCardinality: cardinality})
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.

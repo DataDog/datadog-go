@@ -150,21 +150,21 @@ const (
 const noTimestamp = int64(0)
 
 type metric struct {
-	metricType  metricType
-	namespace   string
-	globalTags  []string
-	name        string
-	fvalue      float64
-	fvalues     []float64
-	ivalue      int64
-	svalue      string
-	evalue      *Event
-	scvalue     *ServiceCheck
-	tags        []string
-	stags       string
-	rate        float64
-	timestamp   int64
-	cardinality CardinalityParameter
+	metricType     metricType
+	namespace      string
+	globalTags     []string
+	name           string
+	fvalue         float64
+	fvalues        []float64
+	ivalue         int64
+	svalue         string
+	evalue         *Event
+	scvalue        *ServiceCheck
+	tags           []string
+	stags          string
+	rate           float64
+	timestamp      int64
+	tagCardinality CardinalityParameter
 }
 
 type noClientErr string
@@ -191,7 +191,7 @@ func (e invalidTimestampErr) Error() string {
 // downstream users' with their testing.
 type ClientInterface interface {
 	// Gauge measures the value of a metric at a particular time.
-	Gauge(name string, value float64, tags []string, rate float64) error
+	Gauge(name string, value float64, tags []string, rate float64, parameters ...Parameter) error
 
 	// GaugeWithTimestamp measures the value of a metric at a given time.
 	// BETA - Please contact our support team for more information to use this feature: https://www.datadoghq.com/support/
@@ -685,7 +685,7 @@ func (c *Client) sendToAggregator(mType metricType, name string, value float64, 
 }
 
 // Gauge measures the value of a metric at a particular time.
-func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
+func (c *Client) Gauge(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -693,7 +693,8 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, tagCardinality: defaultTagCardinality})
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.

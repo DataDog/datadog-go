@@ -39,13 +39,14 @@ func newStatsdBuffer(maxSize, maxElements int) *statsdBuffer {
 	}
 }
 
-func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, timestamp int64) error {
+func (b *statsdBuffer) writeGauge(namespace string, globalTags []string, name string, value float64, tags []string, rate float64, timestamp int64, tagCardinality CardinalityParameter) error {
 	if b.elementCount >= b.maxElements {
 		return errBufferFull
 	}
 	originalBuffer := b.buffer
 	b.buffer = appendGauge(b.buffer, namespace, globalTags, name, value, tags, rate)
 	b.buffer = appendTimestamp(b.buffer, timestamp)
+	b.buffer = appendTagCardinality(b.buffer, tagCardinality)
 	b.writeSeparator()
 	return b.validateNewElement(originalBuffer)
 }

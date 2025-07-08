@@ -104,7 +104,6 @@ func appendFloatMetric(buffer []byte, typeSymbol []byte, namespace string, globa
 	buffer = appendTags(buffer, globalTags, tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
-	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -117,7 +116,6 @@ func appendIntegerMetric(buffer []byte, typeSymbol []byte, namespace string, glo
 	buffer = appendTags(buffer, globalTags, tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
-	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -130,8 +128,7 @@ func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, glob
 	buffer = appendTags(buffer, globalTags, tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
-	buffer = appendTagCardinality(buffer)
-  return buffer
+	return buffer
 }
 
 func appendGauge(buffer []byte, namespace string, globalTags []string, name string, value float64, tags []string, rate float64) []byte {
@@ -222,7 +219,6 @@ func appendEvent(buffer []byte, event *Event, globalTags []string) []byte {
 	buffer = appendTags(buffer, globalTags, event.Tags)
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
-	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -265,7 +261,6 @@ func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []
 
 	buffer = appendContainerID(buffer)
 	buffer = appendExternalEnv(buffer)
-	buffer = appendTagCardinality(buffer)
 	return buffer
 }
 
@@ -297,10 +292,16 @@ func appendExternalEnv(buffer []byte) []byte {
 	return buffer
 }
 
-func appendTagCardinality(buffer []byte) []byte {
-	if tagCardinality := getTagCardinality(); tagCardinality != "" {
-		buffer = append(buffer, "|card:"...)
-		buffer = append(buffer, tagCardinality...)
+func appendTagCardinality(buffer []byte, tagCardinality CardinalityParameter) []byte {
+	var value = tagCardinality.card
+	if value == "" {
+		value = getTagCardinality()
 	}
+
+	if value != "" {
+		buffer = append(buffer, "|card:"...)
+		buffer = append(buffer, value...)
+	}
+
 	return buffer
 }

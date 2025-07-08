@@ -7,7 +7,7 @@ import "time"
 type NoOpClient struct{}
 
 // Gauge does nothing and returns nil
-func (n *NoOpClient) Gauge(name string, value float64, tags []string, rate float64) error {
+func (n *NoOpClient) Gauge(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
 	return nil
 }
 
