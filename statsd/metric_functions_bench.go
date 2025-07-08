@@ -13,7 +13,9 @@ func (c *Client) Gauge_Bench(name string, value float64, tags []string, rate flo
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags)
 	}
-	var cardinality = defaultTagCardinality
+
+	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
+	var cardinality = tagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
 		if ok {
