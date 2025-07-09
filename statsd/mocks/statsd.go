@@ -134,17 +134,22 @@ func (mr *MockClientInterfaceMockRecorder) Flush() *gomock.Call {
 }
 
 // Gauge mocks base method.
-func (m *MockClientInterface) Gauge(name string, value float64, tags []string, rate float64) error {
+func (m *MockClientInterface) Gauge(name string, value float64, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Gauge", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Gauge", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Gauge indicates an expected call of Gauge.
-func (mr *MockClientInterfaceMockRecorder) Gauge(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Gauge(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Gauge", reflect.TypeOf((*MockClientInterface)(nil).Gauge), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Gauge", reflect.TypeOf((*MockClientInterface)(nil).Gauge), varargs...)
 }
 
 // GaugeWithTimestamp mocks base method.
