@@ -3,6 +3,7 @@ package statsd
 import (
 	"os"
 	"strings"
+	"sync"
 )
 
 type Parameter interface{}
@@ -14,7 +15,8 @@ type CardinalityParameter struct {
 
 var (
 	// Global setting of the tag cardinality.
-	tagCardinality = CardinalityParameter{card: ""}
+	tagCardinality      = CardinalityParameter{card: ""}
+	tagCardinalityMutex sync.RWMutex
 )
 
 // initTagCardinality initializes the tag cardinality.
@@ -27,7 +29,9 @@ func initTagCardinality(card string) {
 	if card == "" {
 		card = os.Getenv("DATADOG_CARDINALITY")
 	}
+	tagCardinalityMutex.Lock()
 	tagCardinality = validateCardinality(card)
+	tagCardinalityMutex.Unlock()
 }
 
 // validCardinality checks if the tag cardinality is a valid value.
@@ -44,5 +48,7 @@ func validateCardinality(tagCardinality string) CardinalityParameter {
 }
 
 func getTagCardinality() string {
+	tagCardinalityMutex.RLock()
+	defer tagCardinalityMutex.RUnlock()
 	return tagCardinality.card
 }
