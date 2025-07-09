@@ -464,7 +464,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 
 	initExternalEnv()
 
-	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_TAG_CARDINITY environment variable.
+	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_CARDINALITY/DATADOG_CARDINALITY environment variable.
 	initTagCardinality(o.tagCardinality.card)
 
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())

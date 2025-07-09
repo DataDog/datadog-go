@@ -21,16 +21,18 @@ var (
 
 // initTagCardinality initializes the tag cardinality.
 func initTagCardinality(card string) {
+	tagCardinalityMutex.Lock()
+
+	tagCardinality = validateCardinality(card)
+
 	// If the user has not provided a value, read the value from the DD_CARDINITY environment variable.
-	if card == "" {
-		card = os.Getenv("DD_CARDINALITY")
+	if tagCardinality.card == "" {
+		tagCardinality = validateCardinality(os.Getenv("DD_CARDINALITY"))
 	}
 	// If DD_CARDINALITY is not set, read the value from the DATADOG_CARDINALITY environment variable.
-	if card == "" {
-		card = os.Getenv("DATADOG_CARDINALITY")
+	if tagCardinality.card == "" {
+		tagCardinality = validateCardinality(os.Getenv("DATADOG_CARDINALITY"))
 	}
-	tagCardinalityMutex.Lock()
-	tagCardinality = validateCardinality(card)
 	tagCardinalityMutex.Unlock()
 }
 
