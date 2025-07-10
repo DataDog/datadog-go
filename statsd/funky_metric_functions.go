@@ -21,5 +21,5 @@ func (c *Client) GaugeFunky(name string, value float64, tags []string, rate floa
 			cardinality = c
 		}
 	}
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, tagCardinality: cardinality})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
