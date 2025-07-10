@@ -108,7 +108,7 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte, prec
 func (w *worker) writeMetricUnsafe(m metric) error {
 	switch m.metricType {
 	case gauge:
-		return w.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.timestamp, m.tagCardinality)
+		return w.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.timestamp, m.overrideCard)
 	case count:
 		return w.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate, m.timestamp)
 	case histogram:

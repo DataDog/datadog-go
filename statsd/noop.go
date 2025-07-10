@@ -12,7 +12,7 @@ func (n *NoOpClient) Gauge(name string, value float64, tags []string, rate float
 }
 
 // GaugeWithTimestamp does nothing and returns nil
-func (n *NoOpClient) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
+func (n *NoOpClient) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error {
 	return nil
 }
 

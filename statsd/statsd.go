@@ -150,21 +150,21 @@ const (
 const noTimestamp = int64(0)
 
 type metric struct {
-	metricType     metricType
-	namespace      string
-	globalTags     []string
-	name           string
-	fvalue         float64
-	fvalues        []float64
-	ivalue         int64
-	svalue         string
-	evalue         *Event
-	scvalue        *ServiceCheck
-	tags           []string
-	stags          string
-	rate           float64
-	timestamp      int64
-	tagCardinality CardinalityParameter
+	metricType   metricType
+	namespace    string
+	globalTags   []string
+	name         string
+	fvalue       float64
+	fvalues      []float64
+	ivalue       int64
+	svalue       string
+	evalue       *Event
+	scvalue      *ServiceCheck
+	tags         []string
+	stags        string
+	rate         float64
+	timestamp    int64
+	overrideCard CardinalityParameter
 }
 
 type noClientErr string
@@ -199,7 +199,7 @@ type ClientInterface interface {
 	// useful when sending points in the past.
 	//
 	// Minimum Datadog Agent version: 7.40.0
-	GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error
+	GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error
 
 	// Count tracks how many times something happened per second.
 	Count(name string, value int64, tags []string, rate float64) error
@@ -694,7 +694,15 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64, 
 		return c.agg.gauge(name, value, tags)
 	}
 
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, tagCardinality: defaultTagCardinality})
+	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
+	var cardinality = tagCardinality
+	for _, o := range parameters {
+		c, ok := o.(CardinalityParameter)
+		if ok {
+			cardinality = c
+		}
+	}
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.
@@ -703,7 +711,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64, 
 // useful when sending points in the past.
 //
 // Minimum Datadog Agent version: 7.40.0
-func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
+func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -713,7 +721,16 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 	}
 
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix()})
+
+	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
+	var cardinality = tagCardinality
+	for _, o := range parameters {
+		c, ok := o.(CardinalityParameter)
+		if ok {
+			cardinality = c
+		}
+	}
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), overrideCard: cardinality})
 }
 
 // Count tracks how many times something happened per second.
