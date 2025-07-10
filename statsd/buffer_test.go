@@ -35,6 +35,31 @@ func TestBufferGauge(t *testing.T) {
 	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, defaultTagCardinality)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
+
+	// with a tag cardinality (global setting)
+	patchTagCardinality("low", "high", "orchestrator")
+	defer resetTagCardinality()
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, defaultTagCardinality)
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env|card:low\n", string(buffer.bytes()))
+
+	// with a tag cardinality (valid local override)
+	patchTagCardinality("low", "high", "orchestrator")
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityParameter{card: "none"})
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
+
+	// with a tag cardinality (invalid local override)
+	patchTagCardinality("invalid", "high", "orchestrator")
+
+	buffer = newStatsdBuffer(1024, 1)
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityParameter{card: "invalid"})
+	assert.Nil(t, err)
+	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
 
 func TestBufferCount(t *testing.T) {

@@ -292,8 +292,8 @@ func appendExternalEnv(buffer []byte) []byte {
 	return buffer
 }
 
-func appendTagCardinality(buffer []byte, tagCardinality CardinalityParameter) []byte {
-	var value = tagCardinality.card
+func appendTagCardinality(buffer []byte, overrideCard CardinalityParameter) []byte {
+	var value = validateCardinality(overrideCard.card).card
 	if value == "" {
 		value = getTagCardinality()
 	}
@@ -302,6 +302,5 @@ func appendTagCardinality(buffer []byte, tagCardinality CardinalityParameter) []
 		buffer = append(buffer, "|card:"...)
 		buffer = append(buffer, value...)
 	}
-
 	return buffer
 }
