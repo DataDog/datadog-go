@@ -680,6 +680,25 @@ func (c *Client) sendToAggregator(mType metricType, name string, value float64, 
 	return f(name, value, tags, rate)
 }
 
+// Scope embeds name and tags for a metric.
+type Scope struct {
+	context string
+	name    string
+	tags    []string
+	c       *Client
+}
+
+// Scope returns a cached version of name and tags.
+// You can use it to avoid extra allocations when sending the same metric multiple times.
+func (c *Client) Scope(name string, tags []string) *Scope {
+	return &Scope{
+		context: getContext(name, tags),
+		name:    name,
+		tags:    tags,
+		c:       c,
+	}
+}
+
 // Gauge measures the value of a metric at a particular time.
 func (c *Client) Gauge(name string, value float64, tags []string, rate float64) error {
 	if c == nil {
@@ -690,6 +709,18 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 		return c.agg.gauge(name, value, tags)
 	}
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+}
+
+// Gauge measures the value of a metric at a particular time.
+func (s *Scope) Gauge(value float64, rate float64) error {
+	if s == nil || s.c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&s.c.telemetry.totalMetricsGauge, 1)
+	if s.c.agg != nil {
+		return s.c.agg.gaugeContext(s.context, s.name, value, s.tags)
+	}
+	return s.c.send(metric{metricType: gauge, name: s.name, fvalue: value, tags: s.tags, rate: rate, globalTags: s.c.tags, namespace: s.c.namespace})
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.
@@ -721,6 +752,18 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 		return c.agg.count(name, value, tags)
 	}
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+}
+
+// Count tracks how many times something happened per second.
+func (s *Scope) Count(value int64, rate float64) error {
+	if s == nil || s.c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&s.c.telemetry.totalMetricsCount, 1)
+	if s.c.agg != nil {
+		return s.c.agg.countContext(s.context, s.name, value, s.tags)
+	}
+	return s.c.send(metric{metricType: count, name: s.name, ivalue: value, tags: s.tags, rate: rate, globalTags: s.c.tags, namespace: s.c.namespace})
 }
 
 // CountWithTimestamp tracks how many times something happened at the given second.
@@ -771,9 +814,19 @@ func (c *Client) Decr(name string, tags []string, rate float64) error {
 	return c.Count(name, -1, tags, rate)
 }
 
+// Decr is just Count of -1
+func (s *Scope) Decr(rate float64) error {
+	return s.Count(-1, rate)
+}
+
 // Incr is just Count of 1
 func (c *Client) Incr(name string, tags []string, rate float64) error {
 	return c.Count(name, 1, tags, rate)
+}
+
+// Incr is just Count of 1
+func (s *Scope) Incr(rate float64) error {
+	return s.Count(1, rate)
 }
 
 // Set counts the number of unique elements in a group.
@@ -786,6 +839,18 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 		return c.agg.set(name, value, tags)
 	}
 	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace})
+}
+
+// Set counts the number of unique elements in a group.
+func (s *Scope) Set(value string, rate float64) error {
+	if s == nil || s.c == nil {
+		return ErrNoClient
+	}
+	atomic.AddUint64(&s.c.telemetry.totalMetricsSet, 1)
+	if s.c.agg != nil {
+		return s.c.agg.setContext(s.context, s.name, value, s.tags)
+	}
+	return s.c.send(metric{metricType: set, name: s.name, svalue: value, tags: s.tags, rate: rate, globalTags: s.c.tags, namespace: s.c.namespace})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds

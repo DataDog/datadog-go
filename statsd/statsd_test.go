@@ -43,6 +43,9 @@ func TestNilError(t *testing.T) {
 			_, err := CloneWithExtraOptions(nil, WithChannelMode())
 			return err
 		},
+		func() error { return c.Scope("", nil).Count(0, 1) },
+		func() error { return c.Scope("", nil).Gauge(0, 1) },
+		func() error { return c.Scope("", nil).Set("", 1) },
 	}
 	for i, f := range tests {
 		var err error
@@ -119,6 +122,8 @@ func TestConcurrentSend(t *testing.T) {
 			client, err := New("localhost:9876", test.clientOptions...)
 			require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
 
+			scope := client.Scope("name", []string{"tag"})
+
 			var wg sync.WaitGroup
 			wg.Add(1)
 			go func() {
@@ -128,7 +133,19 @@ func TestConcurrentSend(t *testing.T) {
 
 			wg.Add(1)
 			go func() {
+				scope.Gauge(1, 0.1)
+				wg.Done()
+			}()
+
+			wg.Add(1)
+			go func() {
 				client.Count("name", 1, []string{"tag"}, 0.1)
+				wg.Done()
+			}()
+
+			wg.Add(1)
+			go func() {
+				scope.Count(1, 0.1)
 				wg.Done()
 			}()
 
