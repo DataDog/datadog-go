@@ -23,13 +23,14 @@ var (
 func initTagCardinality(card string) {
 	tagCardinalityMutex.Lock()
 
+	// Read in and validate the user-provided value.
 	tagCardinality = validateCardinality(card)
 
-	// If the user has not provided a value, read the value from the DD_CARDINITY environment variable.
+	// If the user has not provided a valid value, read the value from the DD_CARDINALITY environment variable.
 	if tagCardinality.card == "" {
 		tagCardinality = validateCardinality(os.Getenv("DD_CARDINALITY"))
 	}
-	// If DD_CARDINALITY is not set, read the value from the DATADOG_CARDINALITY environment variable.
+	// If DD_CARDINALITY is not set or valid, read the value from the DATADOG_CARDINALITY environment variable.
 	if tagCardinality.card == "" {
 		tagCardinality = validateCardinality(os.Getenv("DATADOG_CARDINALITY"))
 	}
