@@ -37,7 +37,7 @@ func initTagCardinality(card string) {
 	tagCardinalityMutex.Unlock()
 }
 
-// validCardinality checks if the tag cardinality is a valid value.
+// validateCardinality checks if the tag cardinality is one of the valid values.
 func validateCardinality(tagCardinality string) CardinalityParameter {
 	tagCardinality = strings.ToLower(tagCardinality)
 	validValues := []string{"none", "low", "orchestrator", "high"}
