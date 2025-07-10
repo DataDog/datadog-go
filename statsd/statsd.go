@@ -694,7 +694,6 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64, 
 		return c.agg.gauge(name, value, tags)
 	}
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -722,7 +721,6 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -743,7 +741,6 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64, pa
 		return c.agg.count(name, value, tags)
 	}
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -771,7 +768,6 @@ func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rat
 
 	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -792,7 +788,6 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -813,7 +808,6 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -844,7 +838,6 @@ func (c *Client) Set(name string, value string, tags []string, rate float64, par
 		return c.agg.set(name, value, tags)
 	}
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -871,7 +864,6 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -889,7 +881,6 @@ func (c *Client) Event(e *Event, parameters ...Parameter) error {
 	}
 	atomic.AddUint64(&c.telemetry.totalEvents, 1)
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
@@ -913,7 +904,6 @@ func (c *Client) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error {
 	}
 	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
 
-	// If the user has provided a cardinality parameter, the user-provided value will override the global setting.
 	var cardinality = defaultTagCardinality
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
