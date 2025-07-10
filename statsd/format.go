@@ -294,7 +294,7 @@ func appendExternalEnv(buffer []byte) []byte {
 
 func appendTagCardinality(buffer []byte, overrideCard CardinalityParameter) []byte {
 	// Check if the user has provided a valid cardinality parameter.
-	var value = validateCardinality(overrideCard.card).card
+	value := validateCardinality(overrideCard.card).card
 
 	// If the user did not provide a cardinality or provided an invalid cardinality, use the global setting.
 	if value == "" {
