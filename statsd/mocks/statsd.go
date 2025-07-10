@@ -50,73 +50,98 @@ func (mr *MockClientInterfaceMockRecorder) Close() *gomock.Call {
 }
 
 // Count mocks base method.
-func (m *MockClientInterface) Count(name string, value int64, tags []string, rate float64) error {
+func (m *MockClientInterface) Count(name string, value int64, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Count", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Count", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Count indicates an expected call of Count.
-func (mr *MockClientInterfaceMockRecorder) Count(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Count(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockClientInterface)(nil).Count), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockClientInterface)(nil).Count), varargs...)
 }
 
 // CountWithTimestamp mocks base method.
-func (m *MockClientInterface) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time) error {
+func (m *MockClientInterface) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountWithTimestamp", name, value, tags, rate, timestamp)
+	varargs := []interface{}{name, value, tags, rate, timestamp}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CountWithTimestamp", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CountWithTimestamp indicates an expected call of CountWithTimestamp.
-func (mr *MockClientInterfaceMockRecorder) CountWithTimestamp(name, value, tags, rate, timestamp interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) CountWithTimestamp(name, value, tags, rate, timestamp interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountWithTimestamp", reflect.TypeOf((*MockClientInterface)(nil).CountWithTimestamp), name, value, tags, rate, timestamp)
+	varargs := append([]interface{}{name, value, tags, rate, timestamp}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountWithTimestamp", reflect.TypeOf((*MockClientInterface)(nil).CountWithTimestamp), varargs...)
 }
 
 // Decr mocks base method.
-func (m *MockClientInterface) Decr(name string, tags []string, rate float64) error {
+func (m *MockClientInterface) Decr(name string, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Decr", name, tags, rate)
+	varargs := []interface{}{name, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Decr", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Decr indicates an expected call of Decr.
-func (mr *MockClientInterfaceMockRecorder) Decr(name, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Decr(name, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decr", reflect.TypeOf((*MockClientInterface)(nil).Decr), name, tags, rate)
+	varargs := append([]interface{}{name, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decr", reflect.TypeOf((*MockClientInterface)(nil).Decr), varargs...)
 }
 
 // Distribution mocks base method.
-func (m *MockClientInterface) Distribution(name string, value float64, tags []string, rate float64) error {
+func (m *MockClientInterface) Distribution(name string, value float64, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Distribution", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Distribution", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Distribution indicates an expected call of Distribution.
-func (mr *MockClientInterfaceMockRecorder) Distribution(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Distribution(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockClientInterface)(nil).Distribution), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockClientInterface)(nil).Distribution), varargs...)
 }
 
 // Event mocks base method.
-func (m *MockClientInterface) Event(e *statsd.Event) error {
+func (m *MockClientInterface) Event(e *statsd.Event, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Event", e)
+	varargs := []interface{}{e}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Event", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Event indicates an expected call of Event.
-func (mr *MockClientInterfaceMockRecorder) Event(e interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Event(e interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Event", reflect.TypeOf((*MockClientInterface)(nil).Event), e)
+	varargs := append([]interface{}{e}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Event", reflect.TypeOf((*MockClientInterface)(nil).Event), varargs...)
 }
 
 // Flush mocks base method.
@@ -153,17 +178,22 @@ func (mr *MockClientInterfaceMockRecorder) Gauge(name, value, tags, rate interfa
 }
 
 // GaugeWithTimestamp mocks base method.
-func (m *MockClientInterface) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time) error {
+func (m *MockClientInterface) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GaugeWithTimestamp", name, value, tags, rate, timestamp)
+	varargs := []interface{}{name, value, tags, rate, timestamp}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GaugeWithTimestamp", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // GaugeWithTimestamp indicates an expected call of GaugeWithTimestamp.
-func (mr *MockClientInterfaceMockRecorder) GaugeWithTimestamp(name, value, tags, rate, timestamp interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) GaugeWithTimestamp(name, value, tags, rate, timestamp interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GaugeWithTimestamp", reflect.TypeOf((*MockClientInterface)(nil).GaugeWithTimestamp), name, value, tags, rate, timestamp)
+	varargs := append([]interface{}{name, value, tags, rate, timestamp}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GaugeWithTimestamp", reflect.TypeOf((*MockClientInterface)(nil).GaugeWithTimestamp), varargs...)
 }
 
 // GetTelemetry mocks base method.
@@ -181,31 +211,41 @@ func (mr *MockClientInterfaceMockRecorder) GetTelemetry() *gomock.Call {
 }
 
 // Histogram mocks base method.
-func (m *MockClientInterface) Histogram(name string, value float64, tags []string, rate float64) error {
+func (m *MockClientInterface) Histogram(name string, value float64, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Histogram", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Histogram", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Histogram indicates an expected call of Histogram.
-func (mr *MockClientInterfaceMockRecorder) Histogram(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Histogram(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Histogram", reflect.TypeOf((*MockClientInterface)(nil).Histogram), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Histogram", reflect.TypeOf((*MockClientInterface)(nil).Histogram), varargs...)
 }
 
 // Incr mocks base method.
-func (m *MockClientInterface) Incr(name string, tags []string, rate float64) error {
+func (m *MockClientInterface) Incr(name string, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Incr", name, tags, rate)
+	varargs := []interface{}{name, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Incr", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Incr indicates an expected call of Incr.
-func (mr *MockClientInterfaceMockRecorder) Incr(name, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Incr(name, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Incr", reflect.TypeOf((*MockClientInterface)(nil).Incr), name, tags, rate)
+	varargs := append([]interface{}{name, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Incr", reflect.TypeOf((*MockClientInterface)(nil).Incr), varargs...)
 }
 
 // IsClosed mocks base method.
@@ -223,85 +263,115 @@ func (mr *MockClientInterfaceMockRecorder) IsClosed() *gomock.Call {
 }
 
 // ServiceCheck mocks base method.
-func (m *MockClientInterface) ServiceCheck(sc *statsd.ServiceCheck) error {
+func (m *MockClientInterface) ServiceCheck(sc *statsd.ServiceCheck, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ServiceCheck", sc)
+	varargs := []interface{}{sc}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ServiceCheck", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ServiceCheck indicates an expected call of ServiceCheck.
-func (mr *MockClientInterfaceMockRecorder) ServiceCheck(sc interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) ServiceCheck(sc interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServiceCheck", reflect.TypeOf((*MockClientInterface)(nil).ServiceCheck), sc)
+	varargs := append([]interface{}{sc}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServiceCheck", reflect.TypeOf((*MockClientInterface)(nil).ServiceCheck), varargs...)
 }
 
 // Set mocks base method.
-func (m *MockClientInterface) Set(name, value string, tags []string, rate float64) error {
+func (m *MockClientInterface) Set(name, value string, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Set", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Set", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockClientInterfaceMockRecorder) Set(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Set(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockClientInterface)(nil).Set), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockClientInterface)(nil).Set), varargs...)
 }
 
 // SimpleEvent mocks base method.
-func (m *MockClientInterface) SimpleEvent(title, text string) error {
+func (m *MockClientInterface) SimpleEvent(title, text string, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SimpleEvent", title, text)
+	varargs := []interface{}{title, text}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SimpleEvent", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SimpleEvent indicates an expected call of SimpleEvent.
-func (mr *MockClientInterfaceMockRecorder) SimpleEvent(title, text interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) SimpleEvent(title, text interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimpleEvent", reflect.TypeOf((*MockClientInterface)(nil).SimpleEvent), title, text)
+	varargs := append([]interface{}{title, text}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimpleEvent", reflect.TypeOf((*MockClientInterface)(nil).SimpleEvent), varargs...)
 }
 
 // SimpleServiceCheck mocks base method.
-func (m *MockClientInterface) SimpleServiceCheck(name string, status statsd.ServiceCheckStatus) error {
+func (m *MockClientInterface) SimpleServiceCheck(name string, status statsd.ServiceCheckStatus, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SimpleServiceCheck", name, status)
+	varargs := []interface{}{name, status}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SimpleServiceCheck", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SimpleServiceCheck indicates an expected call of SimpleServiceCheck.
-func (mr *MockClientInterfaceMockRecorder) SimpleServiceCheck(name, status interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) SimpleServiceCheck(name, status interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimpleServiceCheck", reflect.TypeOf((*MockClientInterface)(nil).SimpleServiceCheck), name, status)
+	varargs := append([]interface{}{name, status}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimpleServiceCheck", reflect.TypeOf((*MockClientInterface)(nil).SimpleServiceCheck), varargs...)
 }
 
 // TimeInMilliseconds mocks base method.
-func (m *MockClientInterface) TimeInMilliseconds(name string, value float64, tags []string, rate float64) error {
+func (m *MockClientInterface) TimeInMilliseconds(name string, value float64, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TimeInMilliseconds", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "TimeInMilliseconds", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TimeInMilliseconds indicates an expected call of TimeInMilliseconds.
-func (mr *MockClientInterfaceMockRecorder) TimeInMilliseconds(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) TimeInMilliseconds(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeInMilliseconds", reflect.TypeOf((*MockClientInterface)(nil).TimeInMilliseconds), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeInMilliseconds", reflect.TypeOf((*MockClientInterface)(nil).TimeInMilliseconds), varargs...)
 }
 
 // Timing mocks base method.
-func (m *MockClientInterface) Timing(name string, value time.Duration, tags []string, rate float64) error {
+func (m *MockClientInterface) Timing(name string, value time.Duration, tags []string, rate float64, parameters ...statsd.Parameter) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Timing", name, value, tags, rate)
+	varargs := []interface{}{name, value, tags, rate}
+	for _, a := range parameters {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Timing", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Timing indicates an expected call of Timing.
-func (mr *MockClientInterfaceMockRecorder) Timing(name, value, tags, rate interface{}) *gomock.Call {
+func (mr *MockClientInterfaceMockRecorder) Timing(name, value, tags, rate interface{}, parameters ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Timing", reflect.TypeOf((*MockClientInterface)(nil).Timing), name, value, tags, rate)
+	varargs := append([]interface{}{name, value, tags, rate}, parameters...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Timing", reflect.TypeOf((*MockClientInterface)(nil).Timing), varargs...)
 }
