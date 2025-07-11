@@ -694,13 +694,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64, 
 		return c.agg.gauge(name, value, tags)
 	}
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -721,13 +715,7 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), overrideCard: cardinality})
 }
 
@@ -741,13 +729,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64, pa
 		return c.agg.count(name, value, tags)
 	}
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -768,13 +750,7 @@ func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rat
 
 	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), overrideCard: cardinality})
 }
 
@@ -788,13 +764,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
 	}
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -808,13 +778,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
 	}
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -864,13 +828,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
 	}
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -881,13 +839,7 @@ func (c *Client) Event(e *Event, parameters ...Parameter) error {
 	}
 	atomic.AddUint64(&c.telemetry.totalEvents, 1)
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -904,13 +856,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error {
 	}
 	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 
 	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }

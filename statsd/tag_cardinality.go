@@ -55,3 +55,14 @@ func getTagCardinality() string {
 	defer tagCardinalityMutex.RUnlock()
 	return tagCardinality.card
 }
+
+func parseTagCardinality(parameters []Parameter) CardinalityParameter {
+	var cardinality = defaultTagCardinality
+	for _, o := range parameters {
+		c, ok := o.(CardinalityParameter)
+		if ok {
+			cardinality = c
+		}
+	}
+	return cardinality
+}
