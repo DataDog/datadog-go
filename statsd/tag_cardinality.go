@@ -22,6 +22,7 @@ var (
 // initTagCardinality initializes the tag cardinality.
 func initTagCardinality(card string) {
 	tagCardinalityMutex.Lock()
+	defer tagCardinalityMutex.Unlock()
 
 	// Read in and validate the user-provided value.
 	tagCardinality = validateCardinality(card)
@@ -34,7 +35,6 @@ func initTagCardinality(card string) {
 	if tagCardinality.card == "" {
 		tagCardinality = validateCardinality(os.Getenv("DATADOG_CARDINALITY"))
 	}
-	tagCardinalityMutex.Unlock()
 }
 
 // validateCardinality checks if the tag cardinality is one of the valid values.
