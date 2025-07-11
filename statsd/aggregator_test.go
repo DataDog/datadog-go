@@ -16,31 +16,31 @@ func TestAggregatorSample(t *testing.T) {
 	tags := []string{"tag1", "tag2"}
 
 	for i := 0; i < 2; i++ {
-		a.gauge("gaugeTest", 21, tags)
+		a.gauge("gaugeTest", 21, tags, defaultTagCardinality)
 		assert.Len(t, a.gauges, 1)
 		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
 
-		a.count("countTest", 21, tags)
+		a.count("countTest", 21, tags, defaultTagCardinality)
 		assert.Len(t, a.counts, 1)
 		assert.Contains(t, a.counts, "countTest:tag1,tag2")
 
-		a.set("setTest", "value1", tags)
+		a.set("setTest", "value1", tags, defaultTagCardinality)
 		assert.Len(t, a.sets, 1)
 		assert.Contains(t, a.sets, "setTest:tag1,tag2")
 
-		a.set("setTest", "value1", tags)
+		a.set("setTest", "value1", tags, defaultTagCardinality)
 		assert.Len(t, a.sets, 1)
 		assert.Contains(t, a.sets, "setTest:tag1,tag2")
 
-		a.histogram("histogramTest", 21, tags, 1)
+		a.histogram("histogramTest", 21, tags, 1, defaultTagCardinality)
 		assert.Len(t, a.histograms.values, 1)
 		assert.Contains(t, a.histograms.values, "histogramTest:tag1,tag2")
 
-		a.distribution("distributionTest", 21, tags, 1)
+		a.distribution("distributionTest", 21, tags, 1, defaultTagCardinality)
 		assert.Len(t, a.distributions.values, 1)
 		assert.Contains(t, a.distributions.values, "distributionTest:tag1,tag2")
 
-		a.timing("timingTest", 21, tags, 1)
+		a.timing("timingTest", 21, tags, 1, defaultTagCardinality)
 		assert.Len(t, a.timings.values, 1)
 		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
 	}
@@ -51,30 +51,30 @@ func TestAggregatorFlush(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags)
-	a.gauge("gaugeTest1", 10, tags)
-	a.gauge("gaugeTest2", 15, tags)
+	a.gauge("gaugeTest1", 21, tags, defaultTagCardinality)
+	a.gauge("gaugeTest1", 10, tags, defaultTagCardinality)
+	a.gauge("gaugeTest2", 15, tags, defaultTagCardinality)
 
-	a.count("countTest1", 21, tags)
-	a.count("countTest1", 10, tags)
-	a.count("countTest2", 1, tags)
+	a.count("countTest1", 21, tags, defaultTagCardinality)
+	a.count("countTest1", 10, tags, defaultTagCardinality)
+	a.count("countTest2", 1, tags, defaultTagCardinality)
 
-	a.set("setTest1", "value1", tags)
-	a.set("setTest1", "value1", tags)
-	a.set("setTest1", "value2", tags)
-	a.set("setTest2", "value1", tags)
+	a.set("setTest1", "value1", tags, defaultTagCardinality)
+	a.set("setTest1", "value1", tags, defaultTagCardinality)
+	a.set("setTest1", "value2", tags, defaultTagCardinality)
+	a.set("setTest2", "value1", tags, defaultTagCardinality)
 
-	a.histogram("histogramTest1", 21, tags, 1)
-	a.histogram("histogramTest1", 22, tags, 1)
-	a.histogram("histogramTest2", 23, tags, 1)
+	a.histogram("histogramTest1", 21, tags, 1, defaultTagCardinality)
+	a.histogram("histogramTest1", 22, tags, 1, defaultTagCardinality)
+	a.histogram("histogramTest2", 23, tags, 1, defaultTagCardinality)
 
-	a.distribution("distributionTest1", 21, tags, 1)
-	a.distribution("distributionTest1", 22, tags, 1)
-	a.distribution("distributionTest2", 23, tags, 1)
+	a.distribution("distributionTest1", 21, tags, 1, defaultTagCardinality)
+	a.distribution("distributionTest1", 22, tags, 1, defaultTagCardinality)
+	a.distribution("distributionTest2", 23, tags, 1, defaultTagCardinality)
 
-	a.timing("timingTest1", 21, tags, 1)
-	a.timing("timingTest1", 22, tags, 1)
-	a.timing("timingTest2", 23, tags, 1)
+	a.timing("timingTest1", 21, tags, 1, defaultTagCardinality)
+	a.timing("timingTest1", 22, tags, 1, defaultTagCardinality)
+	a.timing("timingTest2", 23, tags, 1, defaultTagCardinality)
 
 	metrics := a.flushMetrics()
 
@@ -202,29 +202,29 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags)
-	a.gauge("gaugeTest1", 10, tags)
-	a.gauge("gaugeTest1", 15, tags)
+	a.gauge("gaugeTest1", 21, tags, defaultTagCardinality)
+	a.gauge("gaugeTest1", 10, tags, defaultTagCardinality)
+	a.gauge("gaugeTest1", 15, tags, defaultTagCardinality)
 
-	a.count("countTest1", 21, tags)
-	a.count("countTest1", 10, tags)
-	a.count("countTest1", 1, tags)
+	a.count("countTest1", 21, tags, defaultTagCardinality)
+	a.count("countTest1", 10, tags, defaultTagCardinality)
+	a.count("countTest1", 1, tags, defaultTagCardinality)
 
-	a.set("setTest1", "value1", tags)
-	a.set("setTest1", "value1", tags)
-	a.set("setTest1", "value2", tags)
+	a.set("setTest1", "value1", tags, defaultTagCardinality)
+	a.set("setTest1", "value1", tags, defaultTagCardinality)
+	a.set("setTest1", "value2", tags, defaultTagCardinality)
 
-	a.histogram("histogramTest1", 21, tags, 1)
-	a.histogram("histogramTest1", 22, tags, 1)
-	a.histogram("histogramTest1", 23, tags, 1)
+	a.histogram("histogramTest1", 21, tags, 1, defaultTagCardinality)
+	a.histogram("histogramTest1", 22, tags, 1, defaultTagCardinality)
+	a.histogram("histogramTest1", 23, tags, 1, defaultTagCardinality)
 
-	a.distribution("distributionTest1", 21, tags, 1)
-	a.distribution("distributionTest1", 22, tags, 1)
-	a.distribution("distributionTest1", 23, tags, 1)
+	a.distribution("distributionTest1", 21, tags, 1, defaultTagCardinality)
+	a.distribution("distributionTest1", 22, tags, 1, defaultTagCardinality)
+	a.distribution("distributionTest1", 23, tags, 1, defaultTagCardinality)
 
-	a.timing("timingTest1", 21, tags, 1)
-	a.timing("timingTest1", 22, tags, 1)
-	a.timing("timingTest1", 23, tags, 1)
+	a.timing("timingTest1", 21, tags, 1, defaultTagCardinality)
+	a.timing("timingTest1", 22, tags, 1, defaultTagCardinality)
+	a.timing("timingTest1", 23, tags, 1, defaultTagCardinality)
 
 	metrics := a.flushMetrics()
 
@@ -328,12 +328,12 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			a.gauge("gaugeTest1", 21, tags)
-			a.count("countTest1", 21, tags)
-			a.set("setTest1", "value1", tags)
-			a.histogram("histogramTest1", 21, tags, 1)
-			a.distribution("distributionTest1", 21, tags, 1)
-			a.timing("timingTest1", 21, tags, 1)
+			a.gauge("gaugeTest1", 21, tags, defaultTagCardinality)
+			a.count("countTest1", 21, tags, defaultTagCardinality)
+			a.set("setTest1", "value1", tags, defaultTagCardinality)
+			a.histogram("histogramTest1", 21, tags, 1, defaultTagCardinality)
+			a.distribution("distributionTest1", 21, tags, 1, defaultTagCardinality)
+			a.timing("timingTest1", 21, tags, 1, defaultTagCardinality)
 		}()
 	}
 
@@ -352,9 +352,9 @@ func TestAggregatorTagsCopy(t *testing.T) {
 	a := newAggregator(nil, 0)
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gauge", 21, tags)
-	a.count("count", 21, tags)
-	a.set("set", "test", tags)
+	a.gauge("gauge", 21, tags, defaultTagCardinality)
+	a.count("count", 21, tags, defaultTagCardinality)
+	a.set("set", "test", tags, defaultTagCardinality)
 
 	tags[0] = "new_tags"
 
@@ -397,7 +397,7 @@ func TestGetContextAndTags(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			gotContext, gotTags := getContextAndTags(test.name, test.tags)
+			gotContext, gotTags := getContextAndTags(test.name, test.tags, defaultTagCardinality)
 			assert.Equal(t, test.wantContext, gotContext)
 			assert.Equal(t, test.wantTags, gotTags)
 		})
@@ -408,7 +408,7 @@ func BenchmarkGetContext(b *testing.B) {
 	name := "test.metric"
 	tags := []string{"tag:tag", "foo:bar"}
 	for i := 0; i < b.N; i++ {
-		getContext(name, tags)
+		getContext(name, tags, defaultTagCardinality)
 	}
 	b.ReportAllocs()
 }
@@ -417,7 +417,7 @@ func BenchmarkGetContextNoTags(b *testing.B) {
 	name := "test.metric"
 	var tags []string
 	for i := 0; i < b.N; i++ {
-		getContext(name, tags)
+		getContext(name, tags, defaultTagCardinality)
 	}
 	b.ReportAllocs()
 }

@@ -54,7 +54,7 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	return metrics
 }
 
-func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64) error {
+func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64, cardinality CardinalityParameter) error {
 	keepingSample := shouldSample(rate, bc.random, &bc.randomLock)
 
 	// If we don't keep the sample, return early. If we do keep the sample
@@ -67,7 +67,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 		return nil
 	}
 
-	context, stringTags := getContextAndTags(name, tags)
+	context, stringTags := getContextAndTags(name, tags, cardinality)
 	var v *bufferedMetric
 
 	bc.mutex.RLock()
