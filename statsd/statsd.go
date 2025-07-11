@@ -802,13 +802,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64, par
 		return c.agg.set(name, value, tags)
 	}
 
-	var cardinality = defaultTagCardinality
-	for _, o := range parameters {
-		c, ok := o.(CardinalityParameter)
-		if ok {
-			cardinality = c
-		}
-	}
+	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -857,7 +851,6 @@ func (c *Client) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error {
 	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
 
 	cardinality := parseTagCardinality(parameters)
-
 	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
