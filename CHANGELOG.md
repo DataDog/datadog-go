@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 6.0.0-rc-2024-12-13-v0
+
+Updated to new mock maintainer `go.uber.org/mock`. Requires go >= 1.22 . 
+
 # 5.7.0 / xxxx-xx-xx
 
 # 5.6.0 / 2024-12-10
