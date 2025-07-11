@@ -96,11 +96,11 @@ func (a *aggregator) pullMetric() {
 		case m := <-a.inputMetrics:
 			switch m.metricType {
 			case histogram:
-				a.histogram(m.name, m.fvalue, m.tags, m.rate)
+				a.histogram(m.name, m.fvalue, m.tags, m.rate, m.overrideCard)
 			case distribution:
-				a.distribution(m.name, m.fvalue, m.tags, m.rate)
+				a.distribution(m.name, m.fvalue, m.tags, m.rate, m.overrideCard)
 			case timing:
-				a.timing(m.name, m.fvalue, m.tags, m.rate)
+				a.timing(m.name, m.fvalue, m.tags, m.rate, m.overrideCard)
 			}
 		case <-a.stopChannelMode:
 			a.wg.Done()
@@ -176,22 +176,30 @@ func (a *aggregator) flushMetrics() []metric {
 //
 // The context is the metric name and tags separated by a separator symbol.
 // It is not intended to be used as a metric name but as a unique key to aggregate
-func getContext(name string, tags []string) string {
-	c, _ := getContextAndTags(name, tags)
+func getContext(name string, tags []string, cardinality CardinalityParameter) string {
+	c, _ := getContextAndTags(name, tags, cardinality)
 	return c
 }
 
-// getContextAndTags returns the context and tags for a metric name and tags.
+// getContextAndTags returns the context and tags for a metric name, tags, and cardinality.
 //
 // See getContext for usage for context
 // The tags are the tags separated by a separator symbol and can be re-used to pass down to the writer
-func getContextAndTags(name string, tags []string) (string, string) {
+func getContextAndTags(name string, tags []string, cardinality CardinalityParameter) (string, string) {
 	if len(tags) == 0 {
-		return name, ""
+		if cardinality.card == "" {
+			return name, ""
+		}
+		return name + "|card:" + cardinality.card, ""
 	}
+
 	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
 	for _, s := range tags {
 		n += len(s)
+	}
+
+	if cardinality.card != "" {
+		n += len("|card:") + len(cardinality.card)
 	}
 
 	var sb strings.Builder
@@ -204,13 +212,18 @@ func getContextAndTags(name string, tags []string) (string, string) {
 		sb.WriteString(s)
 	}
 
+	if cardinality.card != "" {
+		sb.WriteString("|card:")
+		sb.WriteString(cardinality.card)
+	}
+
 	s := sb.String()
 
 	return s, s[len(name)+len(nameSeparatorSymbol):]
 }
 
-func (a *aggregator) count(name string, value int64, tags []string) error {
-	context := getContext(name, tags)
+func (a *aggregator) count(name string, value int64, tags []string, cardinality CardinalityParameter) error {
+	context := getContext(name, tags, cardinality)
 	a.countsM.RLock()
 	if count, found := a.counts[context]; found {
 		count.sample(value)
@@ -232,8 +245,8 @@ func (a *aggregator) count(name string, value int64, tags []string) error {
 	return nil
 }
 
-func (a *aggregator) gauge(name string, value float64, tags []string) error {
-	context := getContext(name, tags)
+func (a *aggregator) gauge(name string, value float64, tags []string, cardinality CardinalityParameter) error {
+	context := getContext(name, tags, cardinality)
 	a.gaugesM.RLock()
 	if gauge, found := a.gauges[context]; found {
 		gauge.sample(value)
@@ -256,8 +269,8 @@ func (a *aggregator) gauge(name string, value float64, tags []string) error {
 	return nil
 }
 
-func (a *aggregator) set(name string, value string, tags []string) error {
-	context := getContext(name, tags)
+func (a *aggregator) set(name string, value string, tags []string, cardinality CardinalityParameter) error {
+	context := getContext(name, tags, cardinality)
 	a.setsM.RLock()
 	if set, found := a.sets[context]; found {
 		set.sample(value)
@@ -283,16 +296,16 @@ func (a *aggregator) set(name string, value string, tags []string) error {
 // sample rate will have impacts on the CPU and memory usage of the Agent.
 
 // type alias for Client.sendToAggregator
-type bufferedMetricSampleFunc func(name string, value float64, tags []string, rate float64) error
+type bufferedMetricSampleFunc func(name string, value float64, tags []string, rate float64, cardinality CardinalityParameter) error
 
-func (a *aggregator) histogram(name string, value float64, tags []string, rate float64) error {
-	return a.histograms.sample(name, value, tags, rate)
+func (a *aggregator) histogram(name string, value float64, tags []string, rate float64, cardinality CardinalityParameter) error {
+	return a.histograms.sample(name, value, tags, rate, cardinality)
 }
 
-func (a *aggregator) distribution(name string, value float64, tags []string, rate float64) error {
-	return a.distributions.sample(name, value, tags, rate)
+func (a *aggregator) distribution(name string, value float64, tags []string, rate float64, cardinality CardinalityParameter) error {
+	return a.distributions.sample(name, value, tags, rate, cardinality)
 }
 
-func (a *aggregator) timing(name string, value float64, tags []string, rate float64) error {
-	return a.timings.sample(name, value, tags, rate)
+func (a *aggregator) timing(name string, value float64, tags []string, rate float64, cardinality CardinalityParameter) error {
+	return a.timings.sample(name, value, tags, rate, cardinality)
 }

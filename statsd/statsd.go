@@ -664,9 +664,9 @@ func (c *Client) sendBlocking(m metric) error {
 	return worker.processMetric(m)
 }
 
-func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc) error {
+func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, cardinality CardinalityParameter) error {
 	if c.aggregatorMode == channelMode {
-		m := metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate}
+		m := metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate, overrideCard: cardinality}
 		select {
 		case c.aggExtended.inputMetrics <- m:
 		default:
@@ -681,7 +681,7 @@ func (c *Client) sendToAggregator(mType metricType, name string, value float64, 
 		}
 		return nil
 	}
-	return f(name, value, tags, rate)
+	return f(name, value, tags, rate, cardinality)
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -690,11 +690,13 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64, 
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
-	if c.agg != nil {
-		return c.agg.gauge(name, value, tags)
-	}
 
 	cardinality := parseTagCardinality(parameters)
+
+	if c.agg != nil {
+		return c.agg.gauge(name, value, tags, cardinality)
+	}
+
 	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -725,11 +727,11 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64, pa
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
+	cardinality := parseTagCardinality(parameters)
 	if c.agg != nil {
-		return c.agg.count(name, value, tags)
+		return c.agg.count(name, value, tags, cardinality)
 	}
 
-	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -760,11 +762,11 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsHistogram, 1)
+	cardinality := parseTagCardinality(parameters)
 	if c.aggExtended != nil {
-		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram)
+		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram, cardinality)
 	}
 
-	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -774,11 +776,11 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsDistribution, 1)
+	cardinality := parseTagCardinality(parameters)
 	if c.aggExtended != nil {
-		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution)
+		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution, cardinality)
 	}
 
-	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -798,11 +800,12 @@ func (c *Client) Set(name string, value string, tags []string, rate float64, par
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsSet, 1)
+	cardinality := parseTagCardinality(parameters)
+
 	if c.agg != nil {
-		return c.agg.set(name, value, tags)
+		return c.agg.set(name, value, tags, cardinality)
 	}
 
-	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
@@ -818,11 +821,11 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalMetricsTiming, 1)
+	cardinality := parseTagCardinality(parameters)
 	if c.aggExtended != nil {
-		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing)
+		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing, cardinality)
 	}
 
-	cardinality := parseTagCardinality(parameters)
 	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
 }
 
