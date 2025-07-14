@@ -67,6 +67,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 		return nil
 	}
 
+	cardinality = resolveCardinality(cardinality)
 	context, stringTags := getContextAndTags(name, tags, cardinality)
 	var v *bufferedMetric
 

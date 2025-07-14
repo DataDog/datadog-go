@@ -57,12 +57,20 @@ func getTagCardinality() string {
 }
 
 func parseTagCardinality(parameters []Parameter) CardinalityParameter {
-	var cardinality = defaultTagCardinality
+	var cardinality = CardinalityParameter{card: getTagCardinality()}
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
 		if ok {
 			cardinality = c
 		}
+	}
+	return cardinality
+}
+
+// resolveCardinality returns the cardinality to use, falling back to the global setting if empty
+func resolveCardinality(cardinality CardinalityParameter) CardinalityParameter {
+	if cardinality.card == "" {
+		return CardinalityParameter{card: getTagCardinality()}
 	}
 	return cardinality
 }

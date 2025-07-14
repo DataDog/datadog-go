@@ -217,7 +217,7 @@ func (s *bufferedMetric) flushUnsafe() metric {
 		stags:        s.tags,
 		rate:         rate,
 		fvalues:      s.data[:s.storedSamples],
-		overrideCard: s.overrideCard,
+		overrideCard: resolveCardinality(s.overrideCard),
 	}
 }
 
@@ -233,7 +233,7 @@ func newHistogramMetric(name string, value float64, stringTags string, maxSample
 		mtype:         histogramAggregated,
 		maxSamples:    maxSamples,
 		specifiedRate: rate,
-		overrideCard:  cardinality,
+		overrideCard:  resolveCardinality(cardinality),
 	}
 }
 
@@ -249,7 +249,7 @@ func newDistributionMetric(name string, value float64, stringTags string, maxSam
 		mtype:         distributionAggregated,
 		maxSamples:    maxSamples,
 		specifiedRate: rate,
-		overrideCard:  cardinality,
+		overrideCard:  resolveCardinality(cardinality),
 	}
 }
 
@@ -265,7 +265,7 @@ func newTimingMetric(name string, value float64, stringTags string, maxSamples i
 		mtype:         timingAggregated,
 		maxSamples:    maxSamples,
 		specifiedRate: rate,
-		overrideCard:  cardinality,
+		overrideCard:  resolveCardinality(cardinality),
 	}
 }
 

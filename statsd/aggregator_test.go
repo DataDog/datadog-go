@@ -690,3 +690,116 @@ func TestAggregatorCardinalityContextGeneration(t *testing.T) {
 		})
 	}
 }
+
+func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
+	// Test that metrics without explicit cardinality are aggregated with metrics
+	// that have the same cardinality as the global setting
+
+	// Set global cardinality to "low"
+	initTagCardinality("low")
+	defer resetTagCardinality()
+
+	a := newAggregator(nil, 0)
+	tags := []string{"env:prod"}
+
+	// Add metrics with different cardinality scenarios
+	// 1. No explicit cardinality (should use global "low")
+	a.gauge("test.metric", 10, tags, CardinalityParameter{card: ""})
+
+	// 2. Explicit cardinality matching global setting
+	a.gauge("test.metric", 20, tags, CardinalityParameter{card: "low"})
+
+	// 3. Different explicit cardinality
+	a.gauge("test.metric", 30, tags, CardinalityParameter{card: "high"})
+
+	// 4. Another metric with no explicit cardinality (should aggregate with first two)
+	a.gauge("test.metric", 40, tags, CardinalityParameter{card: ""})
+
+	metrics := a.flushMetrics()
+
+	// Should have 2 metrics: one for "low" cardinality (aggregated), one for "high"
+	assert.Len(t, metrics, 2)
+
+	// Find the metrics by cardinality
+	var lowCardMetric, highCardMetric metric
+	for _, m := range metrics {
+		if m.metricType == gauge && m.name == "test.metric" {
+			if m.overrideCard.card == "low" {
+				lowCardMetric = m
+			} else if m.overrideCard.card == "high" {
+				highCardMetric = m
+			}
+		}
+	}
+
+	// The "low" cardinality metric should have the last value (40) from the aggregated metrics
+	assert.Equal(t, float64(40), lowCardMetric.fvalue)
+
+	// The "high" cardinality metric should have its own value (30)
+	assert.Equal(t, float64(30), highCardMetric.fvalue)
+
+	// Test the same pattern with count metrics
+	a.count("test.count", 5, tags, CardinalityParameter{card: ""})
+	a.count("test.count", 15, tags, CardinalityParameter{card: "low"})
+	a.count("test.count", 25, tags, CardinalityParameter{card: "high"})
+	a.count("test.count", 35, tags, CardinalityParameter{card: ""})
+
+	metrics = a.flushMetrics()
+
+	// Should have 2 count metrics: one for "low" cardinality (aggregated), one for "high"
+	assert.Len(t, metrics, 2)
+
+	// Find the count metrics by cardinality
+	var lowCardCount, highCardCount metric
+	for _, m := range metrics {
+		if m.metricType == count && m.name == "test.count" {
+			if m.overrideCard.card == "low" {
+				lowCardCount = m
+			} else if m.overrideCard.card == "high" {
+				highCardCount = m
+			}
+		}
+	}
+
+	// The "low" cardinality count should have the sum (5 + 15 + 35 = 55)
+	assert.Equal(t, int64(55), lowCardCount.ivalue)
+
+	// The "high" cardinality count should have its own value (25)
+	assert.Equal(t, int64(25), highCardCount.ivalue)
+
+	// Test with set metrics
+	a.set("test.set", "value1", tags, CardinalityParameter{card: ""})
+	a.set("test.set", "value2", tags, CardinalityParameter{card: "low"})
+	a.set("test.set", "value3", tags, CardinalityParameter{card: "high"})
+	a.set("test.set", "value4", tags, CardinalityParameter{card: ""})
+
+	metrics = a.flushMetrics()
+
+	// Should have 4 set metrics: 3 for "low" cardinality (value1, value2, value4), 1 for "high" (value3)
+	assert.Len(t, metrics, 4)
+
+	// Count the set metrics by cardinality
+	var lowCardSetCount, highCardSetCount int
+	var lowCardSetValues, highCardSetValues []string
+	for _, m := range metrics {
+		if m.metricType == set && m.name == "test.set" {
+			if m.overrideCard.card == "low" {
+				lowCardSetCount++
+				lowCardSetValues = append(lowCardSetValues, m.svalue)
+			} else if m.overrideCard.card == "high" {
+				highCardSetCount++
+				highCardSetValues = append(highCardSetValues, m.svalue)
+			}
+		}
+	}
+
+	// Should have 3 set metrics for "low" cardinality
+	assert.Equal(t, 3, lowCardSetCount)
+	assert.Contains(t, lowCardSetValues, "value1")
+	assert.Contains(t, lowCardSetValues, "value2")
+	assert.Contains(t, lowCardSetValues, "value4")
+
+	// Should have 1 set metric for "high" cardinality
+	assert.Equal(t, 1, highCardSetCount)
+	assert.Contains(t, highCardSetValues, "value3")
+}
