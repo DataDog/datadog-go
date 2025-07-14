@@ -14,7 +14,7 @@ type bufferedMetricContexts struct {
 	nbContext uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
-	newMetric func(string, float64, string, float64) *bufferedMetric
+	newMetric func(string, float64, string, float64, CardinalityParameter) *bufferedMetric
 
 	// Each bufferedMetricContexts uses its own random source and random
 	// lock to prevent goroutines from contending for the lock on the
@@ -25,11 +25,11 @@ type bufferedMetricContexts struct {
 	randomLock sync.Mutex
 }
 
-func newBufferedContexts(newMetric func(string, float64, string, int64, float64) *bufferedMetric, maxSamples int64) bufferedMetricContexts {
+func newBufferedContexts(newMetric func(string, float64, string, int64, float64, CardinalityParameter) *bufferedMetric, maxSamples int64) bufferedMetricContexts {
 	return bufferedMetricContexts{
 		values: bufferedMetricMap{},
-		newMetric: func(name string, value float64, stringTags string, rate float64) *bufferedMetric {
-			return newMetric(name, value, stringTags, maxSamples, rate)
+		newMetric: func(name string, value float64, stringTags string, rate float64, cardinality CardinalityParameter) *bufferedMetric {
+			return newMetric(name, value, stringTags, maxSamples, rate, cardinality)
 		},
 		// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
 		// very similar values. That's fine for seeding the worker-specific random
@@ -81,7 +81,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 		v, _ = bc.values[context]
 		if v == nil {
 			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
-			bc.values[context] = bc.newMetric(name, value, stringTags, rate)
+			bc.values[context] = bc.newMetric(name, value, stringTags, rate, cardinality)
 			// We added a new value, we need to unlock the mutex and quit
 			bc.mutex.Unlock()
 			return nil

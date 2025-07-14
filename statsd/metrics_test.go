@@ -11,34 +11,38 @@ import (
 )
 
 func TestNewCountMetric(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	assert.Equal(t, c.value, int64(21))
 	assert.Equal(t, c.name, "test")
 	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, c.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewCountMetricWithTimestamp(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	assert.Equal(t, c.value, int64(21))
 	assert.Equal(t, c.name, "test")
 	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, c.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestCountMetricSample(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	c.sample(12)
 	assert.Equal(t, c.value, int64(33))
 	assert.Equal(t, c.name, "test")
 	assert.Equal(t, c.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, c.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestFlushUnsafeCountMetricSample(t *testing.T) {
-	c := newCountMetric("test", 21, []string{"tag1", "tag2"})
+	c := newCountMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	m := c.flushUnsafe()
 	assert.Equal(t, m.metricType, count)
 	assert.Equal(t, m.ivalue, int64(21))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 
 	c.sample(12)
 	m = c.flushUnsafe()
@@ -46,37 +50,42 @@ func TestFlushUnsafeCountMetricSample(t *testing.T) {
 	assert.Equal(t, m.ivalue, int64(33))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewGaugeMetric(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	assert.Equal(t, math.Float64frombits(g.value), float64(21))
 	assert.Equal(t, g.name, "test")
 	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, g.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestGaugeMetricSample(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	g.sample(12)
 	assert.Equal(t, math.Float64frombits(g.value), float64(12))
 	assert.Equal(t, g.name, "test")
 	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, g.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewGaugeMetricWithTimestamp(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	assert.Equal(t, math.Float64frombits(g.value), float64(21))
 	assert.Equal(t, g.name, "test")
 	assert.Equal(t, g.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, g.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestFlushUnsafeGaugeMetricSample(t *testing.T) {
-	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"})
+	g := newGaugeMetric("test", 21, []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	m := g.flushUnsafe()
 	assert.Equal(t, m.metricType, gauge)
 	assert.Equal(t, m.fvalue, float64(21))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 
 	g.sample(12)
 	m = g.flushUnsafe()
@@ -84,25 +93,28 @@ func TestFlushUnsafeGaugeMetricSample(t *testing.T) {
 	assert.Equal(t, m.fvalue, float64(12))
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewSetMetric(t *testing.T) {
-	s := newSetMetric("test", "value1", []string{"tag1", "tag2"})
+	s := newSetMetric("test", "value1", []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	assert.Equal(t, s.data, map[string]struct{}{"value1": struct{}{}})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestSetMetricSample(t *testing.T) {
-	s := newSetMetric("test", "value1", []string{"tag1", "tag2"})
+	s := newSetMetric("test", "value1", []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	s.sample("value2")
 	assert.Equal(t, s.data, map[string]struct{}{"value1": struct{}{}, "value2": struct{}{}})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, []string{"tag1", "tag2"})
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestFlushUnsafeSetMetricSample(t *testing.T) {
-	s := newSetMetric("test", "value1", []string{"tag1", "tag2"})
+	s := newSetMetric("test", "value1", []string{"tag1", "tag2"}, CardinalityParameter{card: "low"})
 	m := s.flushUnsafe()
 
 	require.Len(t, m, 1)
@@ -111,6 +123,7 @@ func TestFlushUnsafeSetMetricSample(t *testing.T) {
 	assert.Equal(t, m[0].svalue, "value1")
 	assert.Equal(t, m[0].name, "test")
 	assert.Equal(t, m[0].tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m[0].overrideCard, CardinalityParameter{card: "low"})
 
 	s.sample("value1")
 	s.sample("value2")
@@ -125,31 +138,35 @@ func TestFlushUnsafeSetMetricSample(t *testing.T) {
 	assert.Equal(t, m[0].svalue, "value1")
 	assert.Equal(t, m[0].name, "test")
 	assert.Equal(t, m[0].tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m[0].overrideCard, CardinalityParameter{card: "low"})
 	assert.Equal(t, m[1].metricType, set)
 	assert.Equal(t, m[1].svalue, "value2")
 	assert.Equal(t, m[1].name, "test")
 	assert.Equal(t, m[1].tags, []string{"tag1", "tag2"})
+	assert.Equal(t, m[1].overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewHistogramMetric(t *testing.T) {
-	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	assert.Equal(t, s.data, []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, histogramAggregated)
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestHistogramMetricSample(t *testing.T) {
-	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	s.sample(123.45)
 	assert.Equal(t, s.data, []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, histogramAggregated)
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
-	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newHistogramMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	m := s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, histogramAggregated)
@@ -157,6 +174,7 @@ func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 
 	s.sample(21)
 	s.sample(123.45)
@@ -167,27 +185,30 @@ func TestFlushUnsafeHistogramMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewDistributionMetric(t *testing.T) {
-	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	assert.Equal(t, s.data, []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, distributionAggregated)
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestDistributionMetricSample(t *testing.T) {
-	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	s.sample(123.45)
 	assert.Equal(t, s.data, []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, distributionAggregated)
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
-	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newDistributionMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	m := s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, distributionAggregated)
@@ -195,6 +216,7 @@ func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 
 	s.sample(21)
 	s.sample(123.45)
@@ -205,27 +227,30 @@ func TestFlushUnsafeDistributionMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestNewTimingMetric(t *testing.T) {
-	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	assert.Equal(t, s.data, []float64{1.0})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, timingAggregated)
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestTimingMetricSample(t *testing.T) {
-	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	s.sample(123.45)
 	assert.Equal(t, s.data, []float64{1.0, 123.45})
 	assert.Equal(t, s.name, "test")
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, timingAggregated)
+	assert.Equal(t, s.overrideCard, CardinalityParameter{card: "low"})
 }
 
 func TestFlushUnsafeTimingMetricSample(t *testing.T) {
-	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0)
+	s := newTimingMetric("test", 1.0, "tag1,tag2", 0, 1.0, CardinalityParameter{card: "low"})
 	m := s.flushUnsafe()
 
 	assert.Equal(t, m.metricType, timingAggregated)
@@ -233,6 +258,7 @@ func TestFlushUnsafeTimingMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 
 	s.sample(21)
 	s.sample(123.45)
@@ -243,4 +269,5 @@ func TestFlushUnsafeTimingMetricSample(t *testing.T) {
 	assert.Equal(t, m.name, "test")
 	assert.Equal(t, m.stags, "tag1,tag2")
 	assert.Nil(t, m.tags)
+	assert.Equal(t, m.overrideCard, CardinalityParameter{card: "low"})
 }

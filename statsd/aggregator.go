@@ -240,7 +240,7 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 		return nil
 	}
 
-	a.counts[context] = newCountMetric(name, value, tags)
+	a.counts[context] = newCountMetric(name, value, tags, cardinality)
 	a.countsM.Unlock()
 	return nil
 }
@@ -255,7 +255,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 	}
 	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags)
+	gauge := newGaugeMetric(name, value, tags, cardinality)
 
 	a.gaugesM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
@@ -286,7 +286,7 @@ func (a *aggregator) set(name string, value string, tags []string, cardinality C
 		a.setsM.Unlock()
 		return nil
 	}
-	a.sets[context] = newSetMetric(name, value, tags)
+	a.sets[context] = newSetMetric(name, value, tags, cardinality)
 	a.setsM.Unlock()
 	return nil
 }

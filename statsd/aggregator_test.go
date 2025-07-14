@@ -51,30 +51,30 @@ func TestAggregatorFlush(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags, defaultTagCardinality)
-	a.gauge("gaugeTest1", 10, tags, defaultTagCardinality)
-	a.gauge("gaugeTest2", 15, tags, defaultTagCardinality)
+	a.gauge("gaugeTest1", 21, tags, CardinalityParameter{card: "low"})
+	a.gauge("gaugeTest1", 10, tags, CardinalityParameter{card: "low"})
+	a.gauge("gaugeTest2", 15, tags, CardinalityParameter{card: "low"})
 
-	a.count("countTest1", 21, tags, defaultTagCardinality)
-	a.count("countTest1", 10, tags, defaultTagCardinality)
-	a.count("countTest2", 1, tags, defaultTagCardinality)
+	a.count("countTest1", 21, tags, CardinalityParameter{card: "low"})
+	a.count("countTest1", 10, tags, CardinalityParameter{card: "low"})
+	a.count("countTest2", 1, tags, CardinalityParameter{card: "low"})
 
-	a.set("setTest1", "value1", tags, defaultTagCardinality)
-	a.set("setTest1", "value1", tags, defaultTagCardinality)
-	a.set("setTest1", "value2", tags, defaultTagCardinality)
-	a.set("setTest2", "value1", tags, defaultTagCardinality)
+	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
+	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
+	a.set("setTest1", "value2", tags, CardinalityParameter{card: "low"})
+	a.set("setTest2", "value1", tags, CardinalityParameter{card: "low"})
 
-	a.histogram("histogramTest1", 21, tags, 1, defaultTagCardinality)
-	a.histogram("histogramTest1", 22, tags, 1, defaultTagCardinality)
-	a.histogram("histogramTest2", 23, tags, 1, defaultTagCardinality)
+	a.histogram("histogramTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("histogramTest1", 22, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("histogramTest2", 23, tags, 1, CardinalityParameter{card: "low"})
 
-	a.distribution("distributionTest1", 21, tags, 1, defaultTagCardinality)
-	a.distribution("distributionTest1", 22, tags, 1, defaultTagCardinality)
-	a.distribution("distributionTest2", 23, tags, 1, defaultTagCardinality)
+	a.distribution("distributionTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("distributionTest1", 22, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("distributionTest2", 23, tags, 1, CardinalityParameter{card: "low"})
 
-	a.timing("timingTest1", 21, tags, 1, defaultTagCardinality)
-	a.timing("timingTest1", 22, tags, 1, defaultTagCardinality)
-	a.timing("timingTest2", 23, tags, 1, defaultTagCardinality)
+	a.timing("timingTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("timingTest1", 22, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("timingTest2", 23, tags, 1, CardinalityParameter{card: "low"})
 
 	metrics := a.flushMetrics()
 
@@ -202,29 +202,29 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags, defaultTagCardinality)
-	a.gauge("gaugeTest1", 10, tags, defaultTagCardinality)
-	a.gauge("gaugeTest1", 15, tags, defaultTagCardinality)
+	a.gauge("gaugeTest1", 21, tags, CardinalityParameter{card: "low"})
+	a.gauge("gaugeTest1", 10, tags, CardinalityParameter{card: "low"})
+	a.gauge("gaugeTest1", 15, tags, CardinalityParameter{card: "low"})
 
-	a.count("countTest1", 21, tags, defaultTagCardinality)
-	a.count("countTest1", 10, tags, defaultTagCardinality)
-	a.count("countTest1", 1, tags, defaultTagCardinality)
+	a.count("countTest1", 21, tags, CardinalityParameter{card: "low"})
+	a.count("countTest1", 10, tags, CardinalityParameter{card: "low"})
+	a.count("countTest1", 1, tags, CardinalityParameter{card: "low"})
 
-	a.set("setTest1", "value1", tags, defaultTagCardinality)
-	a.set("setTest1", "value1", tags, defaultTagCardinality)
-	a.set("setTest1", "value2", tags, defaultTagCardinality)
+	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
+	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
+	a.set("setTest1", "value2", tags, CardinalityParameter{card: "low"})
 
-	a.histogram("histogramTest1", 21, tags, 1, defaultTagCardinality)
-	a.histogram("histogramTest1", 22, tags, 1, defaultTagCardinality)
-	a.histogram("histogramTest1", 23, tags, 1, defaultTagCardinality)
+	a.histogram("histogramTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("histogramTest1", 22, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("histogramTest1", 23, tags, 1, CardinalityParameter{card: "low"})
 
-	a.distribution("distributionTest1", 21, tags, 1, defaultTagCardinality)
-	a.distribution("distributionTest1", 22, tags, 1, defaultTagCardinality)
-	a.distribution("distributionTest1", 23, tags, 1, defaultTagCardinality)
+	a.distribution("distributionTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("distributionTest1", 22, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("distributionTest1", 23, tags, 1, CardinalityParameter{card: "low"})
 
-	a.timing("timingTest1", 21, tags, 1, defaultTagCardinality)
-	a.timing("timingTest1", 22, tags, 1, defaultTagCardinality)
-	a.timing("timingTest1", 23, tags, 1, defaultTagCardinality)
+	a.timing("timingTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("timingTest1", 22, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("timingTest1", 23, tags, 1, CardinalityParameter{card: "low"})
 
 	metrics := a.flushMetrics()
 
@@ -328,12 +328,12 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			a.gauge("gaugeTest1", 21, tags, defaultTagCardinality)
-			a.count("countTest1", 21, tags, defaultTagCardinality)
-			a.set("setTest1", "value1", tags, defaultTagCardinality)
-			a.histogram("histogramTest1", 21, tags, 1, defaultTagCardinality)
-			a.distribution("distributionTest1", 21, tags, 1, defaultTagCardinality)
-			a.timing("timingTest1", 21, tags, 1, defaultTagCardinality)
+			a.gauge("gaugeTest1", 21, tags, CardinalityParameter{card: "low"})
+			a.count("countTest1", 21, tags, CardinalityParameter{card: "low"})
+			a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
+			a.histogram("histogramTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+			a.distribution("distributionTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+			a.timing("timingTest1", 21, tags, 1, CardinalityParameter{card: "low"})
 		}()
 	}
 
@@ -352,9 +352,9 @@ func TestAggregatorTagsCopy(t *testing.T) {
 	a := newAggregator(nil, 0)
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gauge", 21, tags, defaultTagCardinality)
-	a.count("count", 21, tags, defaultTagCardinality)
-	a.set("set", "test", tags, defaultTagCardinality)
+	a.gauge("gauge", 21, tags, CardinalityParameter{card: "low"})
+	a.count("count", 21, tags, CardinalityParameter{card: "low"})
+	a.set("set", "test", tags, CardinalityParameter{card: "low"})
 
 	tags[0] = "new_tags"
 
@@ -397,7 +397,7 @@ func TestGetContextAndTags(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			gotContext, gotTags := getContextAndTags(test.name, test.tags, defaultTagCardinality)
+			gotContext, gotTags := getContextAndTags(test.name, test.tags, CardinalityParameter{card: "low"})
 			assert.Equal(t, test.wantContext, gotContext)
 			assert.Equal(t, test.wantTags, gotTags)
 		})
@@ -408,7 +408,7 @@ func BenchmarkGetContext(b *testing.B) {
 	name := "test.metric"
 	tags := []string{"tag:tag", "foo:bar"}
 	for i := 0; i < b.N; i++ {
-		getContext(name, tags, defaultTagCardinality)
+		getContext(name, tags, CardinalityParameter{card: "low"})
 	}
 	b.ReportAllocs()
 }
@@ -417,7 +417,7 @@ func BenchmarkGetContextNoTags(b *testing.B) {
 	name := "test.metric"
 	var tags []string
 	for i := 0; i < b.N; i++ {
-		getContext(name, tags, defaultTagCardinality)
+		getContext(name, tags, CardinalityParameter{card: "low"})
 	}
 	b.ReportAllocs()
 }
