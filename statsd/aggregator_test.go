@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -433,4 +434,259 @@ func BenchmarkGetContextNoTags(b *testing.B) {
 		getContext(name, tags, CardinalityParameter{card: "low"})
 	}
 	b.ReportAllocs()
+}
+
+func TestAggregatorCardinalitySeparation(t *testing.T) {
+	a := newAggregator(nil, 0)
+	tags := []string{"env:prod", "service:api"}
+
+	// Add metrics with different cardinalities
+	a.gauge("test.metric", 10, tags, CardinalityParameter{card: "low"})
+	a.gauge("test.metric", 20, tags, CardinalityParameter{card: "high"})
+	a.gauge("test.metric", 30, tags, CardinalityParameter{card: "low"}) // Should aggregate with first one
+
+	a.count("test.count", 5, tags, CardinalityParameter{card: "low"})
+	a.count("test.count", 15, tags, CardinalityParameter{card: "high"})
+	a.count("test.count", 25, tags, CardinalityParameter{card: "low"}) // Should aggregate with first one
+
+	a.set("test.set", "value1", tags, CardinalityParameter{card: "low"})
+	a.set("test.set", "value2", tags, CardinalityParameter{card: "high"})
+	a.set("test.set", "value3", tags, CardinalityParameter{card: "low"}) // Should aggregate with first one
+
+	metrics := a.flushMetrics()
+
+	// Should have 7 metrics: 2 gauges, 2 counts, 3 sets (low cardinality has 2 values, high has 1)
+	assert.Len(t, metrics, 7)
+
+	// Verify gauge metrics are separated by cardinality
+	var lowGauge, highGauge metric
+	for _, m := range metrics {
+		if m.metricType == gauge && m.name == "test.metric" {
+			if m.overrideCard.card == "low" {
+				lowGauge = m
+			} else if m.overrideCard.card == "high" {
+				highGauge = m
+			}
+		}
+	}
+
+	assert.Equal(t, float64(30), lowGauge.fvalue)  // Gauge takes last value (30)
+	assert.Equal(t, float64(20), highGauge.fvalue) // Only 20
+
+	// Verify count metrics are separated by cardinality
+	var lowCount, highCount metric
+	for _, m := range metrics {
+		if m.metricType == count && m.name == "test.count" {
+			if m.overrideCard.card == "low" {
+				lowCount = m
+			} else if m.overrideCard.card == "high" {
+				highCount = m
+			}
+		}
+	}
+
+	assert.Equal(t, int64(30), lowCount.ivalue)  // 5 + 25 = 30
+	assert.Equal(t, int64(15), highCount.ivalue) // Only 15
+
+	// Verify set metrics are separated by cardinality
+	var lowSetValues, highSetValues []string
+	for _, m := range metrics {
+		if m.metricType == set && m.name == "test.set" {
+			if m.overrideCard.card == "low" {
+				lowSetValues = append(lowSetValues, m.svalue)
+			} else if m.overrideCard.card == "high" {
+				highSetValues = append(highSetValues, m.svalue)
+			}
+		}
+	}
+
+	// Low cardinality set should have 2 values: "value1" and "value3"
+	assert.Len(t, lowSetValues, 2)
+	assert.Contains(t, lowSetValues, "value1")
+	assert.Contains(t, lowSetValues, "value3")
+
+	// High cardinality set should have 1 value: "value2"
+	assert.Len(t, highSetValues, 1)
+	assert.Contains(t, highSetValues, "value2")
+}
+
+func TestAggregatorCardinalityPreservation(t *testing.T) {
+	a := newAggregator(nil, 0)
+	tags := []string{"env:prod"}
+
+	// Test that cardinality is preserved in flushed metrics
+	a.gauge("test.metric", 42, tags, CardinalityParameter{card: "low"})
+	a.count("test.count", 100, tags, CardinalityParameter{card: "high"})
+	a.set("test.set", "unique_value", tags, CardinalityParameter{card: "medium"})
+
+	metrics := a.flushMetrics()
+	assert.Len(t, metrics, 3)
+
+	// Verify cardinality is preserved in each metric type
+	for _, m := range metrics {
+		switch m.metricType {
+		case gauge:
+			assert.Equal(t, "test.metric", m.name)
+			assert.Equal(t, CardinalityParameter{card: "low"}, m.overrideCard)
+		case count:
+			assert.Equal(t, "test.count", m.name)
+			assert.Equal(t, CardinalityParameter{card: "high"}, m.overrideCard)
+		case set:
+			assert.Equal(t, "test.set", m.name)
+			assert.Equal(t, CardinalityParameter{card: "medium"}, m.overrideCard)
+		}
+	}
+}
+
+func TestAggregatorCardinalityWithHistograms(t *testing.T) {
+	a := newAggregator(nil, 0)
+	tags := []string{"env:prod"}
+
+	// Add histogram metrics with different cardinalities
+	a.histogram("test.hist", 10, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("test.hist", 20, tags, 1, CardinalityParameter{card: "high"})
+	a.histogram("test.hist", 30, tags, 1, CardinalityParameter{card: "low"}) // Should aggregate with first one
+
+	a.distribution("test.dist", 15, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("test.dist", 25, tags, 1, CardinalityParameter{card: "high"})
+	a.distribution("test.dist", 35, tags, 1, CardinalityParameter{card: "low"}) // Should aggregate with first one
+
+	a.timing("test.timing", 100, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("test.timing", 200, tags, 1, CardinalityParameter{card: "high"})
+	a.timing("test.timing", 300, tags, 1, CardinalityParameter{card: "low"}) // Should aggregate with first one
+
+	metrics := a.flushMetrics()
+
+	// Should have 6 metrics: 2 histograms, 2 distributions, 2 timings (each with different cardinalities)
+	assert.Len(t, metrics, 6)
+
+	// Verify histogram metrics are separated by cardinality
+	var lowHist, highHist metric
+	for _, m := range metrics {
+		if m.metricType == histogramAggregated && m.name == "test.hist" {
+			if m.overrideCard.card == "low" {
+				lowHist = m
+			} else if m.overrideCard.card == "high" {
+				highHist = m
+			}
+		}
+	}
+
+	assert.Len(t, lowHist.fvalues, 2)  // 10, 30
+	assert.Len(t, highHist.fvalues, 1) // Only 20
+	assert.Contains(t, lowHist.fvalues, float64(10))
+	assert.Contains(t, lowHist.fvalues, float64(30))
+	assert.Contains(t, highHist.fvalues, float64(20))
+
+	// Verify distribution metrics are separated by cardinality
+	var lowDist, highDist metric
+	for _, m := range metrics {
+		if m.metricType == distributionAggregated && m.name == "test.dist" {
+			if m.overrideCard.card == "low" {
+				lowDist = m
+			} else if m.overrideCard.card == "high" {
+				highDist = m
+			}
+		}
+	}
+
+	assert.Len(t, lowDist.fvalues, 2)  // 15, 35
+	assert.Len(t, highDist.fvalues, 1) // Only 25
+	assert.Contains(t, lowDist.fvalues, float64(15))
+	assert.Contains(t, lowDist.fvalues, float64(35))
+	assert.Contains(t, highDist.fvalues, float64(25))
+
+	// Verify timing metrics are separated by cardinality
+	var lowTiming, highTiming metric
+	for _, m := range metrics {
+		if m.metricType == timingAggregated && m.name == "test.timing" {
+			if m.overrideCard.card == "low" {
+				lowTiming = m
+			} else if m.overrideCard.card == "high" {
+				highTiming = m
+			}
+		}
+	}
+
+	assert.Len(t, lowTiming.fvalues, 2)  // 100, 300
+	assert.Len(t, highTiming.fvalues, 1) // Only 200
+	assert.Contains(t, lowTiming.fvalues, float64(100))
+	assert.Contains(t, lowTiming.fvalues, float64(300))
+	assert.Contains(t, highTiming.fvalues, float64(200))
+}
+
+func TestAggregatorCardinalityEmptyVsNonEmpty(t *testing.T) {
+	a := newAggregator(nil, 0)
+	tags := []string{"env:prod"}
+
+	// Test that empty cardinality and non-empty cardinality are treated as different
+	a.gauge("test.metric", 10, tags, CardinalityParameter{card: ""})
+	a.gauge("test.metric", 20, tags, CardinalityParameter{card: "low"})
+	a.gauge("test.metric", 30, tags, CardinalityParameter{card: ""}) // Should aggregate with first one
+
+	metrics := a.flushMetrics()
+	assert.Len(t, metrics, 2) // Should have 2 separate metrics
+
+	// Verify they are separate
+	var emptyCard, lowCard metric
+	for _, m := range metrics {
+		if m.metricType == gauge && m.name == "test.metric" {
+			if m.overrideCard.card == "" {
+				emptyCard = m
+			} else if m.overrideCard.card == "low" {
+				lowCard = m
+			}
+		}
+	}
+
+	assert.Equal(t, float64(30), emptyCard.fvalue) // Last value for empty cardinality
+	assert.Equal(t, float64(20), lowCard.fvalue)   // Only value for low cardinality
+}
+
+func TestAggregatorCardinalityContextGeneration(t *testing.T) {
+	// Test that getContextAndTags generates correct contexts for different cardinalities
+	tests := []struct {
+		name        string
+		tags        []string
+		cardinality CardinalityParameter
+		wantContext string
+		wantTags    string
+	}{
+		{
+			name:        "test.metric",
+			tags:        []string{"env:prod"},
+			cardinality: CardinalityParameter{card: "low"},
+			wantContext: "test.metric:env:prod|card:low",
+			wantTags:    "env:prod",
+		},
+		{
+			name:        "test.metric",
+			tags:        []string{"env:prod"},
+			cardinality: CardinalityParameter{card: "high"},
+			wantContext: "test.metric:env:prod|card:high",
+			wantTags:    "env:prod",
+		},
+		{
+			name:        "test.metric",
+			tags:        []string{"env:prod", "service:api"},
+			cardinality: CardinalityParameter{card: "medium"},
+			wantContext: "test.metric:env:prod,service:api|card:medium",
+			wantTags:    "env:prod,service:api",
+		},
+		{
+			name:        "test.metric",
+			tags:        []string{},
+			cardinality: CardinalityParameter{card: "low"},
+			wantContext: "test.metric|card:low",
+			wantTags:    "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s_%s", test.name, test.cardinality.card), func(t *testing.T) {
+			gotContext, gotTags := getContextAndTags(test.name, test.tags, test.cardinality)
+			assert.Equal(t, test.wantContext, gotContext)
+			assert.Equal(t, test.wantTags, gotTags)
+		})
+	}
 }
