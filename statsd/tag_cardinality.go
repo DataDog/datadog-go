@@ -38,12 +38,12 @@ func initTagCardinality(card string) {
 }
 
 // validateCardinality checks if the tag cardinality is one of the valid values.
-func validateCardinality(tagCardinality string) CardinalityParameter {
-	tagCardinality = strings.ToLower(tagCardinality)
+func validateCardinality(card string) CardinalityParameter {
+	card = strings.ToLower(card)
 	validValues := []string{"none", "low", "orchestrator", "high"}
 	for _, valid := range validValues {
-		if tagCardinality == valid {
-			return CardinalityParameter{card: tagCardinality}
+		if card == valid {
+			return CardinalityParameter{card: card}
 		}
 	}
 
@@ -74,5 +74,5 @@ func resolveCardinality(cardinality CardinalityParameter) CardinalityParameter {
 	if value.card == "" {
 		return CardinalityParameter{card: getTagCardinality()}
 	}
-	return cardinality
+	return value
 }

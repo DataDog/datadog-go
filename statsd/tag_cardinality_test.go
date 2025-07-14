@@ -211,6 +211,188 @@ func TestConcurrentAccess(t *testing.T) {
 	assert.Equal(t, "high", result)
 }
 
+func TestResolveCardinality(t *testing.T) {
+	// Save original environment variables
+	originalDDCardinality := os.Getenv("DD_CARDINALITY")
+	originalDatadogCardinality := os.Getenv("DATADOG_CARDINALITY")
+	defer func() {
+		// Restore original environment variables
+		if originalDDCardinality != "" {
+			os.Setenv("DD_CARDINALITY", originalDDCardinality)
+		} else {
+			os.Unsetenv("DD_CARDINALITY")
+		}
+		if originalDatadogCardinality != "" {
+			os.Setenv("DATADOG_CARDINALITY", originalDatadogCardinality)
+		} else {
+			os.Unsetenv("DATADOG_CARDINALITY")
+		}
+	}()
+
+	tests := []struct {
+		name          string
+		input         CardinalityParameter
+		globalSetting string
+		expected      CardinalityParameter
+	}{
+		{
+			name:          "valid cardinality returns same value",
+			input:         CardinalityParameter{card: "low"},
+			globalSetting: "high",
+			expected:      CardinalityParameter{card: "low"},
+		},
+		{
+			name:          "empty cardinality uses global setting",
+			input:         CardinalityParameter{card: ""},
+			globalSetting: "high",
+			expected:      CardinalityParameter{card: "high"},
+		},
+		{
+			name:          "empty cardinality with empty global",
+			input:         CardinalityParameter{card: ""},
+			globalSetting: "",
+			expected:      CardinalityParameter{card: ""},
+		},
+		{
+			name:          "invalid cardinality falls back to global",
+			input:         CardinalityParameter{card: "invalid"},
+			globalSetting: "low",
+			expected:      CardinalityParameter{card: "low"},
+		},
+		{
+			name:          "invalid cardinality with empty global",
+			input:         CardinalityParameter{card: "invalid"},
+			globalSetting: "",
+			expected:      CardinalityParameter{card: ""},
+		},
+		{
+			name:          "case insensitive valid cardinality",
+			input:         CardinalityParameter{card: "HIGH"},
+			globalSetting: "low",
+			expected:      CardinalityParameter{card: "high"},
+		},
+		{
+			name:          "mixed case valid cardinality",
+			input:         CardinalityParameter{card: "OrChEsTrAtOr"},
+			globalSetting: "low",
+			expected:      CardinalityParameter{card: "orchestrator"},
+		},
+		{
+			name:          "partial match invalid cardinality",
+			input:         CardinalityParameter{card: "orchestr"},
+			globalSetting: "high",
+			expected:      CardinalityParameter{card: "high"},
+		},
+		{
+			name:          "whitespace invalid cardinality",
+			input:         CardinalityParameter{card: " low "},
+			globalSetting: "high",
+			expected:      CardinalityParameter{card: "high"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up the global cardinality setting
+			patchTagCardinality(tt.globalSetting, "", "")
+
+			// Call resolveCardinality
+			result := resolveCardinality(tt.input)
+
+			// Verify the result
+			assert.Equal(t, tt.expected, result)
+
+			// Clean up
+			resetTagCardinality()
+		})
+	}
+}
+
+func TestResolveCardinalityWithEnvironmentVariables(t *testing.T) {
+	// Save original environment variables
+	originalDDCardinality := os.Getenv("DD_CARDINALITY")
+	originalDatadogCardinality := os.Getenv("DATADOG_CARDINALITY")
+	defer func() {
+		// Restore original environment variables
+		if originalDDCardinality != "" {
+			os.Setenv("DD_CARDINALITY", originalDDCardinality)
+		} else {
+			os.Unsetenv("DD_CARDINALITY")
+		}
+		if originalDatadogCardinality != "" {
+			os.Setenv("DATADOG_CARDINALITY", originalDatadogCardinality)
+		} else {
+			os.Unsetenv("DATADOG_CARDINALITY")
+		}
+	}()
+
+	tests := []struct {
+		name               string
+		input              CardinalityParameter
+		ddCardinality      string
+		datadogCardinality string
+		expected           CardinalityParameter
+		description        string
+	}{
+		{
+			name:               "empty cardinality uses DD_CARDINALITY",
+			input:              CardinalityParameter{card: ""},
+			ddCardinality:      "high",
+			datadogCardinality: "low",
+			expected:           CardinalityParameter{card: "high"},
+			description:        "Empty cardinality should use DD_CARDINALITY when available",
+		},
+		{
+			name:               "empty cardinality uses DATADOG_CARDINALITY when DD_CARDINALITY empty",
+			input:              CardinalityParameter{card: ""},
+			ddCardinality:      "",
+			datadogCardinality: "orchestrator",
+			expected:           CardinalityParameter{card: "orchestrator"},
+			description:        "Empty cardinality should use DATADOG_CARDINALITY when DD_CARDINALITY is empty",
+		},
+		{
+			name:               "empty cardinality with no environment variables",
+			input:              CardinalityParameter{card: ""},
+			ddCardinality:      "",
+			datadogCardinality: "",
+			expected:           CardinalityParameter{card: ""},
+			description:        "Empty cardinality should remain empty when no environment variables are set",
+		},
+		{
+			name:               "invalid cardinality falls back to DD_CARDINALITY",
+			input:              CardinalityParameter{card: "invalid"},
+			ddCardinality:      "low",
+			datadogCardinality: "high",
+			expected:           CardinalityParameter{card: "low"},
+			description:        "Invalid cardinality should fall back to DD_CARDINALITY",
+		},
+		{
+			name:               "invalid cardinality falls back to DATADOG_CARDINALITY when DD_CARDINALITY invalid",
+			input:              CardinalityParameter{card: "invalid"},
+			ddCardinality:      "invalid",
+			datadogCardinality: "high",
+			expected:           CardinalityParameter{card: "high"},
+			description:        "Invalid cardinality should fall back to DATADOG_CARDINALITY when DD_CARDINALITY is invalid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up the environment variables
+			patchTagCardinality("", tt.ddCardinality, tt.datadogCardinality)
+
+			// Call resolveCardinality
+			result := resolveCardinality(tt.input)
+
+			// Verify the result
+			assert.Equal(t, tt.expected, result, tt.description)
+
+			// Clean up
+			resetTagCardinality()
+		})
+	}
+}
+
 func patchTagCardinality(userInput string, DDInput string, DATADOGInput string) {
 	if DDInput != "" {
 		os.Setenv("DD_CARDINALITY", DDInput)
