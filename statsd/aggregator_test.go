@@ -517,7 +517,7 @@ func TestAggregatorCardinalityPreservation(t *testing.T) {
 	// Test that cardinality is preserved in flushed metrics
 	a.gauge("test.metric", 42, tags, CardinalityParameter{card: "low"})
 	a.count("test.count", 100, tags, CardinalityParameter{card: "high"})
-	a.set("test.set", "unique_value", tags, CardinalityParameter{card: "medium"})
+	a.set("test.set", "unique_value", tags, CardinalityParameter{card: "orchestrator"})
 
 	metrics := a.flushMetrics()
 	assert.Len(t, metrics, 3)
@@ -533,7 +533,7 @@ func TestAggregatorCardinalityPreservation(t *testing.T) {
 			assert.Equal(t, CardinalityParameter{card: "high"}, m.overrideCard)
 		case set:
 			assert.Equal(t, "test.set", m.name)
-			assert.Equal(t, CardinalityParameter{card: "medium"}, m.overrideCard)
+			assert.Equal(t, CardinalityParameter{card: "orchestrator"}, m.overrideCard)
 		}
 	}
 }
@@ -669,8 +669,8 @@ func TestAggregatorCardinalityContextGeneration(t *testing.T) {
 		{
 			name:        "test.metric",
 			tags:        []string{"env:prod", "service:api"},
-			cardinality: CardinalityParameter{card: "medium"},
-			wantContext: "test.metric:env:prod,service:api|card:medium",
+			cardinality: CardinalityParameter{card: "orchestrator"},
+			wantContext: "test.metric:env:prod,service:api|card:orchestrator",
 			wantTags:    "env:prod,service:api",
 		},
 		{

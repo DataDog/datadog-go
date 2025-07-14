@@ -61,15 +61,17 @@ func parseTagCardinality(parameters []Parameter) CardinalityParameter {
 	for _, o := range parameters {
 		c, ok := o.(CardinalityParameter)
 		if ok {
-			cardinality = c
+			cardinality = resolveCardinality(c)
 		}
 	}
 	return cardinality
 }
 
-// resolveCardinality returns the cardinality to use, falling back to the global setting if empty
+// resolveCardinality returns the cardinality to use, prioritizing the metric-level cardinality over the global setting.
+// This function validates the cardinality and falls back to the global setting if invalid.
 func resolveCardinality(cardinality CardinalityParameter) CardinalityParameter {
-	if cardinality.card == "" {
+	value := validateCardinality(cardinality.card)
+	if value.card == "" {
 		return CardinalityParameter{card: getTagCardinality()}
 	}
 	return cardinality

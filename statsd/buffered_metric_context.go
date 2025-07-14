@@ -67,8 +67,8 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 		return nil
 	}
 
-	cardinality = resolveCardinality(cardinality)
-	context, stringTags := getContextAndTags(name, tags, cardinality)
+	resolvedCardinality := resolveCardinality(cardinality)
+	context, stringTags := getContextAndTags(name, tags, resolvedCardinality)
 	var v *bufferedMetric
 
 	bc.mutex.RLock()
@@ -82,7 +82,7 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 		v, _ = bc.values[context]
 		if v == nil {
 			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
-			bc.values[context] = bc.newMetric(name, value, stringTags, rate, cardinality)
+			bc.values[context] = bc.newMetric(name, value, stringTags, rate, resolvedCardinality)
 			// We added a new value, we need to unlock the mutex and quit
 			bc.mutex.Unlock()
 			return nil

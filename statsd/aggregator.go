@@ -177,7 +177,6 @@ func (a *aggregator) flushMetrics() []metric {
 // The context is the metric name, tags, and cardinality separated by separator symbols.
 // It is not intended to be used as a metric name but as a unique key to aggregate
 func getContext(name string, tags []string, cardinality CardinalityParameter) string {
-	cardinality = resolveCardinality(cardinality)
 	c, _ := getContextAndTags(name, tags, cardinality)
 	return c
 }
@@ -187,7 +186,6 @@ func getContext(name string, tags []string, cardinality CardinalityParameter) st
 // See getContext for usage for context
 // The tags are the tags separated by a separator symbol and can be re-used to pass down to the writer
 func getContextAndTags(name string, tags []string, cardinality CardinalityParameter) (string, string) {
-	cardinality = resolveCardinality(cardinality)
 	if len(tags) == 0 {
 		if cardinality.card == "" {
 			return name, ""
@@ -227,8 +225,8 @@ func getContextAndTags(name string, tags []string, cardinality CardinalityParame
 }
 
 func (a *aggregator) count(name string, value int64, tags []string, cardinality CardinalityParameter) error {
-	cardinality = resolveCardinality(cardinality)
-	context := getContext(name, tags, cardinality)
+	resolvedCardinality := resolveCardinality(cardinality)
+	context := getContext(name, tags, resolvedCardinality)
 	a.countsM.RLock()
 	if count, found := a.counts[context]; found {
 		count.sample(value)
@@ -245,14 +243,14 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 		return nil
 	}
 
-	a.counts[context] = newCountMetric(name, value, tags, cardinality)
+	a.counts[context] = newCountMetric(name, value, tags, resolvedCardinality)
 	a.countsM.Unlock()
 	return nil
 }
 
 func (a *aggregator) gauge(name string, value float64, tags []string, cardinality CardinalityParameter) error {
-	cardinality = resolveCardinality(cardinality)
-	context := getContext(name, tags, cardinality)
+	resolvedCardinality := resolveCardinality(cardinality)
+	context := getContext(name, tags, resolvedCardinality)
 	a.gaugesM.RLock()
 	if gauge, found := a.gauges[context]; found {
 		gauge.sample(value)
@@ -261,7 +259,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 	}
 	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags, cardinality)
+	gauge := newGaugeMetric(name, value, tags, resolvedCardinality)
 
 	a.gaugesM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
@@ -276,8 +274,8 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 }
 
 func (a *aggregator) set(name string, value string, tags []string, cardinality CardinalityParameter) error {
-	cardinality = resolveCardinality(cardinality)
-	context := getContext(name, tags, cardinality)
+	resolvedCardinality := resolveCardinality(cardinality)
+	context := getContext(name, tags, resolvedCardinality)
 	a.setsM.RLock()
 	if set, found := a.sets[context]; found {
 		set.sample(value)
@@ -293,7 +291,7 @@ func (a *aggregator) set(name string, value string, tags []string, cardinality C
 		a.setsM.Unlock()
 		return nil
 	}
-	a.sets[context] = newSetMetric(name, value, tags, cardinality)
+	a.sets[context] = newSetMetric(name, value, tags, resolvedCardinality)
 	a.setsM.Unlock()
 	return nil
 }
