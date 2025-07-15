@@ -45,7 +45,7 @@ func validateCardinality(card string) Cardinality {
 	case "high":
 		return CardinalityHigh
 	default:
-		return CardinalityNotSet // Indicates that cardinality is not set.
+		return CardinalityNotSet
 	}
 }
 
