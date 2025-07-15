@@ -164,7 +164,7 @@ type metric struct {
 	stags        string
 	rate         float64
 	timestamp    int64
-	overrideCard CardinalityParameter
+	overrideCard Cardinality
 }
 
 type noClientErr string
@@ -465,7 +465,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 	initExternalEnv()
 
 	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_CARDINALITY/DATADOG_CARDINALITY environment variable.
-	initTagCardinality(o.tagCardinality.card)
+	initTagCardinality(o.tagCardinality)
 
 	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
@@ -664,7 +664,7 @@ func (c *Client) sendBlocking(m metric) error {
 	return worker.processMetric(m)
 }
 
-func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, cardinality CardinalityParameter) error {
+func (c *Client) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, cardinality Cardinality) error {
 	if c.aggregatorMode == channelMode {
 		m := metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate, overrideCard: cardinality}
 		select {

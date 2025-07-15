@@ -52,30 +52,30 @@ func TestAggregatorFlush(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags, CardinalityParameter{card: "low"})
-	a.gauge("gaugeTest1", 10, tags, CardinalityParameter{card: "low"})
-	a.gauge("gaugeTest2", 15, tags, CardinalityParameter{card: "low"})
+	a.gauge("gaugeTest1", 21, tags, CardinalityLow)
+	a.gauge("gaugeTest1", 10, tags, CardinalityLow)
+	a.gauge("gaugeTest2", 15, tags, CardinalityLow)
 
-	a.count("countTest1", 21, tags, CardinalityParameter{card: "low"})
-	a.count("countTest1", 10, tags, CardinalityParameter{card: "low"})
-	a.count("countTest2", 1, tags, CardinalityParameter{card: "low"})
+	a.count("countTest1", 21, tags, CardinalityLow)
+	a.count("countTest1", 10, tags, CardinalityLow)
+	a.count("countTest2", 1, tags, CardinalityLow)
 
-	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
-	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
-	a.set("setTest1", "value2", tags, CardinalityParameter{card: "low"})
-	a.set("setTest2", "value1", tags, CardinalityParameter{card: "low"})
+	a.set("setTest1", "value1", tags, CardinalityLow)
+	a.set("setTest1", "value1", tags, CardinalityLow)
+	a.set("setTest1", "value2", tags, CardinalityLow)
+	a.set("setTest2", "value1", tags, CardinalityLow)
 
-	a.histogram("histogramTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-	a.histogram("histogramTest1", 22, tags, 1, CardinalityParameter{card: "low"})
-	a.histogram("histogramTest2", 23, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("histogramTest1", 21, tags, 1, CardinalityLow)
+	a.histogram("histogramTest1", 22, tags, 1, CardinalityLow)
+	a.histogram("histogramTest2", 23, tags, 1, CardinalityLow)
 
-	a.distribution("distributionTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-	a.distribution("distributionTest1", 22, tags, 1, CardinalityParameter{card: "low"})
-	a.distribution("distributionTest2", 23, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("distributionTest1", 21, tags, 1, CardinalityLow)
+	a.distribution("distributionTest1", 22, tags, 1, CardinalityLow)
+	a.distribution("distributionTest2", 23, tags, 1, CardinalityLow)
 
-	a.timing("timingTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-	a.timing("timingTest1", 22, tags, 1, CardinalityParameter{card: "low"})
-	a.timing("timingTest2", 23, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("timingTest1", 21, tags, 1, CardinalityLow)
+	a.timing("timingTest1", 22, tags, 1, CardinalityLow)
+	a.timing("timingTest2", 23, tags, 1, CardinalityLow)
 
 	metrics := a.flushMetrics()
 
@@ -107,7 +107,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			fvalue:       float64(10),
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   gauge,
@@ -115,7 +115,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			fvalue:       float64(15),
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   count,
@@ -123,7 +123,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			ivalue:       int64(31),
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   count,
@@ -131,7 +131,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			ivalue:       int64(1),
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   histogramAggregated,
@@ -139,7 +139,7 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:        strings.Join(tags, tagSeparatorSymbol),
 			rate:         1,
 			fvalues:      []float64{21.0, 22.0},
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   histogramAggregated,
@@ -147,7 +147,7 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:        strings.Join(tags, tagSeparatorSymbol),
 			rate:         1,
 			fvalues:      []float64{23.0},
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   distributionAggregated,
@@ -155,7 +155,7 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:        strings.Join(tags, tagSeparatorSymbol),
 			rate:         1,
 			fvalues:      []float64{21.0, 22.0},
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   distributionAggregated,
@@ -163,7 +163,7 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:        strings.Join(tags, tagSeparatorSymbol),
 			rate:         1,
 			fvalues:      []float64{23.0},
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   set,
@@ -171,7 +171,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			svalue:       "value1",
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   set,
@@ -179,7 +179,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			svalue:       "value2",
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   set,
@@ -187,7 +187,7 @@ func TestAggregatorFlush(t *testing.T) {
 			tags:         tags,
 			rate:         1,
 			svalue:       "value1",
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   timingAggregated,
@@ -195,7 +195,7 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:        strings.Join(tags, tagSeparatorSymbol),
 			rate:         1,
 			fvalues:      []float64{21.0, 22.0},
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 		metric{
 			metricType:   timingAggregated,
@@ -203,7 +203,7 @@ func TestAggregatorFlush(t *testing.T) {
 			stags:        strings.Join(tags, tagSeparatorSymbol),
 			rate:         1,
 			fvalues:      []float64{23.0},
-			overrideCard: CardinalityParameter{card: "low"},
+			overrideCard: CardinalityLow,
 		},
 	},
 		metrics)
@@ -216,29 +216,29 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gaugeTest1", 21, tags, CardinalityParameter{card: "low"})
-	a.gauge("gaugeTest1", 10, tags, CardinalityParameter{card: "low"})
-	a.gauge("gaugeTest1", 15, tags, CardinalityParameter{card: "low"})
+	a.gauge("gaugeTest1", 21, tags, CardinalityLow)
+	a.gauge("gaugeTest1", 10, tags, CardinalityLow)
+	a.gauge("gaugeTest1", 15, tags, CardinalityLow)
 
-	a.count("countTest1", 21, tags, CardinalityParameter{card: "low"})
-	a.count("countTest1", 10, tags, CardinalityParameter{card: "low"})
-	a.count("countTest1", 1, tags, CardinalityParameter{card: "low"})
+	a.count("countTest1", 21, tags, CardinalityLow)
+	a.count("countTest1", 10, tags, CardinalityLow)
+	a.count("countTest1", 1, tags, CardinalityLow)
 
-	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
-	a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
-	a.set("setTest1", "value2", tags, CardinalityParameter{card: "low"})
+	a.set("setTest1", "value1", tags, CardinalityLow)
+	a.set("setTest1", "value1", tags, CardinalityLow)
+	a.set("setTest1", "value2", tags, CardinalityLow)
 
-	a.histogram("histogramTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-	a.histogram("histogramTest1", 22, tags, 1, CardinalityParameter{card: "low"})
-	a.histogram("histogramTest1", 23, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("histogramTest1", 21, tags, 1, CardinalityLow)
+	a.histogram("histogramTest1", 22, tags, 1, CardinalityLow)
+	a.histogram("histogramTest1", 23, tags, 1, CardinalityLow)
 
-	a.distribution("distributionTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-	a.distribution("distributionTest1", 22, tags, 1, CardinalityParameter{card: "low"})
-	a.distribution("distributionTest1", 23, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("distributionTest1", 21, tags, 1, CardinalityLow)
+	a.distribution("distributionTest1", 22, tags, 1, CardinalityLow)
+	a.distribution("distributionTest1", 23, tags, 1, CardinalityLow)
 
-	a.timing("timingTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-	a.timing("timingTest1", 22, tags, 1, CardinalityParameter{card: "low"})
-	a.timing("timingTest1", 23, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("timingTest1", 21, tags, 1, CardinalityLow)
+	a.timing("timingTest1", 22, tags, 1, CardinalityLow)
+	a.timing("timingTest1", 23, tags, 1, CardinalityLow)
 
 	metrics := a.flushMetrics()
 
@@ -342,12 +342,12 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			a.gauge("gaugeTest1", 21, tags, CardinalityParameter{card: "low"})
-			a.count("countTest1", 21, tags, CardinalityParameter{card: "low"})
-			a.set("setTest1", "value1", tags, CardinalityParameter{card: "low"})
-			a.histogram("histogramTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-			a.distribution("distributionTest1", 21, tags, 1, CardinalityParameter{card: "low"})
-			a.timing("timingTest1", 21, tags, 1, CardinalityParameter{card: "low"})
+			a.gauge("gaugeTest1", 21, tags, CardinalityLow)
+			a.count("countTest1", 21, tags, CardinalityLow)
+			a.set("setTest1", "value1", tags, CardinalityLow)
+			a.histogram("histogramTest1", 21, tags, 1, CardinalityLow)
+			a.distribution("distributionTest1", 21, tags, 1, CardinalityLow)
+			a.timing("timingTest1", 21, tags, 1, CardinalityLow)
 		}()
 	}
 
@@ -366,9 +366,9 @@ func TestAggregatorTagsCopy(t *testing.T) {
 	a := newAggregator(nil, 0)
 	tags := []string{"tag1", "tag2"}
 
-	a.gauge("gauge", 21, tags, CardinalityParameter{card: "low"})
-	a.count("count", 21, tags, CardinalityParameter{card: "low"})
-	a.set("set", "test", tags, CardinalityParameter{card: "low"})
+	a.gauge("gauge", 21, tags, CardinalityLow)
+	a.count("count", 21, tags, CardinalityLow)
+	a.set("set", "test", tags, CardinalityLow)
 
 	tags[0] = "new_tags"
 
@@ -411,7 +411,7 @@ func TestGetContextAndTags(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			gotContext, gotTags := getContextAndTags(test.name, test.tags, CardinalityParameter{card: "low"})
+			gotContext, gotTags := getContextAndTags(test.name, test.tags, CardinalityLow)
 			assert.Equal(t, test.wantContext, gotContext)
 			assert.Equal(t, test.wantTags, gotTags)
 		})
@@ -422,7 +422,7 @@ func BenchmarkGetContext(b *testing.B) {
 	name := "test.metric"
 	tags := []string{"tag:tag", "foo:bar"}
 	for i := 0; i < b.N; i++ {
-		getContext(name, tags, CardinalityParameter{card: "low"})
+		getContext(name, tags, CardinalityLow)
 	}
 	b.ReportAllocs()
 }
@@ -431,7 +431,7 @@ func BenchmarkGetContextNoTags(b *testing.B) {
 	name := "test.metric"
 	var tags []string
 	for i := 0; i < b.N; i++ {
-		getContext(name, tags, CardinalityParameter{card: "low"})
+		getContext(name, tags, CardinalityLow)
 	}
 	b.ReportAllocs()
 }
@@ -440,17 +440,17 @@ func TestAggregatorCardinalitySeparation(t *testing.T) {
 	a := newAggregator(nil, 0)
 	tags := []string{"env:prod", "service:api"}
 
-	a.gauge("test.metric", 10, tags, CardinalityParameter{card: "low"})
-	a.gauge("test.metric", 20, tags, CardinalityParameter{card: "high"})
-	a.gauge("test.metric", 30, tags, CardinalityParameter{card: "low"})
+	a.gauge("test.metric", 10, tags, CardinalityLow)
+	a.gauge("test.metric", 20, tags, CardinalityHigh)
+	a.gauge("test.metric", 30, tags, CardinalityLow)
 
-	a.count("test.count", 5, tags, CardinalityParameter{card: "low"})
-	a.count("test.count", 15, tags, CardinalityParameter{card: "high"})
-	a.count("test.count", 25, tags, CardinalityParameter{card: "low"})
+	a.count("test.count", 5, tags, CardinalityLow)
+	a.count("test.count", 15, tags, CardinalityHigh)
+	a.count("test.count", 25, tags, CardinalityLow)
 
-	a.set("test.set", "value1", tags, CardinalityParameter{card: "low"})
-	a.set("test.set", "value2", tags, CardinalityParameter{card: "high"})
-	a.set("test.set", "value3", tags, CardinalityParameter{card: "low"})
+	a.set("test.set", "value1", tags, CardinalityLow)
+	a.set("test.set", "value2", tags, CardinalityHigh)
+	a.set("test.set", "value3", tags, CardinalityLow)
 
 	metrics := a.flushMetrics()
 
@@ -460,9 +460,9 @@ func TestAggregatorCardinalitySeparation(t *testing.T) {
 	var lowGauge, highGauge metric
 	for _, m := range metrics {
 		if m.metricType == gauge && m.name == "test.metric" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowGauge = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highGauge = m
 			}
 		}
@@ -475,9 +475,9 @@ func TestAggregatorCardinalitySeparation(t *testing.T) {
 	var lowCount, highCount metric
 	for _, m := range metrics {
 		if m.metricType == count && m.name == "test.count" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowCount = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCount = m
 			}
 		}
@@ -490,9 +490,9 @@ func TestAggregatorCardinalitySeparation(t *testing.T) {
 	var lowSetValues, highSetValues []string
 	for _, m := range metrics {
 		if m.metricType == set && m.name == "test.set" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowSetValues = append(lowSetValues, m.svalue)
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highSetValues = append(highSetValues, m.svalue)
 			}
 		}
@@ -511,9 +511,9 @@ func TestAggregatorCardinalityPreservation(t *testing.T) {
 	tags := []string{"env:prod"}
 
 	// Test that cardinality is preserved in flushed metrics.
-	a.gauge("test.metric", 42, tags, CardinalityParameter{card: "low"})
-	a.count("test.count", 100, tags, CardinalityParameter{card: "high"})
-	a.set("test.set", "unique_value", tags, CardinalityParameter{card: "orchestrator"})
+	a.gauge("test.metric", 42, tags, CardinalityLow)
+	a.count("test.count", 100, tags, CardinalityHigh)
+	a.set("test.set", "unique_value", tags, CardinalityOrchestrator)
 
 	metrics := a.flushMetrics()
 	assert.Len(t, metrics, 3)
@@ -523,13 +523,13 @@ func TestAggregatorCardinalityPreservation(t *testing.T) {
 		switch m.metricType {
 		case gauge:
 			assert.Equal(t, "test.metric", m.name)
-			assert.Equal(t, CardinalityParameter{card: "low"}, m.overrideCard)
+			assert.Equal(t, CardinalityLow, m.overrideCard)
 		case count:
 			assert.Equal(t, "test.count", m.name)
-			assert.Equal(t, CardinalityParameter{card: "high"}, m.overrideCard)
+			assert.Equal(t, CardinalityHigh, m.overrideCard)
 		case set:
 			assert.Equal(t, "test.set", m.name)
-			assert.Equal(t, CardinalityParameter{card: "orchestrator"}, m.overrideCard)
+			assert.Equal(t, CardinalityOrchestrator, m.overrideCard)
 		}
 	}
 }
@@ -538,17 +538,17 @@ func TestAggregatorCardinalityWithBufferedMetrics(t *testing.T) {
 	a := newAggregator(nil, 0)
 	tags := []string{"env:prod"}
 
-	a.histogram("test.hist", 10, tags, 1, CardinalityParameter{card: "low"})
-	a.histogram("test.hist", 20, tags, 1, CardinalityParameter{card: "high"})
-	a.histogram("test.hist", 30, tags, 1, CardinalityParameter{card: "low"})
+	a.histogram("test.hist", 10, tags, 1, CardinalityLow)
+	a.histogram("test.hist", 20, tags, 1, CardinalityHigh)
+	a.histogram("test.hist", 30, tags, 1, CardinalityLow)
 
-	a.distribution("test.dist", 15, tags, 1, CardinalityParameter{card: "low"})
-	a.distribution("test.dist", 25, tags, 1, CardinalityParameter{card: "high"})
-	a.distribution("test.dist", 35, tags, 1, CardinalityParameter{card: "low"})
+	a.distribution("test.dist", 15, tags, 1, CardinalityLow)
+	a.distribution("test.dist", 25, tags, 1, CardinalityHigh)
+	a.distribution("test.dist", 35, tags, 1, CardinalityLow)
 
-	a.timing("test.timing", 100, tags, 1, CardinalityParameter{card: "low"})
-	a.timing("test.timing", 200, tags, 1, CardinalityParameter{card: "high"})
-	a.timing("test.timing", 300, tags, 1, CardinalityParameter{card: "low"})
+	a.timing("test.timing", 100, tags, 1, CardinalityLow)
+	a.timing("test.timing", 200, tags, 1, CardinalityHigh)
+	a.timing("test.timing", 300, tags, 1, CardinalityLow)
 
 	metrics := a.flushMetrics()
 
@@ -558,9 +558,9 @@ func TestAggregatorCardinalityWithBufferedMetrics(t *testing.T) {
 	var lowHist, highHist metric
 	for _, m := range metrics {
 		if m.metricType == histogramAggregated && m.name == "test.hist" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowHist = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highHist = m
 			}
 		}
@@ -576,9 +576,9 @@ func TestAggregatorCardinalityWithBufferedMetrics(t *testing.T) {
 	var lowDist, highDist metric
 	for _, m := range metrics {
 		if m.metricType == distributionAggregated && m.name == "test.dist" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowDist = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highDist = m
 			}
 		}
@@ -594,9 +594,9 @@ func TestAggregatorCardinalityWithBufferedMetrics(t *testing.T) {
 	var lowTiming, highTiming metric
 	for _, m := range metrics {
 		if m.metricType == timingAggregated && m.name == "test.timing" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowTiming = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highTiming = m
 			}
 		}
@@ -613,9 +613,9 @@ func TestAggregatorCardinalityEmptyVsNonEmpty(t *testing.T) {
 	a := newAggregator(nil, 0)
 	tags := []string{"env:prod"}
 
-	a.gauge("test.metric", 10, tags, CardinalityParameter{card: ""})
-	a.gauge("test.metric", 20, tags, CardinalityParameter{card: "low"})
-	a.gauge("test.metric", 30, tags, CardinalityParameter{card: ""})
+	a.gauge("test.metric", 10, tags, CardinalityNotSet)
+	a.gauge("test.metric", 20, tags, CardinalityLow)
+	a.gauge("test.metric", 30, tags, CardinalityNotSet)
 
 	metrics := a.flushMetrics()
 	assert.Len(t, metrics, 2)
@@ -623,9 +623,9 @@ func TestAggregatorCardinalityEmptyVsNonEmpty(t *testing.T) {
 	var emptyCard, lowCard metric
 	for _, m := range metrics {
 		if m.metricType == gauge && m.name == "test.metric" {
-			if m.overrideCard.card == "" {
+			if m.overrideCard == CardinalityNotSet {
 				emptyCard = m
-			} else if m.overrideCard.card == "low" {
+			} else if m.overrideCard == CardinalityLow {
 				lowCard = m
 			}
 		}
@@ -640,42 +640,42 @@ func TestAggregatorCardinalityContextGeneration(t *testing.T) {
 	tests := []struct {
 		name        string
 		tags        []string
-		cardinality CardinalityParameter
+		cardinality Cardinality
 		wantContext string
 		wantTags    string
 	}{
 		{
 			name:        "test.metric",
 			tags:        []string{"env:prod"},
-			cardinality: CardinalityParameter{card: "low"},
+			cardinality: CardinalityLow,
 			wantContext: "test.metric:low|env:prod",
 			wantTags:    "env:prod",
 		},
 		{
 			name:        "test.metric",
 			tags:        []string{"env:prod"},
-			cardinality: CardinalityParameter{card: "high"},
+			cardinality: CardinalityHigh,
 			wantContext: "test.metric:high|env:prod",
 			wantTags:    "env:prod",
 		},
 		{
 			name:        "test.metric",
 			tags:        []string{"env:prod", "service:api"},
-			cardinality: CardinalityParameter{card: "orchestrator"},
+			cardinality: CardinalityOrchestrator,
 			wantContext: "test.metric:orchestrator|env:prod,service:api",
 			wantTags:    "env:prod,service:api",
 		},
 		{
 			name:        "test.metric",
 			tags:        []string{},
-			cardinality: CardinalityParameter{card: "low"},
+			cardinality: CardinalityLow,
 			wantContext: "test.metric:low",
 			wantTags:    "",
 		},
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s_%s", test.name, test.cardinality.card), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s_%s", test.name, test.cardinality.String()), func(t *testing.T) {
 			gotContext, gotTags := getContextAndTags(test.name, test.tags, test.cardinality)
 			assert.Equal(t, test.wantContext, gotContext)
 			assert.Equal(t, test.wantTags, gotTags)
@@ -688,7 +688,7 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 	// that have the same cardinality as the global setting.
 
 	// Set global cardinality to "low"
-	initTagCardinality("low")
+	initTagCardinality(CardinalityLow)
 	defer resetTagCardinality()
 
 	a := newAggregator(nil, 0)
@@ -696,16 +696,16 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 
 	// Add metrics with different cardinality scenarios
 	// 1. No explicit cardinality (should use global "low")
-	a.gauge("test.metric", 10, tags, CardinalityParameter{card: ""})
+	a.gauge("test.metric", 10, tags, CardinalityNotSet)
 
 	// 2. Explicit cardinality matching global setting
-	a.gauge("test.metric", 20, tags, CardinalityParameter{card: "low"})
+	a.gauge("test.metric", 20, tags, CardinalityLow)
 
 	// 3. Different explicit cardinality
-	a.gauge("test.metric", 30, tags, CardinalityParameter{card: "high"})
+	a.gauge("test.metric", 30, tags, CardinalityHigh)
 
 	// 4. Another metric with no explicit cardinality (should aggregate with first two)
-	a.gauge("test.metric", 40, tags, CardinalityParameter{card: ""})
+	a.gauge("test.metric", 40, tags, CardinalityNotSet)
 
 	metrics := a.flushMetrics()
 
@@ -716,9 +716,9 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 	var lowCardMetric, highCardMetric metric
 	for _, m := range metrics {
 		if m.metricType == gauge && m.name == "test.metric" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowCardMetric = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCardMetric = m
 			}
 		}
@@ -728,10 +728,10 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 
 	assert.Equal(t, float64(30), highCardMetric.fvalue)
 
-	a.count("test.count", 5, tags, CardinalityParameter{card: ""})
-	a.count("test.count", 15, tags, CardinalityParameter{card: "low"})
-	a.count("test.count", 25, tags, CardinalityParameter{card: "high"})
-	a.count("test.count", 35, tags, CardinalityParameter{card: ""})
+	a.count("test.count", 5, tags, CardinalityNotSet)
+	a.count("test.count", 15, tags, CardinalityLow)
+	a.count("test.count", 25, tags, CardinalityHigh)
+	a.count("test.count", 35, tags, CardinalityNotSet)
 
 	metrics = a.flushMetrics()
 
@@ -740,9 +740,9 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 	var lowCardCount, highCardCount metric
 	for _, m := range metrics {
 		if m.metricType == count && m.name == "test.count" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowCardCount = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCardCount = m
 			}
 		}
@@ -752,10 +752,10 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 
 	assert.Equal(t, int64(25), highCardCount.ivalue)
 
-	a.set("test.set", "value1", tags, CardinalityParameter{card: ""})
-	a.set("test.set", "value2", tags, CardinalityParameter{card: "low"})
-	a.set("test.set", "value3", tags, CardinalityParameter{card: "high"})
-	a.set("test.set", "value4", tags, CardinalityParameter{card: ""})
+	a.set("test.set", "value1", tags, CardinalityNotSet)
+	a.set("test.set", "value2", tags, CardinalityLow)
+	a.set("test.set", "value3", tags, CardinalityHigh)
+	a.set("test.set", "value4", tags, CardinalityNotSet)
 
 	metrics = a.flushMetrics()
 
@@ -765,10 +765,10 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 	var lowCardSetValues, highCardSetValues []string
 	for _, m := range metrics {
 		if m.metricType == set && m.name == "test.set" {
-			if m.overrideCard.card == "low" {
+			if m.overrideCard == CardinalityLow {
 				lowCardSetCount++
 				lowCardSetValues = append(lowCardSetValues, m.svalue)
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCardSetCount++
 				highCardSetValues = append(highCardSetValues, m.svalue)
 			}
@@ -793,15 +793,15 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	tags := []string{"env:prod"}
 
 	// Test case 1: No cardinality specified (should use empty cardinality).
-	a.gauge("test.metric", 10, tags, CardinalityParameter{card: ""})
-	a.gauge("test.metric", 20, tags, CardinalityParameter{card: ""})
+	a.gauge("test.metric", 10, tags, CardinalityNotSet)
+	a.gauge("test.metric", 20, tags, CardinalityNotSet)
 
 	// Test case 2: Explicit cardinality specified.
-	a.gauge("test.metric", 30, tags, CardinalityParameter{card: "low"})
-	a.gauge("test.metric", 40, tags, CardinalityParameter{card: "low"})
+	a.gauge("test.metric", 30, tags, CardinalityLow)
+	a.gauge("test.metric", 40, tags, CardinalityLow)
 
 	// Test case 3: Different explicit cardinality.
-	a.gauge("test.metric", 50, tags, CardinalityParameter{card: "high"})
+	a.gauge("test.metric", 50, tags, CardinalityHigh)
 
 	metrics := a.flushMetrics()
 
@@ -810,11 +810,11 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	var emptyCardMetric, lowCardMetric, highCardMetric metric
 	for _, m := range metrics {
 		if m.metricType == gauge && m.name == "test.metric" {
-			if m.overrideCard.card == "" {
+			if m.overrideCard == CardinalityNotSet {
 				emptyCardMetric = m
-			} else if m.overrideCard.card == "low" {
+			} else if m.overrideCard == CardinalityLow {
 				lowCardMetric = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCardMetric = m
 			}
 		}
@@ -824,11 +824,11 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	assert.Equal(t, float64(40), lowCardMetric.fvalue)
 	assert.Equal(t, float64(50), highCardMetric.fvalue)
 
-	a.count("test.count", 5, tags, CardinalityParameter{card: ""})
-	a.count("test.count", 15, tags, CardinalityParameter{card: ""})
-	a.count("test.count", 25, tags, CardinalityParameter{card: "low"})
-	a.count("test.count", 35, tags, CardinalityParameter{card: "low"})
-	a.count("test.count", 45, tags, CardinalityParameter{card: "high"})
+	a.count("test.count", 5, tags, CardinalityNotSet)
+	a.count("test.count", 15, tags, CardinalityNotSet)
+	a.count("test.count", 25, tags, CardinalityLow)
+	a.count("test.count", 35, tags, CardinalityLow)
+	a.count("test.count", 45, tags, CardinalityHigh)
 
 	metrics = a.flushMetrics()
 
@@ -837,11 +837,11 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	var emptyCardCount, lowCardCount, highCardCount metric
 	for _, m := range metrics {
 		if m.metricType == count && m.name == "test.count" {
-			if m.overrideCard.card == "" {
+			if m.overrideCard == CardinalityNotSet {
 				emptyCardCount = m
-			} else if m.overrideCard.card == "low" {
+			} else if m.overrideCard == CardinalityLow {
 				lowCardCount = m
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCardCount = m
 			}
 		}
@@ -851,11 +851,11 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	assert.Equal(t, int64(60), lowCardCount.ivalue)
 	assert.Equal(t, int64(45), highCardCount.ivalue)
 
-	a.set("test.set", "value1", tags, CardinalityParameter{card: ""})
-	a.set("test.set", "value2", tags, CardinalityParameter{card: ""})
-	a.set("test.set", "value3", tags, CardinalityParameter{card: "low"})
-	a.set("test.set", "value4", tags, CardinalityParameter{card: "low"})
-	a.set("test.set", "value5", tags, CardinalityParameter{card: "high"})
+	a.set("test.set", "value1", tags, CardinalityNotSet)
+	a.set("test.set", "value2", tags, CardinalityNotSet)
+	a.set("test.set", "value3", tags, CardinalityLow)
+	a.set("test.set", "value4", tags, CardinalityLow)
+	a.set("test.set", "value5", tags, CardinalityHigh)
 
 	metrics = a.flushMetrics()
 
@@ -865,13 +865,13 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	var emptyCardSetValues, lowCardSetValues, highCardSetValues []string
 	for _, m := range metrics {
 		if m.metricType == set && m.name == "test.set" {
-			if m.overrideCard.card == "" {
+			if m.overrideCard == CardinalityNotSet {
 				emptyCardSetCount++
 				emptyCardSetValues = append(emptyCardSetValues, m.svalue)
-			} else if m.overrideCard.card == "low" {
+			} else if m.overrideCard == CardinalityLow {
 				lowCardSetCount++
 				lowCardSetValues = append(lowCardSetValues, m.svalue)
-			} else if m.overrideCard.card == "high" {
+			} else if m.overrideCard == CardinalityHigh {
 				highCardSetCount++
 				highCardSetValues = append(highCardSetValues, m.svalue)
 			}

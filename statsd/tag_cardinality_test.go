@@ -7,76 +7,80 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	CardinalityInvalid = 5
+)
+
 func TestValidateCardinality(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected CardinalityParameter
+		expected Cardinality
 	}{
 		{
 			name:     "valid none",
 			input:    "none",
-			expected: CardinalityParameter{card: "none"},
+			expected: CardinalityNone,
 		},
 		{
 			name:     "valid low",
 			input:    "low",
-			expected: CardinalityParameter{card: "low"},
+			expected: CardinalityLow,
 		},
 		{
 			name:     "valid orchestrator",
 			input:    "orchestrator",
-			expected: CardinalityParameter{card: "orchestrator"},
+			expected: CardinalityOrchestrator,
 		},
 		{
 			name:     "valid high",
 			input:    "high",
-			expected: CardinalityParameter{card: "high"},
+			expected: CardinalityHigh,
 		},
 		{
 			name:     "case insensitive none",
 			input:    "NONE",
-			expected: CardinalityParameter{card: "none"},
+			expected: CardinalityNone,
 		},
 		{
 			name:     "case insensitive low",
 			input:    "LOW",
-			expected: CardinalityParameter{card: "low"},
+			expected: CardinalityLow,
 		},
 		{
 			name:     "case insensitive orchestrator",
 			input:    "ORCHESTRATOR",
-			expected: CardinalityParameter{card: "orchestrator"},
+			expected: CardinalityOrchestrator,
 		},
 		{
 			name:     "case insensitive high",
 			input:    "HIGH",
-			expected: CardinalityParameter{card: "high"},
+			expected: CardinalityHigh,
 		},
 		{
 			name:     "mixed case",
 			input:    "OrChEsTrAtOr",
-			expected: CardinalityParameter{card: "orchestrator"},
+			expected: CardinalityOrchestrator,
 		},
 		{
 			name:     "empty string",
 			input:    "",
-			expected: CardinalityParameter{card: ""},
+			expected: CardinalityNotSet,
 		},
 		{
 			name:     "invalid value",
 			input:    "invalid",
-			expected: CardinalityParameter{card: ""},
+			expected: CardinalityNotSet,
 		},
 		{
 			name:     "partial match",
 			input:    "orchestr",
-			expected: CardinalityParameter{card: ""},
+			expected: CardinalityNotSet,
 		},
 		{
 			name:     "whitespace",
 			input:    " none ",
-			expected: CardinalityParameter{card: ""},
+			expected: CardinalityNotSet,
 		},
 	}
 
@@ -108,59 +112,59 @@ func TestInitTagCardinality(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		inputCard          string
+		inputCard          Cardinality
 		ddCardinality      string
 		datadogCardinality string
-		expected           string
+		expected           Cardinality
 	}{
 		{
 			name:               "input parameter takes precedence",
-			inputCard:          "high",
+			inputCard:          CardinalityHigh,
 			ddCardinality:      "low",
 			datadogCardinality: "orchestrator",
-			expected:           "high",
+			expected:           CardinalityHigh,
 		},
 		{
 			name:               "DD_CARDINALITY used when input empty",
-			inputCard:          "",
+			inputCard:          CardinalityNotSet,
 			ddCardinality:      "low",
 			datadogCardinality: "orchestrator",
-			expected:           "low",
+			expected:           CardinalityLow,
 		},
 		{
 			name:               "DATADOG_CARDINALITY used when DD_CARDINALITY empty",
-			inputCard:          "",
+			inputCard:          CardinalityNotSet,
 			ddCardinality:      "",
 			datadogCardinality: "orchestrator",
-			expected:           "orchestrator",
+			expected:           CardinalityOrchestrator,
 		},
 		{
 			name:               "empty when no environment variables set",
-			inputCard:          "",
+			inputCard:          CardinalityNotSet,
 			ddCardinality:      "",
 			datadogCardinality: "",
-			expected:           "",
+			expected:           CardinalityNotSet,
 		},
 		{
 			name:               "invalid input parameter",
-			inputCard:          "invalid",
+			inputCard:          5,
 			ddCardinality:      "low",
 			datadogCardinality: "orchestrator",
-			expected:           "low",
+			expected:           CardinalityLow,
 		},
 		{
 			name:               "invalid DD_CARDINALITY",
-			inputCard:          "",
+			inputCard:          CardinalityNotSet,
 			ddCardinality:      "invalid",
 			datadogCardinality: "orchestrator",
-			expected:           "orchestrator",
+			expected:           CardinalityOrchestrator,
 		},
 		{
 			name:               "invalid DATADOG_CARDINALITY",
-			inputCard:          "",
+			inputCard:          CardinalityNotSet,
 			ddCardinality:      "",
 			datadogCardinality: "invalid",
-			expected:           "",
+			expected:           CardinalityNotSet,
 		},
 	}
 
@@ -179,14 +183,14 @@ func TestInitTagCardinality(t *testing.T) {
 
 func TestGetTagCardinality(t *testing.T) {
 	// Test that getTagCardinality returns the current value
-	initTagCardinality("high")
+	initTagCardinality(CardinalityHigh)
 	result := getTagCardinality()
-	assert.Equal(t, "high", result)
+	assert.Equal(t, CardinalityHigh, result)
 
 	// Test that it returns empty string when not set
-	initTagCardinality("")
+	initTagCardinality(CardinalityNotSet)
 	result = getTagCardinality()
-	assert.Equal(t, "", result)
+	assert.Equal(t, CardinalityNotSet, result)
 }
 
 func TestConcurrentAccess(t *testing.T) {
@@ -195,7 +199,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		go func() {
-			initTagCardinality("high")
+			initTagCardinality(CardinalityHigh)
 			_ = getTagCardinality()
 			done <- true
 		}()
@@ -208,7 +212,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	// Verify final state
 	result := getTagCardinality()
-	assert.Equal(t, "high", result)
+	assert.Equal(t, CardinalityHigh, result)
 }
 
 func TestResolveCardinality(t *testing.T) {
@@ -231,63 +235,39 @@ func TestResolveCardinality(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		input         CardinalityParameter
-		globalSetting string
-		expected      CardinalityParameter
+		input         Cardinality
+		globalSetting Cardinality
+		expected      Cardinality
 	}{
 		{
 			name:          "valid cardinality returns same value",
-			input:         CardinalityParameter{card: "low"},
-			globalSetting: "high",
-			expected:      CardinalityParameter{card: "low"},
+			input:         CardinalityLow,
+			globalSetting: CardinalityHigh,
+			expected:      CardinalityLow,
 		},
 		{
 			name:          "empty cardinality uses global setting",
-			input:         CardinalityParameter{card: ""},
-			globalSetting: "high",
-			expected:      CardinalityParameter{card: "high"},
+			input:         CardinalityNotSet,
+			globalSetting: CardinalityHigh,
+			expected:      CardinalityHigh,
 		},
 		{
 			name:          "empty cardinality with empty global",
-			input:         CardinalityParameter{card: ""},
-			globalSetting: "",
-			expected:      CardinalityParameter{card: ""},
+			input:         CardinalityNotSet,
+			globalSetting: CardinalityNotSet,
+			expected:      CardinalityNotSet,
 		},
 		{
 			name:          "invalid cardinality falls back to global",
-			input:         CardinalityParameter{card: "invalid"},
-			globalSetting: "low",
-			expected:      CardinalityParameter{card: "low"},
+			input:         CardinalityNotSet,
+			globalSetting: CardinalityLow,
+			expected:      CardinalityLow,
 		},
 		{
 			name:          "invalid cardinality with empty global",
-			input:         CardinalityParameter{card: "invalid"},
-			globalSetting: "",
-			expected:      CardinalityParameter{card: ""},
-		},
-		{
-			name:          "case insensitive valid cardinality",
-			input:         CardinalityParameter{card: "HIGH"},
-			globalSetting: "low",
-			expected:      CardinalityParameter{card: "high"},
-		},
-		{
-			name:          "mixed case valid cardinality",
-			input:         CardinalityParameter{card: "OrChEsTrAtOr"},
-			globalSetting: "low",
-			expected:      CardinalityParameter{card: "orchestrator"},
-		},
-		{
-			name:          "partial match invalid cardinality",
-			input:         CardinalityParameter{card: "orchestr"},
-			globalSetting: "high",
-			expected:      CardinalityParameter{card: "high"},
-		},
-		{
-			name:          "whitespace invalid cardinality",
-			input:         CardinalityParameter{card: " low "},
-			globalSetting: "high",
-			expected:      CardinalityParameter{card: "high"},
+			input:         CardinalityInvalid,
+			globalSetting: CardinalityNotSet,
+			expected:      CardinalityNotSet,
 		},
 	}
 
@@ -328,72 +308,65 @@ func TestResolveCardinalityWithEnvironmentVariables(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		input              CardinalityParameter
+		input              Cardinality
 		ddCardinality      string
 		datadogCardinality string
-		expected           CardinalityParameter
-		description        string
+		expected           Cardinality
 	}{
 		{
 			name:               "empty cardinality uses DD_CARDINALITY",
-			input:              CardinalityParameter{card: ""},
+			input:              CardinalityNotSet,
 			ddCardinality:      "high",
 			datadogCardinality: "low",
-			expected:           CardinalityParameter{card: "high"},
-			description:        "Empty cardinality should use DD_CARDINALITY when available",
+			expected:           CardinalityHigh,
 		},
 		{
 			name:               "empty cardinality uses DATADOG_CARDINALITY when DD_CARDINALITY empty",
-			input:              CardinalityParameter{card: ""},
+			input:              CardinalityNotSet,
 			ddCardinality:      "",
 			datadogCardinality: "orchestrator",
-			expected:           CardinalityParameter{card: "orchestrator"},
-			description:        "Empty cardinality should use DATADOG_CARDINALITY when DD_CARDINALITY is empty",
+			expected:           CardinalityOrchestrator,
 		},
 		{
 			name:               "empty cardinality with no environment variables",
-			input:              CardinalityParameter{card: ""},
+			input:              CardinalityNotSet,
 			ddCardinality:      "",
 			datadogCardinality: "",
-			expected:           CardinalityParameter{card: ""},
-			description:        "Empty cardinality should remain empty when no environment variables are set",
+			expected:           CardinalityNotSet,
 		},
 		{
 			name:               "invalid cardinality falls back to DD_CARDINALITY",
-			input:              CardinalityParameter{card: "invalid"},
+			input:              CardinalityInvalid,
 			ddCardinality:      "low",
 			datadogCardinality: "high",
-			expected:           CardinalityParameter{card: "low"},
-			description:        "Invalid cardinality should fall back to DD_CARDINALITY",
+			expected:           CardinalityLow,
 		},
 		{
 			name:               "invalid cardinality falls back to DATADOG_CARDINALITY when DD_CARDINALITY invalid",
-			input:              CardinalityParameter{card: "invalid"},
+			input:              CardinalityInvalid,
 			ddCardinality:      "invalid",
 			datadogCardinality: "high",
-			expected:           CardinalityParameter{card: "high"},
-			description:        "Invalid cardinality should fall back to DATADOG_CARDINALITY when DD_CARDINALITY is invalid",
+			expected:           CardinalityHigh,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set up the environment variables
-			patchTagCardinality("", tt.ddCardinality, tt.datadogCardinality)
+			patchTagCardinality(CardinalityNotSet, tt.ddCardinality, tt.datadogCardinality)
 
 			// Call resolveCardinality
 			result := resolveCardinality(tt.input)
 
 			// Verify the result
-			assert.Equal(t, tt.expected, result, tt.description)
+			assert.Equal(t, tt.expected, result)
 
 			// Clean up
 			resetTagCardinality()
 		})
 	}
 }
-
-func patchTagCardinality(userInput string, DDInput string, DATADOGInput string) {
+func patchTagCardinality(userInput Cardinality, DDInput string, DATADOGInput string) {
 	if DDInput != "" {
 		os.Setenv("DD_CARDINALITY", DDInput)
 	}

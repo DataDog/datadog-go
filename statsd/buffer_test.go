@@ -37,7 +37,7 @@ func TestBufferGauge(t *testing.T) {
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -47,15 +47,15 @@ func TestBufferGauge(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityParameter{card: "none"})
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityParameter{card: "invalid"})
+	err = buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|g|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -91,7 +91,7 @@ func TestBufferCount(t *testing.T) {
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -101,15 +101,15 @@ func TestBufferCount(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityParameter{card: "none"})
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityParameter{card: "invalid"})
+	err = buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|c|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -139,7 +139,7 @@ func TestBufferHistogram(t *testing.T) {
 	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -149,15 +149,15 @@ func TestBufferHistogram(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityParameter{card: "none"})
+	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityParameter{card: "invalid"})
+	err = buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|h|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -187,7 +187,7 @@ func TestBufferDistribution(t *testing.T) {
 	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -197,15 +197,15 @@ func TestBufferDistribution(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityParameter{card: "none"})
+	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityParameter{card: "invalid"})
+	err = buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -234,7 +234,7 @@ func TestBufferSet(t *testing.T) {
 	assert.Equal(t, "namespace.metric:value|s|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -244,15 +244,15 @@ func TestBufferSet(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "1", []string{}, 1, CardinalityParameter{card: "none"})
+	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "1", []string{}, 1, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|s|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "1", []string{}, 1, CardinalityParameter{card: "invalid"})
+	err = buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "1", []string{}, 1, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1|s|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -282,7 +282,7 @@ func TestBufferTiming(t *testing.T) {
 	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -292,15 +292,15 @@ func TestBufferTiming(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityParameter{card: "none"})
+	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityParameter{card: "invalid"})
+	err = buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "namespace.metric:1.000000|ms|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -330,7 +330,7 @@ func TestBufferEvent(t *testing.T) {
 	assert.Equal(t, "_e{5,4}:title|text|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -340,15 +340,15 @@ func TestBufferEvent(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"}, CardinalityParameter{card: "none"})
+	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"}, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "_e{5,4}:title|text|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"}, CardinalityParameter{card: "invalid"})
+	err = buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"}, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "_e{5,4}:title|text|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }
@@ -378,7 +378,7 @@ func TestBufferServiceCheck(t *testing.T) {
 	assert.Equal(t, "_sc|name|0|#tag:tag|c:container-id|e:external-env\n", string(buffer.bytes()))
 
 	// with a tag cardinality (global setting)
-	patchTagCardinality("low", "high", "orchestrator")
+	patchTagCardinality(CardinalityLow, "high", "orchestrator")
 	defer resetTagCardinality()
 
 	buffer = newStatsdBuffer(1024, 1)
@@ -388,15 +388,15 @@ func TestBufferServiceCheck(t *testing.T) {
 
 	// with a tag cardinality (valid local override)
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"}, CardinalityParameter{card: "none"})
+	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"}, CardinalityNone)
 	assert.Nil(t, err)
 	assert.Equal(t, "_sc|name|0|#tag:tag|c:container-id|e:external-env|card:none\n", string(buffer.bytes()))
 
 	// with a tag cardinality (invalid local override)
-	patchTagCardinality("invalid", "high", "orchestrator")
+	patchTagCardinality(CardinalityInvalid, "high", "orchestrator")
 
 	buffer = newStatsdBuffer(1024, 1)
-	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"}, CardinalityParameter{card: "invalid"})
+	err = buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"}, CardinalityInvalid)
 	assert.Nil(t, err)
 	assert.Equal(t, "_sc|name|0|#tag:tag|c:container-id|e:external-env|card:high\n", string(buffer.bytes()))
 }

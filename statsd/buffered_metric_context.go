@@ -14,7 +14,7 @@ type bufferedMetricContexts struct {
 	nbContext uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
-	newMetric func(string, float64, string, float64, CardinalityParameter) *bufferedMetric
+	newMetric func(string, float64, string, float64, Cardinality) *bufferedMetric
 
 	// Each bufferedMetricContexts uses its own random source and random
 	// lock to prevent goroutines from contending for the lock on the
@@ -25,10 +25,10 @@ type bufferedMetricContexts struct {
 	randomLock sync.Mutex
 }
 
-func newBufferedContexts(newMetric func(string, float64, string, int64, float64, CardinalityParameter) *bufferedMetric, maxSamples int64) bufferedMetricContexts {
+func newBufferedContexts(newMetric func(string, float64, string, int64, float64, Cardinality) *bufferedMetric, maxSamples int64) bufferedMetricContexts {
 	return bufferedMetricContexts{
 		values: bufferedMetricMap{},
-		newMetric: func(name string, value float64, stringTags string, rate float64, cardinality CardinalityParameter) *bufferedMetric {
+		newMetric: func(name string, value float64, stringTags string, rate float64, cardinality Cardinality) *bufferedMetric {
 			return newMetric(name, value, stringTags, maxSamples, rate, cardinality)
 		},
 		// Note that calling "time.Now().UnixNano()" repeatedly quickly may return
@@ -54,7 +54,7 @@ func (bc *bufferedMetricContexts) flush(metrics []metric) []metric {
 	return metrics
 }
 
-func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64, cardinality CardinalityParameter) error {
+func (bc *bufferedMetricContexts) sample(name string, value float64, tags []string, rate float64, cardinality Cardinality) error {
 	keepingSample := shouldSample(rate, bc.random, &bc.randomLock)
 
 	// If we don't keep the sample, return early. If we do keep the sample

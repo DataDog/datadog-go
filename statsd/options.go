@@ -28,7 +28,7 @@ var (
 	defaultOriginDetection              = true
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
-	defaultTagCardinality               = CardinalityParameter{card: ""}
+	defaultTagCardinality               = CardinalityNotSet
 )
 
 // Options contains the configuration options for a client.
@@ -55,7 +55,7 @@ type Options struct {
 	containerID                  string
 	channelModeErrorsWhenFull    bool
 	errorHandler                 ErrorHandler
-	tagCardinality               CardinalityParameter
+	tagCardinality               Cardinality
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -417,9 +417,9 @@ func WithContainerID(id string) Option {
 }
 
 // WithCardinality sets the tag cardinality of the metric.
-func WithCardinality(card string) Option {
+func WithCardinality(card Cardinality) Option {
 	return func(o *Options) error {
-		o.tagCardinality = validateCardinality(card)
+		o.tagCardinality = card
 		return nil
 	}
 }

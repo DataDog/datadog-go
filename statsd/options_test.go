@@ -43,7 +43,7 @@ func TestOptions(t *testing.T) {
 	testChannelBufferSize := 500
 	testAggregationWindow := 10 * time.Second
 	testTelemetryAddr := "localhost:1234"
-	testTagCardinality := "high"
+	testTagCardinality := CardinalityHigh
 
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
@@ -81,7 +81,7 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.aggregation, true)
 	assert.Equal(t, options.extendedAggregation, false)
 	assert.Equal(t, options.telemetryAddr, testTelemetryAddr)
-	assert.Equal(t, options.tagCardinality.card, testTagCardinality)
+	assert.Equal(t, options.tagCardinality, testTagCardinality)
 }
 
 func TestExtendedAggregation(t *testing.T) {
@@ -119,11 +119,10 @@ func TestOptionsNamespaceWithoutDot(t *testing.T) {
 }
 
 func TestOptionsInvalidTagCardinality(t *testing.T) {
-	invalidTagCardinality := "invalid"
 	options, err := resolveOptions([]Option{
-		WithCardinality(invalidTagCardinality),
+		WithCardinality(CardinalityInvalid),
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, options.tagCardinality, defaultTagCardinality)
+	assert.Equal(t, options.tagCardinality.String(), "")
 }

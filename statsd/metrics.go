@@ -18,10 +18,10 @@ type countMetric struct {
 	value        int64
 	name         string
 	tags         []string
-	overrideCard CardinalityParameter
+	overrideCard Cardinality
 }
 
-func newCountMetric(name string, value int64, tags []string, cardinality CardinalityParameter) *countMetric {
+func newCountMetric(name string, value int64, tags []string, cardinality Cardinality) *countMetric {
 	return &countMetric{
 		value:        value,
 		name:         name,
@@ -51,10 +51,10 @@ type gaugeMetric struct {
 	value        uint64
 	name         string
 	tags         []string
-	overrideCard CardinalityParameter
+	overrideCard Cardinality
 }
 
-func newGaugeMetric(name string, value float64, tags []string, cardinality CardinalityParameter) *gaugeMetric {
+func newGaugeMetric(name string, value float64, tags []string, cardinality Cardinality) *gaugeMetric {
 	return &gaugeMetric{
 		value:        math.Float64bits(value),
 		name:         name,
@@ -84,11 +84,11 @@ type setMetric struct {
 	data         map[string]struct{}
 	name         string
 	tags         []string
-	overrideCard CardinalityParameter
+	overrideCard Cardinality
 	sync.Mutex
 }
 
-func newSetMetric(name string, value string, tags []string, cardinality CardinalityParameter) *setMetric {
+func newSetMetric(name string, value string, tags []string, cardinality Cardinality) *setMetric {
 	set := &setMetric{
 		data:         map[string]struct{}{},
 		name:         name,
@@ -154,7 +154,7 @@ type bufferedMetric struct {
 	// it is used because we don't know better.
 	specifiedRate float64
 
-	overrideCard CardinalityParameter
+	overrideCard Cardinality
 }
 
 func (s *bufferedMetric) sample(v float64) {
@@ -223,7 +223,7 @@ func (s *bufferedMetric) flushUnsafe() metric {
 
 type histogramMetric = bufferedMetric
 
-func newHistogramMetric(name string, value float64, stringTags string, maxSamples int64, rate float64, cardinality CardinalityParameter) *histogramMetric {
+func newHistogramMetric(name string, value float64, stringTags string, maxSamples int64, rate float64, cardinality Cardinality) *histogramMetric {
 	return &histogramMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
@@ -239,7 +239,7 @@ func newHistogramMetric(name string, value float64, stringTags string, maxSample
 
 type distributionMetric = bufferedMetric
 
-func newDistributionMetric(name string, value float64, stringTags string, maxSamples int64, rate float64, cardinality CardinalityParameter) *distributionMetric {
+func newDistributionMetric(name string, value float64, stringTags string, maxSamples int64, rate float64, cardinality Cardinality) *distributionMetric {
 	return &distributionMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
@@ -255,7 +255,7 @@ func newDistributionMetric(name string, value float64, stringTags string, maxSam
 
 type timingMetric = bufferedMetric
 
-func newTimingMetric(name string, value float64, stringTags string, maxSamples int64, rate float64, cardinality CardinalityParameter) *timingMetric {
+func newTimingMetric(name string, value float64, stringTags string, maxSamples int64, rate float64, cardinality Cardinality) *timingMetric {
 	return &timingMetric{
 		data:          newData(value, maxSamples),
 		totalSamples:  1,
