@@ -197,9 +197,10 @@ func getContextAndTags(name string, tags []string, cardinality CardinalityParame
 	for _, s := range tags {
 		n += len(s)
 	}
-
+	var cardStringLen = 0
 	if cardinality.card != "" {
 		n += len(cardinality.card) + len(cardSeparatorSymbol)
+		cardStringLen = len(cardinality.card) + len(cardSeparatorSymbol)
 	}
 
 	var sb strings.Builder
@@ -218,7 +219,7 @@ func getContextAndTags(name string, tags []string, cardinality CardinalityParame
 
 	s := sb.String()
 
-	return s, s[len(name)+len(nameSeparatorSymbol)+len(cardinality.card)+len(cardSeparatorSymbol):]
+	return s, s[len(name)+len(nameSeparatorSymbol)+cardStringLen:]
 }
 
 func (a *aggregator) count(name string, value int64, tags []string, cardinality CardinalityParameter) error {
