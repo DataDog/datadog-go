@@ -14,6 +14,7 @@ var (
 	timingSymbol        = []byte("ms")
 	tagSeparatorSymbol  = ","
 	nameSeparatorSymbol = ":"
+	cardSeparatorSymbol = "|"
 )
 
 func appendHeader(buffer []byte, namespace string, name string) []byte {
