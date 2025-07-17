@@ -467,8 +467,8 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_CARDINALITY/DATADOG_CARDINALITY environment variable.
 	initTagCardinality(o.tagCardinality)
 
-	originDetection = isOriginDetectionEnabled(o)
-	initContainerID(o.containerID, originDetection, isHostCgroupNamespace())
+	setOriginDetection(isOriginDetectionEnabled(o))
+	initContainerID(o.containerID, getOriginDetection(), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 
 	if o.maxBytesPerPayload == 0 {
