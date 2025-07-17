@@ -9,7 +9,8 @@ import (
 const ddExternalEnvVarName = "DD_EXTERNAL_ENV"
 
 var (
-	externalEnv = ""
+	externalEnv     = ""
+	originDetection = true
 )
 
 // initExternalEnv initializes the external environment name.
