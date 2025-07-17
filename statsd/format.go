@@ -6,12 +6,15 @@ import (
 )
 
 var (
-	gaugeSymbol         = []byte("g")
-	countSymbol         = []byte("c")
-	histogramSymbol     = []byte("h")
-	distributionSymbol  = []byte("d")
-	setSymbol           = []byte("s")
-	timingSymbol        = []byte("ms")
+	gaugeSymbol        = []byte("g")
+	countSymbol        = []byte("c")
+	histogramSymbol    = []byte("h")
+	distributionSymbol = []byte("d")
+	setSymbol          = []byte("s")
+	timingSymbol       = []byte("ms")
+)
+
+const (
 	tagSeparatorSymbol  = ","
 	nameSeparatorSymbol = ":"
 	cardSeparatorSymbol = "|"
