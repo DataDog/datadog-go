@@ -79,14 +79,14 @@ func getTagCardinality() Cardinality {
 }
 
 func parseTagCardinality(parameters []Parameter) Cardinality {
-	cardinality := getTagCardinality()
+	cardinality := CardinalityNotSet
 	for _, o := range parameters {
 		c, ok := o.(Cardinality)
 		if ok {
-			cardinality = resolveCardinality(c)
+			cardinality = c
 		}
 	}
-	return cardinality
+	return resolveCardinality(cardinality)
 }
 
 // resolveCardinality returns the cardinality to use, prioritizing the metric-level cardinality over the global setting.
