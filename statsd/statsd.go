@@ -463,7 +463,8 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 
 	initExternalEnv()
 
-	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
+	setOriginDetection(isOriginDetectionEnabled(o))
+	initContainerID(o.containerID, getOriginDetection(), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 
 	if o.maxBytesPerPayload == 0 {
