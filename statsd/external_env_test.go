@@ -2,7 +2,6 @@ package statsd
 
 import (
 	"os"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -157,86 +156,52 @@ func TestGetExternalEnv(t *testing.T) {
 		})
 	}
 }
-func TestExternalEnvInitializationWithOriginDetection(t *testing.T) {
+
+func TestAppendExternalEnvWithOriginDetection(t *testing.T) {
 	// Save original environment variable values
 	originalExternalEnv := os.Getenv(ddExternalEnvVarName)
-	originalOriginDetection := os.Getenv(originDetectionEnabled)
-	defer func() {
-		os.Setenv(ddExternalEnvVarName, originalExternalEnv)
-		os.Setenv(originDetectionEnabled, originalOriginDetection)
-	}()
+	defer os.Setenv(ddExternalEnvVarName, originalExternalEnv)
+
+	// Set up a test external environment
+	os.Setenv(ddExternalEnvVarName, "test-environment")
+	initExternalEnv()
 
 	tests := []struct {
 		name                   string
-		externalEnvValue       string
 		originDetectionEnabled bool
-		expectExternalEnvSet   bool
+		expectExternalEnv      bool
 	}{
 		{
-			name:                   "external env should be set when origin detection enabled",
-			externalEnvValue:       "production",
+			name:                   "external env appended when origin detection enabled",
 			originDetectionEnabled: true,
-			expectExternalEnvSet:   true,
+			expectExternalEnv:      true,
 		},
 		{
-			name:                   "external env should be cleared when origin detection disabled",
-			externalEnvValue:       "production",
+			name:                   "external env not appended when origin detection disabled",
 			originDetectionEnabled: false,
-			expectExternalEnvSet:   false,
-		},
-		{
-			name:                   "no external env with origin detection enabled",
-			externalEnvValue:       "",
-			originDetectionEnabled: true,
-			expectExternalEnvSet:   false,
-		},
-		{
-			name:                   "no external env with origin detection disabled",
-			externalEnvValue:       "",
-			originDetectionEnabled: false,
-			expectExternalEnvSet:   false,
+			expectExternalEnv:      false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up environment
-			os.Setenv(ddExternalEnvVarName, tt.externalEnvValue)
-			os.Setenv(originDetectionEnabled, strconv.FormatBool(tt.originDetectionEnabled))
-
-			// Clear external env first
-			noExternalEnv()
-			assert.Equal(t, "", getExternalEnv(), "External env should be cleared initially")
-
-			// Simulate the logic from newWithWriter
-			originDetection := isOriginDetectionEnabled(&Options{originDetection: tt.originDetectionEnabled})
-			if !originDetection {
-				noExternalEnv()
-			} else {
-				initExternalEnv()
-			}
-
-			// Check the result
-			result := getExternalEnv()
-			if tt.expectExternalEnvSet {
-				assert.Equal(t, tt.externalEnvValue, result, "External env should be set when origin detection is enabled")
-			} else {
-				assert.Equal(t, "", result, "External env should be empty when origin detection is disabled")
-			}
-
-			// Test that the |e: field is not appended to metrics when origin detection is disabled
+			// Create a test buffer with a metric
 			buffer := []byte("test.metric:123|g")
-			metricResult := appendExternalEnv(buffer)
 
-			if tt.expectExternalEnvSet {
-				assert.Contains(t, string(metricResult), "|e:"+tt.externalEnvValue, "Metric should contain |e: field when origin detection is enabled")
+			// Test appendExternalEnv with origin detection setting
+			result := appendExternalEnv(buffer, tt.originDetectionEnabled)
+
+			if tt.expectExternalEnv {
+				assert.Contains(t, string(result), "|e:test-environment", "External env should be appended when origin detection is enabled")
 			} else {
-				assert.NotContains(t, string(metricResult), "|e:", "Metric should not contain |e: field when origin detection is disabled")
+				assert.NotContains(t, string(result), "|e:", "External env should not be appended when origin detection is disabled")
 			}
 
-			// Clean up
-			resetExternalEnv()
-			os.Unsetenv(originDetectionEnabled)
+			// Verify the metric part is still intact
+			assert.Contains(t, string(result), "test.metric:123|g", "Original metric should remain intact")
 		})
 	}
+
+	// Clean up
+	resetExternalEnv()
 }
