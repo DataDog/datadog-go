@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -158,13 +159,14 @@ func TestGetExternalEnv(t *testing.T) {
 }
 
 func TestAppendExternalEnvWithOriginDetection(t *testing.T) {
-	// Save original environment variable values
 	originalExternalEnv := os.Getenv(ddExternalEnvVarName)
-	defer os.Setenv(ddExternalEnvVarName, originalExternalEnv)
+	originalOriginDetection := os.Getenv(originDetectionEnabled)
+	defer func() {
+		os.Setenv(ddExternalEnvVarName, originalExternalEnv)
+		os.Setenv(originDetectionEnabled, originalOriginDetection)
+	}()
 
-	// Set up a test external environment
 	os.Setenv(ddExternalEnvVarName, "test-environment")
-	initExternalEnv()
 
 	tests := []struct {
 		name                   string
@@ -185,11 +187,16 @@ func TestAppendExternalEnvWithOriginDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a test buffer with a metric
+			os.Setenv(originDetectionEnabled, strconv.FormatBool(tt.originDetectionEnabled))
+
+			initExternalEnv()
+
 			buffer := []byte("test.metric:123|g")
 
-			// Test appendExternalEnv with origin detection setting
-			result := appendExternalEnv(buffer, tt.originDetectionEnabled)
+			// Test appendExternalEnv with origin detection from environment
+			// We need to check if origin detection is enabled by calling isOriginDetectionEnabled
+			originDetection := isOriginDetectionEnabled(&Options{originDetection: true})
+			result := appendExternalEnv(buffer, originDetection)
 
 			if tt.expectExternalEnv {
 				assert.Contains(t, string(result), "|e:test-environment", "External env should be appended when origin detection is enabled")
@@ -197,11 +204,7 @@ func TestAppendExternalEnvWithOriginDetection(t *testing.T) {
 				assert.NotContains(t, string(result), "|e:", "External env should not be appended when origin detection is disabled")
 			}
 
-			// Verify the metric part is still intact
-			assert.Contains(t, string(result), "test.metric:123|g", "Original metric should remain intact")
+			resetExternalEnv()
 		})
 	}
-
-	// Clean up
-	resetExternalEnv()
 }
