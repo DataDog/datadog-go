@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -156,65 +157,86 @@ func TestGetExternalEnv(t *testing.T) {
 		})
 	}
 }
-
-func TestExternalEnvWithOriginDetection(t *testing.T) {
+func TestExternalEnvInitializationWithOriginDetection(t *testing.T) {
+	// Save original environment variable values
 	originalExternalEnv := os.Getenv(ddExternalEnvVarName)
-	originalOriginDetection := os.Getenv("DD_ORIGIN_DETECTION_ENABLED")
+	originalOriginDetection := os.Getenv(originDetectionEnabled)
 	defer func() {
 		os.Setenv(ddExternalEnvVarName, originalExternalEnv)
-		os.Setenv("DD_ORIGIN_DETECTION_ENABLED", originalOriginDetection)
+		os.Setenv(originDetectionEnabled, originalOriginDetection)
 	}()
 
 	tests := []struct {
-		name                      string
-		externalEnvValue          string
-		originDetectionEnabled    bool
-		expectExternalEnvInOutput bool
+		name                   string
+		externalEnvValue       string
+		originDetectionEnabled bool
+		expectExternalEnvSet   bool
 	}{
 		{
-			name:                      "external env with origin detection enabled",
-			externalEnvValue:          "external-env",
-			originDetectionEnabled:    true,
-			expectExternalEnvInOutput: true,
+			name:                   "external env should be set when origin detection enabled",
+			externalEnvValue:       "production",
+			originDetectionEnabled: true,
+			expectExternalEnvSet:   true,
 		},
 		{
-			name:                      "external env with origin detection disabled",
-			externalEnvValue:          "external-env",
-			originDetectionEnabled:    false,
-			expectExternalEnvInOutput: false,
+			name:                   "external env should be cleared when origin detection disabled",
+			externalEnvValue:       "production",
+			originDetectionEnabled: false,
+			expectExternalEnvSet:   false,
 		},
 		{
-			name:                      "no external env with origin detection enabled",
-			externalEnvValue:          "",
-			originDetectionEnabled:    true,
-			expectExternalEnvInOutput: false,
+			name:                   "no external env with origin detection enabled",
+			externalEnvValue:       "",
+			originDetectionEnabled: true,
+			expectExternalEnvSet:   false,
 		},
 		{
-			name:                      "no external env with origin detection disabled",
-			externalEnvValue:          "",
-			originDetectionEnabled:    false,
-			expectExternalEnvInOutput: false,
+			name:                   "no external env with origin detection disabled",
+			externalEnvValue:       "",
+			originDetectionEnabled: false,
+			expectExternalEnvSet:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment
 			os.Setenv(ddExternalEnvVarName, tt.externalEnvValue)
-			setOriginDetection(tt.originDetectionEnabled)
+			os.Setenv(originDetectionEnabled, strconv.FormatBool(tt.originDetectionEnabled))
 
-			initExternalEnv()
+			// Clear external env first
+			noExternalEnv()
+			assert.Equal(t, "", getExternalEnv(), "External env should be cleared initially")
 
-			buffer := []byte("test.metric:123|g")
-
-			result := appendExternalEnv(buffer)
-
-			if tt.expectExternalEnvInOutput {
-				assert.Contains(t, string(result), "|e:"+tt.externalEnvValue)
+			// Simulate the logic from newWithWriter
+			originDetection := isOriginDetectionEnabled(&Options{originDetection: tt.originDetectionEnabled})
+			if !originDetection {
+				noExternalEnv()
 			} else {
-				assert.NotContains(t, string(result), "|e:")
+				initExternalEnv()
 			}
 
+			// Check the result
+			result := getExternalEnv()
+			if tt.expectExternalEnvSet {
+				assert.Equal(t, tt.externalEnvValue, result, "External env should be set when origin detection is enabled")
+			} else {
+				assert.Equal(t, "", result, "External env should be empty when origin detection is disabled")
+			}
+
+			// Test that the |e: field is not appended to metrics when origin detection is disabled
+			buffer := []byte("test.metric:123|g")
+			metricResult := appendExternalEnv(buffer)
+
+			if tt.expectExternalEnvSet {
+				assert.Contains(t, string(metricResult), "|e:"+tt.externalEnvValue, "Metric should contain |e: field when origin detection is enabled")
+			} else {
+				assert.NotContains(t, string(metricResult), "|e:", "Metric should not contain |e: field when origin detection is disabled")
+			}
+
+			// Clean up
 			resetExternalEnv()
+			os.Unsetenv(originDetectionEnabled)
 		})
 	}
 }

@@ -285,7 +285,7 @@ func appendTimestamp(buffer []byte, timestamp int64) []byte {
 }
 
 func appendExternalEnv(buffer []byte) []byte {
-	if externalEnv := getExternalEnv(); externalEnv != "" && getOriginDetection() {
+	if externalEnv := getExternalEnv(); externalEnv != "" {
 		buffer = append(buffer, "|e:"...)
 		buffer = append(buffer, externalEnv...)
 	}
