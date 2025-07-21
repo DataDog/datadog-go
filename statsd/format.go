@@ -6,14 +6,18 @@ import (
 )
 
 var (
-	gaugeSymbol         = []byte("g")
-	countSymbol         = []byte("c")
-	histogramSymbol     = []byte("h")
-	distributionSymbol  = []byte("d")
-	setSymbol           = []byte("s")
-	timingSymbol        = []byte("ms")
+	gaugeSymbol        = []byte("g")
+	countSymbol        = []byte("c")
+	histogramSymbol    = []byte("h")
+	distributionSymbol = []byte("d")
+	setSymbol          = []byte("s")
+	timingSymbol       = []byte("ms")
+)
+
+const (
 	tagSeparatorSymbol  = ","
 	nameSeparatorSymbol = ":"
+	cardSeparatorSymbol = "|"
 )
 
 func appendHeader(buffer []byte, namespace string, name string) []byte {
@@ -288,6 +292,17 @@ func appendExternalEnv(buffer []byte, originDetection bool) []byte {
 	if externalEnv := getExternalEnv(); externalEnv != "" && originDetection {
 		buffer = append(buffer, "|e:"...)
 		buffer = append(buffer, externalEnv...)
+	}
+	return buffer
+}
+
+func appendTagCardinality(buffer []byte, overrideCard Cardinality) []byte {
+	// Check if the user has provided a valid cardinality parameter. If not, use the global setting.
+	cardString := resolveCardinality(overrideCard).String()
+
+	if cardString != "" {
+		buffer = append(buffer, "|card:"...)
+		buffer = append(buffer, cardString...)
 	}
 	return buffer
 }
