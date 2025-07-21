@@ -466,7 +466,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 
 	initExternalEnv()
 
-	initContainerID(o.containerID, c.originDetection, isHostCgroupNamespace())
+	initContainerID(o.containerID, fillInContainerID(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 
 	if o.maxBytesPerPayload == 0 {
@@ -884,13 +884,13 @@ func (c *Client) Close() error {
 	return c.sender.close()
 }
 
-// isOriginDetectionEnabled returns whether the clients should fill the container field.
+// isOriginDetectionEnabled returns whether origin detection is enabled.
 //
 // Disable origin detection only in one of the following cases:
 // - DD_ORIGIN_DETECTION_ENABLED is explicitly set to false
 // - o.originDetection is explicitly set to false, which is true by default
 func isOriginDetectionEnabled(o *Options) bool {
-	if !o.originDetection || o.containerID != "" {
+	if !o.originDetection {
 		return false
 	}
 
@@ -909,4 +909,12 @@ func isOriginDetectionEnabled(o *Options) bool {
 	}
 
 	return enabled
+}
+
+// fillInContainerID returns whether the clients should fill the container field.
+func fillInContainerID(o *Options) bool {
+	if o.containerID != "" {
+		return false
+	}
+	return isOriginDetectionEnabled(o)
 }
