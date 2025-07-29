@@ -150,22 +150,22 @@ const (
 const noTimestamp = int64(0)
 
 type metric struct {
-	metricType   metricType
-	namespace    string
-	globalTags   []string
-	name         string
-	fvalue       float64
-	fvalues      []float64
-	ivalue       int64
-	svalue       string
-	evalue       *Event
-	scvalue      *ServiceCheck
-	tags         []string
-	stags        string
-	rate         float64
-	timestamp    int64
-  originDetection bool
-	overrideCard Cardinality
+	metricType      metricType
+	namespace       string
+	globalTags      []string
+	name            string
+	fvalue          float64
+	fvalues         []float64
+	ivalue          int64
+	svalue          string
+	evalue          *Event
+	scvalue         *ServiceCheck
+	tags            []string
+	stags           string
+	rate            float64
+	timestamp       int64
+	originDetection bool
+	overrideCard    Cardinality
 }
 
 type noClientErr string
@@ -464,7 +464,8 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
 	}
-
+	// Whether origin detection is enabled or not for this client, we need to initialize the global
+	// external environment variable in case another client has enabled it and needs to access it.
 	initExternalEnv()
 
 	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_CARDINALITY/DATADOG_CARDINALITY environment variable.
