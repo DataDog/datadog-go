@@ -13,7 +13,7 @@ func encodeSC(sc *ServiceCheck) (string, error) {
 		return "", err
 	}
 	var buffer []byte
-	buffer = appendServiceCheck(buffer, sc, nil)
+	buffer = appendServiceCheck(buffer, sc, nil, true)
 	return string(buffer), nil
 }
 

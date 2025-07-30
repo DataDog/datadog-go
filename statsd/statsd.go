@@ -150,21 +150,22 @@ const (
 const noTimestamp = int64(0)
 
 type metric struct {
-	metricType   metricType
-	namespace    string
-	globalTags   []string
-	name         string
-	fvalue       float64
-	fvalues      []float64
-	ivalue       int64
-	svalue       string
-	evalue       *Event
-	scvalue      *ServiceCheck
-	tags         []string
-	stags        string
-	rate         float64
-	timestamp    int64
-	overrideCard Cardinality
+	metricType      metricType
+	namespace       string
+	globalTags      []string
+	name            string
+	fvalue          float64
+	fvalues         []float64
+	ivalue          int64
+	svalue          string
+	evalue          *Event
+	scvalue         *ServiceCheck
+	tags            []string
+	stags           string
+	rate            float64
+	timestamp       int64
+	originDetection bool
+	overrideCard    Cardinality
 }
 
 type noClientErr string
@@ -289,6 +290,7 @@ type Client struct {
 	isClosed              bool
 	errorOnBlockedChannel bool
 	errorHandler          ErrorHandler
+	originDetection       bool
 }
 
 // statsdTelemetry contains telemetry metrics about the client
@@ -453,6 +455,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 		telemetry:             &statsdTelemetry{},
 		errorOnBlockedChannel: o.channelModeErrorsWhenFull,
 		errorHandler:          o.errorHandler,
+		originDetection:       isOriginDetectionEnabled(o),
 	}
 
 	// Inject values of DD_* environment variables as global tags.
@@ -461,13 +464,14 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client, error) 
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
 	}
-
+	// Whether origin detection is enabled or not for this client, we need to initialize the global
+	// external environment variable in case another client has enabled it and needs to access it.
 	initExternalEnv()
 
 	// Initializes the global tag cardinality with either the value passed in by the user or the value from the DD_CARDINALITY/DATADOG_CARDINALITY environment variable.
 	initTagCardinality(o.tagCardinality)
 
-	initContainerID(o.containerID, isOriginDetectionEnabled(o), isHostCgroupNamespace())
+	initContainerID(o.containerID, fillInContainerID(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 
 	if o.maxBytesPerPayload == 0 {
@@ -696,8 +700,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64, 
 	if c.agg != nil {
 		return c.agg.gauge(name, value, tags, cardinality)
 	}
-
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.
@@ -716,9 +719,8 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 	}
 
 	atomic.AddUint64(&c.telemetry.totalMetricsGauge, 1)
-
 	cardinality := parseTagCardinality(parameters)
-	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), overrideCard: cardinality})
+	return c.send(metric{metricType: gauge, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // Count tracks how many times something happened per second.
@@ -731,8 +733,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64, pa
 	if c.agg != nil {
 		return c.agg.count(name, value, tags, cardinality)
 	}
-
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // CountWithTimestamp tracks how many times something happened at the given second.
@@ -751,9 +752,8 @@ func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rat
 	}
 
 	atomic.AddUint64(&c.telemetry.totalMetricsCount, 1)
-
 	cardinality := parseTagCardinality(parameters)
-	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), overrideCard: cardinality})
+	return c.send(metric{metricType: count, name: name, ivalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, timestamp: timestamp.Unix(), originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -766,8 +766,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c.aggExtended != nil {
 		return c.sendToAggregator(histogram, name, value, tags, rate, c.aggExtended.histogram, cardinality)
 	}
-
-	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: histogram, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -780,8 +779,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c.aggExtended != nil {
 		return c.sendToAggregator(distribution, name, value, tags, rate, c.aggExtended.distribution, cardinality)
 	}
-
-	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: distribution, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // Decr is just Count of -1
@@ -805,8 +803,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64, par
 	if c.agg != nil {
 		return c.agg.set(name, value, tags, cardinality)
 	}
-
-	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: set, name: name, svalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
@@ -825,8 +822,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c.aggExtended != nil {
 		return c.sendToAggregator(timing, name, value, tags, rate, c.aggExtended.timing, cardinality)
 	}
-
-	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: timing, name: name, fvalue: value, tags: tags, rate: rate, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // Event sends the provided Event.
@@ -835,9 +831,8 @@ func (c *Client) Event(e *Event, parameters ...Parameter) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalEvents, 1)
-
 	cardinality := parseTagCardinality(parameters)
-	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: event, evalue: e, rate: 1, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -852,9 +847,8 @@ func (c *Client) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error {
 		return ErrNoClient
 	}
 	atomic.AddUint64(&c.telemetry.totalServiceChecks, 1)
-
 	cardinality := parseTagCardinality(parameters)
-	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace, overrideCard: cardinality})
+	return c.send(metric{metricType: serviceCheck, scvalue: sc, rate: 1, globalTags: c.tags, namespace: c.namespace, originDetection: c.originDetection, overrideCard: cardinality})
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -908,13 +902,13 @@ func (c *Client) Close() error {
 	return c.sender.close()
 }
 
-// isOriginDetectionEnabled returns whether the clients should fill the container field.
+// isOriginDetectionEnabled returns whether origin detection is enabled.
 //
 // Disable origin detection only in one of the following cases:
 // - DD_ORIGIN_DETECTION_ENABLED is explicitly set to false
 // - o.originDetection is explicitly set to false, which is true by default
 func isOriginDetectionEnabled(o *Options) bool {
-	if !o.originDetection || o.containerID != "" {
+	if !o.originDetection {
 		return false
 	}
 
@@ -933,4 +927,12 @@ func isOriginDetectionEnabled(o *Options) bool {
 	}
 
 	return enabled
+}
+
+// fillInContainerID returns whether the clients should fill the container field.
+func fillInContainerID(o *Options) bool {
+	if o.containerID != "" {
+		return false
+	}
+	return isOriginDetectionEnabled(o)
 }

@@ -156,3 +156,63 @@ func TestGetExternalEnv(t *testing.T) {
 		})
 	}
 }
+func TestAppendExternalEnvWithOriginDetection(t *testing.T) {
+	originalExternalEnv := os.Getenv(ddExternalEnvVarName)
+	originalOriginDetection := os.Getenv(originDetectionEnabled)
+	defer func() {
+		os.Setenv(ddExternalEnvVarName, originalExternalEnv)
+		os.Setenv(originDetectionEnabled, originalOriginDetection)
+	}()
+
+	tests := []struct {
+		name              string
+		o                 *Options
+		configEnvVarValue string
+		expectExternalEnv bool
+	}{
+		{
+			name:              "nominal case",
+			o:                 &Options{originDetection: defaultOriginDetection},
+			configEnvVarValue: "",
+			expectExternalEnv: true,
+		},
+		{
+			name:              "has user-provided container ID and origin detection enabled",
+			o:                 &Options{containerID: "user-provided", originDetection: defaultOriginDetection},
+			configEnvVarValue: "",
+			expectExternalEnv: true,
+		},
+		{
+			name:              "originDetection option disabled",
+			o:                 &Options{originDetection: false},
+			configEnvVarValue: "",
+			expectExternalEnv: false,
+		},
+		{
+			name:              "DD_ORIGIN_DETECTION_ENABLED=false",
+			o:                 &Options{originDetection: defaultOriginDetection},
+			configEnvVarValue: "false",
+			expectExternalEnv: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv(originDetectionEnabled, tt.configEnvVarValue)
+			patchExternalEnv("test-env")
+
+			buffer := []byte("test.metric:123|g")
+
+			originDetection := isOriginDetectionEnabled(tt.o)
+			result := appendExternalEnv(buffer, originDetection)
+
+			if tt.expectExternalEnv {
+				assert.Contains(t, string(result), "|e:test-env", "External env should be appended when origin detection is enabled")
+			} else {
+				assert.NotContains(t, string(result), "|e:", "External env should not be appended when origin detection is disabled")
+			}
+
+			resetExternalEnv()
+		})
+	}
+}
