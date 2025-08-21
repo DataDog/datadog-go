@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 	time "time"
 
-	statsd "github.com/DataDog/datadog-go/v5/statsd"
+	statsd "github.com/DataDog/datadog-go/v6/statsd"
 	gomock "github.com/golang/mock/gomock"
 )
 
