@@ -2,7 +2,17 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.8.0 / xxxx-xx-xx
+# 6.1.0 / xxxx-xx-xx
+
+# 6.0.0 / 2025-08-21
+- [IMPROVEMENT] Add support for `DD_EXTERNAL_ENV` for origin detection. See [#326][].
+- [BUGFIX] Gracefully reconnect when UDS connection is severed. See [#323][].
+
+## Breaking changes
+- [IMPROVEMENT] Add parameter for tag cardinality. See [#327][].
+
+# 5.7.1 / 2025-08-21
+- Retract v5.7.1 as it included a breaking change.
 
 # 5.7.0 / 2025-08-19
 - [IMPROVEMENT] Add support for `DD_EXTERNAL_ENV` for origin detection. See [#326][].

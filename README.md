@@ -2,7 +2,7 @@
 
 # Datadog Go
 
-[![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/DataDog/datadog-go/v5/statsd)
+[![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/DataDog/datadog-go/v6/statsd)
 [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](http://opensource.org/licenses/MIT)
 
 `datadog-go` is a library that provides a [DogStatsD](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go) client in Golang.
@@ -11,7 +11,7 @@ Go 1.12+ is officially supported. Older versions might work but are not tested.
 
 The following documentation is available:
 
-* [GoDoc documentation for Datadog Go](http://godoc.org/github.com/DataDog/datadog-go/v5/statsd)
+* [GoDoc documentation for Datadog Go](http://godoc.org/github.com/DataDog/datadog-go/v6/statsd)
 * [Official Datadog DogStatsD documentation](https://docs.datadoghq.com/developers/dogstatsd/?code-lang=go).
 
 
@@ -42,8 +42,11 @@ The following documentation is available:
 
 ## New major version
 
-The new major version `v5` is now the default. All new features will be added to this version and only bugfixes will be
-backported to `v4` (see `v4` branch).
+The new major version `v6` is now the default. All new features will be added to this version and only bugfixes will be
+backported to `v5` (see `v5` branch).
+
+`v6` introduces a breaking change compared to `v5`, see the 
+[CHANGELOG](https://github.com/DataDog/datadog-go/blob/master/CHANGELOG.md#600--2025-08-21) for more information.
 
 `v5` introduce a number of breaking changes compare to `v4`, see the
 [CHANGELOG](https://github.com/DataDog/datadog-go/blob/master/CHANGELOG.md#500--2021-10-01) for more information.
@@ -52,14 +55,14 @@ Note that the import paths for `v5` and `v4` are different:
 - `v5`: github.com/DataDog/datadog-go/v5/statsd
 - `v4`: github.com/DataDog/datadog-go/statsd
 
-When migrating to the `v5` you will need to upgrade your imports.
+When migrating to the `v5` or later you will need to upgrade your imports.
 
 ## Installation
 
 Get the code with:
 
 ```shell
-$ go get github.com/DataDog/datadog-go/v5/statsd
+$ go get github.com/DataDog/datadog-go/v6/statsd
 ```
 
 Then create a new DogStatsD client:
