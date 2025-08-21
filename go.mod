@@ -2,6 +2,10 @@ module github.com/DataDog/datadog-go/v6
 
 go 1.13
 
+retract (
+	v5.7.0
+)
+
 require (
 	github.com/Microsoft/go-winio v0.5.0
 	github.com/golang/mock v1.6.0
