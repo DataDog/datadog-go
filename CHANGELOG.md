@@ -12,7 +12,7 @@
 - [IMPROVEMENT] Add parameter for tag cardinality. See [#327][].
 
 # 5.7.1 / 2025-08-21
-- Retract v5.7.0 as it included a breaking change.
+- v5.7.0 has been retracted due to a breaking change.
 
 # 5.7.0 / 2025-08-19
 - [IMPROVEMENT] Add support for `DD_EXTERNAL_ENV` for origin detection. See [#326][].
