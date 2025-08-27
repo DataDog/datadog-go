@@ -53,6 +53,38 @@ func TestNilError(t *testing.T) {
 	}
 }
 
+func TestNilError2(t *testing.T) {
+	var c *Client2
+	tests := []func() error{
+		func() error { return c.Flush() },
+		func() error { return c.Close() },
+		func() error { return c.Count("", 0, nil, 1) },
+		func() error { return c.Incr("", nil, 1) },
+		func() error { return c.Decr("", nil, 1) },
+		func() error { return c.Histogram("", 0, nil, 1) },
+		func() error { return c.Distribution("", 0, nil, 1) },
+		func() error { return c.Gauge("", 0, nil, 1) },
+		func() error { return c.Set("", "", nil, 1) },
+		func() error { return c.Timing("", time.Second, nil, 1) },
+		func() error { return c.TimeInMilliseconds("", 1, nil, 1) },
+		func() error { return c.Event(NewEvent("", "")) },
+		func() error { return c.SimpleEvent("", "") },
+		func() error { return c.ServiceCheck(NewServiceCheck("", Ok)) },
+		func() error { return c.SimpleServiceCheck("", Ok) },
+		func() error {
+			_, err := CloneWithExtraOptions(nil, WithChannelMode())
+			return err
+		},
+	}
+	for i, f := range tests {
+		var err error
+		assertNotPanics(t, func() { err = f() })
+		if err != ErrNoClient {
+			t.Errorf("Test case %d: expected ErrNoClient, got %#v", i, err)
+		}
+	}
+}
+
 func TestDoubleClosePanic(t *testing.T) {
 	c, err := New("localhost:8125")
 	assert.NoError(t, err)
@@ -79,7 +111,7 @@ func (s *statsdWriterWrapper) Write(p []byte) (n int, err error) {
 
 func TestNewWithWriter(t *testing.T) {
 	w := statsdWriterWrapper{}
-	client, err := NewWithWriter(&w, WithoutTelemetry())
+	client, err := NewWithWriter2(&w, WithoutTelemetry())
 	require.Nil(t, err)
 
 	ts := &testServer{}
@@ -187,7 +219,7 @@ func TestIsClosed(t *testing.T) {
 }
 
 func TestCloneWithExtraOptions(t *testing.T) {
-	client, err := New("localhost:1201", WithTags([]string{"tag1", "tag2"}))
+	client, err := New2("localhost:1201", WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
 
 	assert.Equal(t, client.tags, []string{"tag1", "tag2"})
@@ -196,7 +228,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	assert.Equal(t, "localhost:1201", client.addrOption)
 	assert.Len(t, client.options, 1)
 
-	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"), WithChannelMode())
+	cloneClient, err := CloneWithExtraOptions2(client, WithNamespace("test"), WithChannelMode())
 	require.Nil(t, err, fmt.Sprintf("failed to clone client: %s", err))
 
 	assert.Equal(t, cloneClient.tags, []string{"tag1", "tag2"})
@@ -215,11 +247,11 @@ func TestCloneWithExtraOptionsAddressFromEnvironment(t *testing.T) {
 	}
 
 	_ = os.Setenv(agentHostEnvVarName, "localhost:1201")
-	client, err := New("", WithTags([]string{"tag1", "tag2"}))
+	client, err := New2("", WithTags([]string{"tag1", "tag2"}))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"tag1", "tag2"}, client.tags)
 
-	cloneClient, err := CloneWithExtraOptions(client, WithNamespace("test"))
+	cloneClient, err := CloneWithExtraOptions2(client, WithNamespace("test"))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"tag1", "tag2"}, cloneClient.tags)
 	assert.Equal(t, "test.", cloneClient.namespace)

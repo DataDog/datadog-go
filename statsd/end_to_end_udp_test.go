@@ -229,14 +229,14 @@ func TestTelemetryAllOptions(t *testing.T) {
 
 type testCase struct {
 	opt      []Option
-	testFunc func(*testing.T, *testServer, *Client)
+	testFunc func(*testing.T, *testServer, *Client2)
 }
 
 func getTestMap() map[string]testCase {
 	return map[string]testCase{
 		"Default": testCase{
 			[]Option{},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 			},
 		},
@@ -244,7 +244,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithoutClientSideAggregation(),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 			},
 		},
@@ -252,7 +252,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithNamespace("test_namespace"),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 			},
 		},
@@ -260,7 +260,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithNamespace("test_namespace."),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 			},
 		},
@@ -271,7 +271,7 @@ func getTestMap() map[string]testCase {
 				WithBufferFlushInterval(3 * time.Second),
 				WithWorkersCount(1),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 				// We send 4 non aggregated metrics, 1 service_check and 1 event. So 2 reads (5 items per
 				// payload). Then we flush the aggregator that will send 5 metrics, so 1 read. Finally,
@@ -288,7 +288,7 @@ func getTestMap() map[string]testCase {
 				WithoutClientSideAggregation(),
 				WithWorkersCount(1),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 				// We send 9 non aggregated metrics, 1 service_check and 1 event. So 3 reads (5 items
 				// per payload). Then the telemetry is 18 metrics flushed at a different time so 4 more
@@ -301,13 +301,13 @@ func getTestMap() map[string]testCase {
 				WithoutClientSideAggregation(),
 				WithChannelMode(),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				ts.sendAllAndAssert(t, client)
 			},
 		},
 		"Basic client side aggregation": testCase{
 			[]Option{},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				expectedMetrics := ts.sendAllMetricsForBasicAggregation(client)
 				ts.assert(t, client, expectedMetrics)
 			},
@@ -316,7 +316,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithExtendedClientSideAggregation(),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				expectedMetrics := ts.sendAllMetricsForExtendedAggregation(client)
 				ts.assert(t, client, expectedMetrics)
 			},
@@ -326,7 +326,7 @@ func getTestMap() map[string]testCase {
 				WithExtendedClientSideAggregation(),
 				WithMaxSamplesPerContext(2),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				expectedMetrics := ts.sendAllMetricsForExtendedAggregationAndMaxSamples(client)
 				ts.assert(t, client, expectedMetrics)
 			},
@@ -335,7 +335,7 @@ func getTestMap() map[string]testCase {
 			[]Option{
 				WithChannelMode(),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				expectedMetrics := ts.sendAllMetricsForBasicAggregation(client)
 				ts.assert(t, client, expectedMetrics)
 			},
@@ -345,7 +345,7 @@ func getTestMap() map[string]testCase {
 				WithExtendedClientSideAggregation(),
 				WithChannelMode(),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				expectedMetrics := ts.sendAllMetricsForExtendedAggregation(client)
 				ts.assert(t, client, expectedMetrics)
 			},
@@ -357,7 +357,7 @@ func getTestMap() map[string]testCase {
 				WithChannelMode(),
 				WithoutTelemetry(),
 			},
-			func(t *testing.T, ts *testServer, client *Client) {
+			func(t *testing.T, ts *testServer, client *Client2) {
 				expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client)
 				ts.assert(t, client, expectedMetrics)
 			},
@@ -381,7 +381,7 @@ func getTestMapDirect() map[string]testCaseDirect {
 			},
 			func(t *testing.T, ts *testServer, client *ClientDirect) {
 				expectedMetrics := ts.sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client)
-				ts.assert(t, client.Client, expectedMetrics)
+				ts.assert(t, client.Client.client2, expectedMetrics)
 			},
 		},
 	}
