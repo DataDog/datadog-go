@@ -263,6 +263,10 @@ type ClientInterfaceEx interface {
 	GetTelemetry() Telemetry
 
 	// Ensure this interface can't be implemented outside of this package.
+	// ClientInterfaceEx is a temporary measure to allow us to release a version of the library with the
+	// extra `...Parameter` parameter (currently used to specify the tag cardinality) in the metric functions
+	// without having to release a new major version.
+	// This interface will be deprecated with the next release.
 	private()
 }
 
