@@ -430,7 +430,7 @@ func (w *customWriter) GetTransportName() string {
 
 // NewWithWriter creates a new ClientEx with given writer. Writer is a
 // io.WriteCloser
-func NewWithWriter2(w io.WriteCloser, options ...Option) (*ClientEx, error) {
+func NewWithWriterEx(w io.WriteCloser, options ...Option) (*ClientEx, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
@@ -439,7 +439,7 @@ func NewWithWriter2(w io.WriteCloser, options ...Option) (*ClientEx, error) {
 }
 
 // CloneWithExtraOptions create a new ClientEx with extra options
-func CloneWithExtraOptions2(c *ClientEx, options ...Option) (*ClientEx, error) {
+func CloneWithExtraOptionsEx(c *ClientEx, options ...Option) (*ClientEx, error) {
 	if c == nil {
 		return nil, ErrNoClient
 	}
