@@ -120,7 +120,7 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 
 	ts := newTestServer(t, proto, addr, tags, options...)
 
-	client, err := New2(addr, options...)
+	client, err := NewEx(addr, options...)
 	require.NoError(t, err)
 
 	startTestServer(ts)

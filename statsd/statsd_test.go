@@ -111,7 +111,7 @@ func (s *statsdWriterWrapper) Write(p []byte) (n int, err error) {
 
 func TestNewWithWriter(t *testing.T) {
 	w := statsdWriterWrapper{}
-	client, err := NewWithWriter2(&w, WithoutTelemetry())
+	client, err := NewWithWriterEx(&w, WithoutTelemetry())
 	require.Nil(t, err)
 
 	ts := &testServer{}
@@ -219,7 +219,7 @@ func TestIsClosed(t *testing.T) {
 }
 
 func TestCloneWithExtraOptions(t *testing.T) {
-	client, err := New2("localhost:1201", WithTags([]string{"tag1", "tag2"}))
+	client, err := NewEx("localhost:1201", WithTags([]string{"tag1", "tag2"}))
 	require.Nil(t, err, fmt.Sprintf("failed to create client: %s", err))
 
 	assert.Equal(t, client.tags, []string{"tag1", "tag2"})
@@ -228,7 +228,7 @@ func TestCloneWithExtraOptions(t *testing.T) {
 	assert.Equal(t, "localhost:1201", client.addrOption)
 	assert.Len(t, client.options, 1)
 
-	cloneClient, err := CloneWithExtraOptions2(client, WithNamespace("test"), WithChannelMode())
+	cloneClient, err := CloneWithExtraOptionsEx(client, WithNamespace("test"), WithChannelMode())
 	require.Nil(t, err, fmt.Sprintf("failed to clone client: %s", err))
 
 	assert.Equal(t, cloneClient.tags, []string{"tag1", "tag2"})
@@ -247,11 +247,11 @@ func TestCloneWithExtraOptionsAddressFromEnvironment(t *testing.T) {
 	}
 
 	_ = os.Setenv(agentHostEnvVarName, "localhost:1201")
-	client, err := New2("", WithTags([]string{"tag1", "tag2"}))
+	client, err := NewEx("", WithTags([]string{"tag1", "tag2"}))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"tag1", "tag2"}, client.tags)
 
-	cloneClient, err := CloneWithExtraOptions2(client, WithNamespace("test"))
+	cloneClient, err := CloneWithExtraOptionsEx(client, WithNamespace("test"))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"tag1", "tag2"}, cloneClient.tags)
 	assert.Equal(t, "test.", cloneClient.namespace)

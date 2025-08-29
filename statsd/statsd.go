@@ -400,7 +400,7 @@ func createWriter(addr string, writeTimeout time.Duration, connectTimeout time.D
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" for UDP,
 // "unix:///path/to/socket" for UDS or "\\.\pipe\path\to\pipe" for Windows Named Pipes.
-func New2(addr string, options ...Option) (*ClientEx, error) {
+func NewEx(addr string, options ...Option) (*ClientEx, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
@@ -448,7 +448,7 @@ func CloneWithExtraOptionsEx(c *ClientEx, options ...Option) (*ClientEx, error) 
 		return nil, fmt.Errorf("can't clone client with no addrOption")
 	}
 	opt := append(c.options, options...)
-	return New2(c.addrOption, opt...)
+	return NewEx(c.addrOption, opt...)
 }
 
 func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error) {
@@ -1032,7 +1032,7 @@ var _ ClientInterface = &Client{}
 // New returns a pointer to a new Client given an addr in the format "hostname:port" for UDP,
 // "unix:///path/to/socket" for UDS or "\\.\pipe\path\to\pipe" for Windows Named Pipes.
 func New(addr string, options ...Option) (*Client, error) {
-	clientEx, err := New2(addr, options...)
+	clientEx, err := NewEx(addr, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -1045,7 +1045,7 @@ func New(addr string, options ...Option) (*Client, error) {
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser
 func NewWithWriter(w io.WriteCloser, options ...Option) (*Client, error) {
-	clientEx, err := NewWithWriter2(w, options...)
+	clientEx, err := NewWithWriterEx(w, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,7 +1061,7 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 		return nil, ErrNoClient
 	}
 
-	clientEx, err := CloneWithExtraOptions2(c.clientEx, options...)
+	clientEx, err := CloneWithExtraOptionsEx(c.clientEx, options...)
 	if err != nil {
 		return nil, err
 	}
