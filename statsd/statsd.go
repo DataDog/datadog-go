@@ -96,7 +96,7 @@ type ClientInterface interface {
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
 type Client struct {
-	client2 *Client2
+	clientEx *ClientEx
 }
 
 // Verify that Client implements the ClientInterface.
@@ -106,26 +106,26 @@ var _ ClientInterface = &Client{}
 // New returns a pointer to a new Client given an addr in the format "hostname:port" for UDP,
 // "unix:///path/to/socket" for UDS or "\\.\pipe\path\to\pipe" for Windows Named Pipes.
 func New(addr string, options ...Option) (*Client, error) {
-	client2, err := New2(addr, options...)
+	clientEx, err := New2(addr, options...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		client2: client2,
+		clientEx: clientEx,
 	}, nil
 }
 
 // NewWithWriter creates a new Client with given writer. Writer is a
 // io.WriteCloser
 func NewWithWriter(w io.WriteCloser, options ...Option) (*Client, error) {
-	client2, err := NewWithWriter2(w, options...)
+	clientEx, err := NewWithWriter2(w, options...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		client2: client2,
+		clientEx: clientEx,
 	}, nil
 }
 
@@ -135,13 +135,13 @@ func CloneWithExtraOptions(c *Client, options ...Option) (*Client, error) {
 		return nil, ErrNoClient
 	}
 
-	client2, err := CloneWithExtraOptions2(c.client2, options...)
+	clientEx, err := CloneWithExtraOptions2(c.clientEx, options...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		client2: client2,
+		clientEx: clientEx,
 	}, nil
 }
 
@@ -153,22 +153,22 @@ func (c *Client) Flush() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Flush()
+	return c.clientEx.Flush()
 }
 
 // IsClosed returns if the client has been closed.
 func (c *Client) IsClosed() bool {
-	return c.client2.IsClosed()
+	return c.clientEx.IsClosed()
 }
 
 // GetTelemetry return the telemetry metrics for the client since it started.
 func (c *Client) GetTelemetry() Telemetry {
-	return c.client2.GetTelemetry()
+	return c.clientEx.GetTelemetry()
 }
 
 // GetTransport return the name of the transport used.
 func (c *Client) GetTransport() string {
-	return c.client2.GetTransport()
+	return c.clientEx.GetTransport()
 }
 
 // Gauge measures the value of a metric at a particular time.
@@ -176,7 +176,7 @@ func (c *Client) Gauge(name string, value float64, tags []string, rate float64) 
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Gauge(name, value, tags, rate)
+	return c.clientEx.Gauge(name, value, tags, rate)
 }
 
 // GaugeWithTimestamp measures the value of a metric at a given time.
@@ -189,7 +189,7 @@ func (c *Client) GaugeWithTimestamp(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.GaugeWithTimestamp(name, value, tags, rate, timestamp)
+	return c.clientEx.GaugeWithTimestamp(name, value, tags, rate, timestamp)
 }
 
 // Count tracks how many times something happened per second.
@@ -197,7 +197,7 @@ func (c *Client) Count(name string, value int64, tags []string, rate float64) er
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Count(name, value, tags, rate)
+	return c.clientEx.Count(name, value, tags, rate)
 }
 
 // CountWithTimestamp tracks how many times something happened at the given second.
@@ -210,7 +210,7 @@ func (c *Client) CountWithTimestamp(name string, value int64, tags []string, rat
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.CountWithTimestamp(name, value, tags, rate, timestamp)
+	return c.clientEx.CountWithTimestamp(name, value, tags, rate, timestamp)
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
@@ -218,7 +218,7 @@ func (c *Client) Histogram(name string, value float64, tags []string, rate float
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Histogram(name, value, tags, rate)
+	return c.clientEx.Histogram(name, value, tags, rate)
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
@@ -226,7 +226,7 @@ func (c *Client) Distribution(name string, value float64, tags []string, rate fl
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Distribution(name, value, tags, rate)
+	return c.clientEx.Distribution(name, value, tags, rate)
 }
 
 // Decr is just Count of -1
@@ -234,7 +234,7 @@ func (c *Client) Decr(name string, tags []string, rate float64) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Decr(name, tags, rate)
+	return c.clientEx.Decr(name, tags, rate)
 }
 
 // Incr is just Count of 1
@@ -242,7 +242,7 @@ func (c *Client) Incr(name string, tags []string, rate float64) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Incr(name, tags, rate)
+	return c.clientEx.Incr(name, tags, rate)
 }
 
 // Set counts the number of unique elements in a group.
@@ -250,7 +250,7 @@ func (c *Client) Set(name string, value string, tags []string, rate float64) err
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Set(name, value, tags, rate)
+	return c.clientEx.Set(name, value, tags, rate)
 
 }
 
@@ -259,7 +259,7 @@ func (c *Client) Timing(name string, value time.Duration, tags []string, rate fl
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Timing(name, value, tags, rate)
+	return c.clientEx.Timing(name, value, tags, rate)
 }
 
 // TimeInMilliseconds sends timing information in milliseconds.
@@ -268,7 +268,7 @@ func (c *Client) TimeInMilliseconds(name string, value float64, tags []string, r
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.TimeInMilliseconds(name, value, tags, rate)
+	return c.clientEx.TimeInMilliseconds(name, value, tags, rate)
 }
 
 // Event sends the provided Event.
@@ -276,7 +276,7 @@ func (c *Client) Event(e *Event) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Event(e)
+	return c.clientEx.Event(e)
 }
 
 // SimpleEvent sends an event with the provided title and text.
@@ -284,7 +284,7 @@ func (c *Client) SimpleEvent(title, text string) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.SimpleEvent(title, text)
+	return c.clientEx.SimpleEvent(title, text)
 }
 
 // ServiceCheck sends the provided ServiceCheck.
@@ -292,7 +292,7 @@ func (c *Client) ServiceCheck(sc *ServiceCheck) error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.ServiceCheck(sc)
+	return c.clientEx.ServiceCheck(sc)
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
@@ -300,7 +300,7 @@ func (c *Client) SimpleServiceCheck(name string, status ServiceCheckStatus) erro
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.SimpleServiceCheck(name, status)
+	return c.clientEx.SimpleServiceCheck(name, status)
 
 }
 
@@ -309,10 +309,10 @@ func (c *Client) Close() error {
 	if c == nil {
 		return ErrNoClient
 	}
-	return c.client2.Close()
+	return c.clientEx.Close()
 }
 
 // sendBlocking is used by the aggregator to inject aggregated metrics.
 func (c *Client) sendBlocking(m metric) error {
-	return c.client2.sendBlocking(m)
+	return c.clientEx.sendBlocking(m)
 }

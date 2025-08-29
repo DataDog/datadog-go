@@ -115,7 +115,7 @@ type Telemetry struct {
 type telemetryClient struct {
 	sync.RWMutex // used mostly to change the transport tag.
 
-	c                 *Client2
+	c                 *ClientEx
 	aggEnabled        bool // is aggregation enabled and should we sent aggregation telemetry.
 	transport         string
 	tags              []string
@@ -126,7 +126,7 @@ type telemetryClient struct {
 	lastSample        Telemetry // The previous sample of telemetry sent
 }
 
-func newTelemetryClient(c *Client2, aggregationEnabled bool) *telemetryClient {
+func newTelemetryClient(c *ClientEx, aggregationEnabled bool) *telemetryClient {
 	t := &telemetryClient{
 		c:          c,
 		aggEnabled: aggregationEnabled,
@@ -138,7 +138,7 @@ func newTelemetryClient(c *Client2, aggregationEnabled bool) *telemetryClient {
 	return t
 }
 
-func newTelemetryClientWithCustomAddr(c *Client2, telemetryAddr string, aggregationEnabled bool, pool *bufferPool,
+func newTelemetryClientWithCustomAddr(c *ClientEx, telemetryAddr string, aggregationEnabled bool, pool *bufferPool,
 	writeTimeout time.Duration, connectTimeout time.Duration,
 ) (*telemetryClient, error) {
 	telemetryAddr = resolveAddr(telemetryAddr)

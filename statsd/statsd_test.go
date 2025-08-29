@@ -54,7 +54,7 @@ func TestNilError(t *testing.T) {
 }
 
 func TestNilError2(t *testing.T) {
-	var c *Client2
+	var c *ClientEx
 	tests := []func() error{
 		func() error { return c.Flush() },
 		func() error { return c.Close() },

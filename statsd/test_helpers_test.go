@@ -116,7 +116,7 @@ func startTestServer(ts *testServer) {
 	go ts.start()
 }
 
-func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *Client2) {
+func newClientAndTestServer(t *testing.T, proto string, addr string, tags []string, options ...Option) (*testServer, *ClientEx) {
 
 	ts := newTestServer(t, proto, addr, tags, options...)
 
@@ -231,7 +231,7 @@ func (ts *testServer) assertNbRead(t *testing.T, expectedNbRead int) {
 }
 
 // meta helper: take a list of expected metrics and assert
-func (ts *testServer) assert(t *testing.T, client *Client2, expectedMetrics []string) {
+func (ts *testServer) assert(t *testing.T, client *ClientEx, expectedMetrics []string) {
 	// First wait for all the metrics to be sent. This is important when using channel mode + aggregation as we
 	// don't know when all the metrics will be fully aggregated
 	ts.wait(t, len(expectedMetrics), 5, false)
@@ -257,7 +257,7 @@ func (ts *testServer) assertContainerID(t *testing.T, expected string) {
 }
 
 // meta helper: most test send all types and then assert
-func (ts *testServer) sendAllAndAssert(t *testing.T, client *Client2) {
+func (ts *testServer) sendAllAndAssert(t *testing.T, client *ClientEx) {
 	expectedMetrics := ts.sendAllType(client)
 	ts.assert(t, client, expectedMetrics)
 }
@@ -359,7 +359,7 @@ func (ts *testServer) getFinalTelemetryTags() string {
 		",")
 }
 
-func (ts *testServer) sendAllMetrics(c *Client2) []string {
+func (ts *testServer) sendAllMetrics(c *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	c.Gauge("Gauge", 1, tags, 1)
 	c.Count("Count", 2, tags, 1)
@@ -407,7 +407,7 @@ func (ts *testServer) sendAllMetrics(c *Client2) []string {
 	}
 }
 
-func (ts *testServer) sendAllMetricsForBasicAggregation(c *Client2) []string {
+func (ts *testServer) sendAllMetricsForBasicAggregation(c *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	c.Gauge("Gauge", 1, tags, 1)
 	c.Gauge("Gauge", 2, tags, 1)
@@ -460,7 +460,7 @@ func (ts *testServer) sendAllMetricsForBasicAggregation(c *Client2) []string {
 	}
 }
 
-func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client2) []string {
+func (ts *testServer) sendAllMetricsForExtendedAggregation(c *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	c.Gauge("Gauge", 1, tags, 1)
 	c.Gauge("Gauge", 2, tags, 1)
@@ -517,7 +517,7 @@ func (ts *testServer) sendAllMetricsForExtendedAggregation(c *Client2) []string 
 	}
 }
 
-func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *Client2) []string {
+func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	c.Gauge("Gauge", 1, tags, 1)
 	c.Gauge("Gauge", 2, tags, 1)
@@ -577,7 +577,7 @@ func (ts *testServer) sendAllMetricsForExtendedAggregationAndMaxSamples(c *Clien
 	}
 }
 
-func (ts *testServer) sendAllType(c *Client2) []string {
+func (ts *testServer) sendAllType(c *ClientEx) []string {
 	res := ts.sendAllMetrics(c)
 	c.SimpleEvent("hello", "world")
 	c.SimpleServiceCheck("hello", Warn)
@@ -595,7 +595,7 @@ func (ts *testServer) sendAllType(c *Client2) []string {
 	)
 }
 
-func (ts *testServer) sendBasicAggregationMetrics(client *Client2) []string {
+func (ts *testServer) sendBasicAggregationMetrics(client *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	client.Gauge("gauge", 1, tags, 1)
 	client.Gauge("gauge", 21, tags, 1)
@@ -613,7 +613,7 @@ func (ts *testServer) sendBasicAggregationMetrics(client *Client2) []string {
 	}
 }
 
-func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client2) []string {
+func (ts *testServer) sendExtendedBasicAggregationMetrics(client *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	client.Gauge("gauge", 1, tags, 1)
 	client.Count("count", 2, tags, 1)
@@ -635,7 +635,7 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *Client2) []str
 }
 
 func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client *ClientDirect) []string {
-	expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client.Client.client2)
+	expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client.Client.clientEx)
 
 	tags := []string{"custom:1", "custom:2"}
 	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)

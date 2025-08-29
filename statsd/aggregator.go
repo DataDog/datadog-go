@@ -32,7 +32,7 @@ type aggregator struct {
 
 	closed chan struct{}
 
-	client *Client2
+	client *ClientEx
 
 	// aggregator implements channelMode mechanism to receive histograms,
 	// distributions and timings. Since they need sampling they need to
@@ -43,7 +43,7 @@ type aggregator struct {
 	wg              sync.WaitGroup
 }
 
-func newAggregator(c *Client2, maxSamplesPerContext int64) *aggregator {
+func newAggregator(c *ClientEx, maxSamplesPerContext int64) *aggregator {
 	return &aggregator{
 		client:          c,
 		counts:          countsMap{},

@@ -190,7 +190,7 @@ func (e invalidTimestampErr) Error() string {
 // ClientInterface is an interface that exposes the common client functions for the
 // purpose of being able to provide a no-op client or even mocking. This can aid
 // downstream users' with their testing.
-type ClientInterface2 interface {
+type ClientInterfaceEx interface {
 	// Gauge measures the value of a metric at a particular time.
 	Gauge(name string, value float64, tags []string, rate float64, parameters ...Parameter) error
 
@@ -261,13 +261,16 @@ type ClientInterface2 interface {
 
 	// GetTelemetry return the telemetry metrics for the client since it started.
 	GetTelemetry() Telemetry
+
+	// Ensure this interface can't be implemented outside of this package.
+	private()
 }
 
 type ErrorHandler func(error)
 
 // A Client is a handle for sending messages to dogstatsd.  It is safe to
 // use one Client from multiple goroutines simultaneously.
-type Client2 struct {
+type ClientEx struct {
 	// Sender handles the underlying networking protocol
 	sender *sender
 	// namespace to prepend to all statsd calls
@@ -306,9 +309,9 @@ type statsdTelemetry struct {
 	totalDroppedOnReceive    uint64
 }
 
-// Verify that Client2 implements the ClientInterface2.
+// Verify that ClientEx implements the ClientInterface2.
 // https://golang.org/doc/faq#guarantee_satisfies_interface
-var _ ClientInterface2 = &Client2{}
+var _ ClientInterfaceEx = &ClientEx{}
 
 func resolveAddr(addr string) string {
 	envPort := ""
@@ -397,7 +400,7 @@ func createWriter(addr string, writeTimeout time.Duration, connectTimeout time.D
 
 // New returns a pointer to a new Client given an addr in the format "hostname:port" for UDP,
 // "unix:///path/to/socket" for UDS or "\\.\pipe\path\to\pipe" for Windows Named Pipes.
-func New2(addr string, options ...Option) (*Client2, error) {
+func New2(addr string, options ...Option) (*ClientEx, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
@@ -425,9 +428,9 @@ func (w *customWriter) GetTransportName() string {
 	return writerNameCustom
 }
 
-// NewWithWriter creates a new Client2 with given writer. Writer is a
+// NewWithWriter creates a new ClientEx with given writer. Writer is a
 // io.WriteCloser
-func NewWithWriter2(w io.WriteCloser, options ...Option) (*Client2, error) {
+func NewWithWriter2(w io.WriteCloser, options ...Option) (*ClientEx, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
 		return nil, err
@@ -435,8 +438,8 @@ func NewWithWriter2(w io.WriteCloser, options ...Option) (*Client2, error) {
 	return newWithWriter(&customWriter{w}, o, writerNameCustom)
 }
 
-// CloneWithExtraOptions create a new Client2 with extra options
-func CloneWithExtraOptions2(c *Client2, options ...Option) (*Client2, error) {
+// CloneWithExtraOptions create a new ClientEx with extra options
+func CloneWithExtraOptions2(c *ClientEx, options ...Option) (*ClientEx, error) {
 	if c == nil {
 		return nil, ErrNoClient
 	}
@@ -448,8 +451,8 @@ func CloneWithExtraOptions2(c *Client2, options ...Option) (*Client2, error) {
 	return New2(c.addrOption, opt...)
 }
 
-func newWithWriter(w Transport, o *Options, writerName string) (*Client2, error) {
-	c := Client2{
+func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error) {
+	c := ClientEx{
 		namespace:             o.namespace,
 		tags:                  o.tags,
 		telemetry:             &statsdTelemetry{},
@@ -556,7 +559,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*Client2, error)
 	return &c, nil
 }
 
-func (c *Client2) watch() {
+func (c *ClientEx) watch() {
 	ticker := time.NewTicker(c.flushTime)
 
 	for {
@@ -576,7 +579,7 @@ func (c *Client2) watch() {
 // blocking and will not return until everything is sent through the network.
 // In mutexMode, this will also block sampling new data to the client while the
 // workers and sender are flushed.
-func (c *Client2) Flush() error {
+func (c *ClientEx) Flush() error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -595,13 +598,13 @@ func (c *Client2) Flush() error {
 }
 
 // IsClosed returns if the client has been closed.
-func (c *Client2) IsClosed() bool {
+func (c *ClientEx) IsClosed() bool {
 	c.closerLock.Lock()
 	defer c.closerLock.Unlock()
 	return c.isClosed
 }
 
-func (c *Client2) flushTelemetryMetrics(t *Telemetry) {
+func (c *ClientEx) flushTelemetryMetrics(t *Telemetry) {
 	t.TotalMetricsGauge = atomic.LoadUint64(&c.telemetry.totalMetricsGauge)
 	t.TotalMetricsCount = atomic.LoadUint64(&c.telemetry.totalMetricsCount)
 	t.TotalMetricsSet = atomic.LoadUint64(&c.telemetry.totalMetricsSet)
@@ -614,12 +617,12 @@ func (c *Client2) flushTelemetryMetrics(t *Telemetry) {
 }
 
 // GetTelemetry return the telemetry metrics for the client since it started.
-func (c *Client2) GetTelemetry() Telemetry {
+func (c *ClientEx) GetTelemetry() Telemetry {
 	return c.telemetryClient.getTelemetry()
 }
 
 // GetTransport return the name of the transport used.
-func (c *Client2) GetTransport() string {
+func (c *ClientEx) GetTransport() string {
 	if c.sender == nil {
 		return ""
 	}
@@ -636,7 +639,7 @@ func (e ErrorInputChannelFull) Error() string {
 	return e.Msg
 }
 
-func (c *Client2) send(m metric) error {
+func (c *ClientEx) send(m metric) error {
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
 
@@ -659,7 +662,7 @@ func (c *Client2) send(m metric) error {
 }
 
 // sendBlocking is used by the aggregator to inject aggregated metrics.
-func (c *Client2) sendBlocking(m metric) error {
+func (c *ClientEx) sendBlocking(m metric) error {
 	m.globalTags = c.tags
 	m.namespace = c.namespace
 
@@ -668,7 +671,7 @@ func (c *Client2) sendBlocking(m metric) error {
 	return worker.processMetric(m)
 }
 
-func (c *Client2) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, cardinality Cardinality) error {
+func (c *ClientEx) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, cardinality Cardinality) error {
 	if c.aggregatorMode == channelMode {
 		m := metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate, overrideCard: cardinality}
 		select {
@@ -689,7 +692,7 @@ func (c *Client2) sendToAggregator(mType metricType, name string, value float64,
 }
 
 // Gauge measures the value of a metric at a particular time.
-func (c *Client2) Gauge(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Gauge(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -709,7 +712,7 @@ func (c *Client2) Gauge(name string, value float64, tags []string, rate float64,
 // useful when sending points in the past.
 //
 // Minimum Datadog Agent version: 7.40.0
-func (c *Client2) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error {
+func (c *ClientEx) GaugeWithTimestamp(name string, value float64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -724,7 +727,7 @@ func (c *Client2) GaugeWithTimestamp(name string, value float64, tags []string, 
 }
 
 // Count tracks how many times something happened per second.
-func (c *Client2) Count(name string, value int64, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Count(name string, value int64, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -742,7 +745,7 @@ func (c *Client2) Count(name string, value int64, tags []string, rate float64, p
 // useful when sending points in the past.
 //
 // Minimum Datadog Agent version: 7.40.0
-func (c *Client2) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error {
+func (c *ClientEx) CountWithTimestamp(name string, value int64, tags []string, rate float64, timestamp time.Time, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -757,7 +760,7 @@ func (c *Client2) CountWithTimestamp(name string, value int64, tags []string, ra
 }
 
 // Histogram tracks the statistical distribution of a set of values on each host.
-func (c *Client2) Histogram(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Histogram(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -770,7 +773,7 @@ func (c *Client2) Histogram(name string, value float64, tags []string, rate floa
 }
 
 // Distribution tracks the statistical distribution of a set of values across your infrastructure.
-func (c *Client2) Distribution(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Distribution(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -783,17 +786,17 @@ func (c *Client2) Distribution(name string, value float64, tags []string, rate f
 }
 
 // Decr is just Count of -1
-func (c *Client2) Decr(name string, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Decr(name string, tags []string, rate float64, parameters ...Parameter) error {
 	return c.Count(name, -1, tags, rate, parameters...)
 }
 
 // Incr is just Count of 1
-func (c *Client2) Incr(name string, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Incr(name string, tags []string, rate float64, parameters ...Parameter) error {
 	return c.Count(name, 1, tags, rate, parameters...)
 }
 
 // Set counts the number of unique elements in a group.
-func (c *Client2) Set(name string, value string, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Set(name string, value string, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -807,13 +810,13 @@ func (c *Client2) Set(name string, value string, tags []string, rate float64, pa
 }
 
 // Timing sends timing information, it is an alias for TimeInMilliseconds
-func (c *Client2) Timing(name string, value time.Duration, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) Timing(name string, value time.Duration, tags []string, rate float64, parameters ...Parameter) error {
 	return c.TimeInMilliseconds(name, value.Seconds()*1000, tags, rate, parameters...)
 }
 
 // TimeInMilliseconds sends timing information in milliseconds.
 // It is flushed by statsd with percentiles, mean and other info (https://github.com/etsy/statsd/blob/master/docs/metric_types.md#timing)
-func (c *Client2) TimeInMilliseconds(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
+func (c *ClientEx) TimeInMilliseconds(name string, value float64, tags []string, rate float64, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -826,7 +829,7 @@ func (c *Client2) TimeInMilliseconds(name string, value float64, tags []string, 
 }
 
 // Event sends the provided Event.
-func (c *Client2) Event(e *Event, parameters ...Parameter) error {
+func (c *ClientEx) Event(e *Event, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -836,13 +839,13 @@ func (c *Client2) Event(e *Event, parameters ...Parameter) error {
 }
 
 // SimpleEvent sends an event with the provided title and text.
-func (c *Client2) SimpleEvent(title, text string, parameters ...Parameter) error {
+func (c *ClientEx) SimpleEvent(title, text string, parameters ...Parameter) error {
 	e := NewEvent(title, text)
 	return c.Event(e, parameters...)
 }
 
 // ServiceCheck sends the provided ServiceCheck.
-func (c *Client2) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error {
+func (c *ClientEx) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -852,13 +855,13 @@ func (c *Client2) ServiceCheck(sc *ServiceCheck, parameters ...Parameter) error 
 }
 
 // SimpleServiceCheck sends an serviceCheck with the provided name and status.
-func (c *Client2) SimpleServiceCheck(name string, status ServiceCheckStatus, parameters ...Parameter) error {
+func (c *ClientEx) SimpleServiceCheck(name string, status ServiceCheckStatus, parameters ...Parameter) error {
 	sc := NewServiceCheck(name, status)
 	return c.ServiceCheck(sc, parameters...)
 }
 
 // Close the client connection.
-func (c *Client2) Close() error {
+func (c *ClientEx) Close() error {
 	if c == nil {
 		return ErrNoClient
 	}
@@ -900,6 +903,9 @@ func (c *Client2) Close() error {
 
 	c.isClosed = true
 	return c.sender.close()
+}
+
+func (*ClientEx) private() {
 }
 
 // isOriginDetectionEnabled returns whether origin detection is enabled.
