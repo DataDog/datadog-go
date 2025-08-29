@@ -313,7 +313,7 @@ type statsdTelemetry struct {
 	totalDroppedOnReceive    uint64
 }
 
-// Verify that ClientEx implements the ClientInterface2.
+// Verify that ClientEx implements the ClientInterfaceEx interface.
 // https://golang.org/doc/faq#guarantee_satisfies_interface
 var _ ClientInterfaceEx = &ClientEx{}
 
