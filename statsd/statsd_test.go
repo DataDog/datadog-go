@@ -53,7 +53,7 @@ func TestNilError(t *testing.T) {
 	}
 }
 
-func TestNilError2(t *testing.T) {
+func TestNilErrorEx(t *testing.T) {
 	var c *ClientEx
 	tests := []func() error{
 		func() error { return c.Flush() },
