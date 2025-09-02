@@ -381,7 +381,7 @@ func getTestMapDirect() map[string]testCaseDirect {
 			},
 			func(t *testing.T, ts *testServer, client *ClientDirect) {
 				expectedMetrics := ts.sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client)
-				ts.assert(t, client.Client.clientEx, expectedMetrics)
+				ts.assert(t, &client.Client.ClientEx, expectedMetrics)
 			},
 		},
 	}

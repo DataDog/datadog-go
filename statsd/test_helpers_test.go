@@ -635,7 +635,7 @@ func (ts *testServer) sendExtendedBasicAggregationMetrics(client *ClientEx) []st
 }
 
 func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSamples(client *ClientDirect) []string {
-	expectedMetrics := ts.sendExtendedBasicAggregationMetrics(client.Client.clientEx)
+	expectedMetrics := ts.sendExtendedBasicAggregationMetrics(&client.Client.ClientEx)
 
 	tags := []string{"custom:1", "custom:2"}
 	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)
