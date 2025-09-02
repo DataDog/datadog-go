@@ -287,9 +287,9 @@ type ClientEx struct {
 	telemetry             *statsdTelemetry
 	telemetryClient       *telemetryClient
 	stop                  chan struct{}
-	wg                    *sync.WaitGroup
+	wg                    sync.WaitGroup
 	workers               []*worker
-	closerLock            *sync.Mutex
+	closerLock            sync.Mutex
 	workersMode           receivingMode
 	aggregatorMode        receivingMode
 	agg                   *aggregator
@@ -407,24 +407,15 @@ func createWriter(addr string, writeTimeout time.Duration, connectTimeout time.D
 // New returns a pointer to a new Client given an addr in the format "hostname:port" for UDP,
 // "unix:///path/to/socket" for UDS or "\\.\pipe\path\to\pipe" for Windows Named Pipes.
 func NewEx(addr string, options ...Option) (*ClientEx, error) {
-	client, err := newEx(addr, options...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &client, nil
-}
-
-func newEx(addr string, options ...Option) (ClientEx, error) {
 	o, err := resolveOptions(options)
 	if err != nil {
-		return ClientEx{}, err
+		return nil, err
 	}
 
 	addr = resolveAddr(addr)
 	w, writerType, err := createWriter(addr, o.writeTimeout, o.connectTimeout)
 	if err != nil {
-		return ClientEx{}, err
+		return nil, err
 	}
 
 	client, err := newWithWriter(w, o, writerType)
@@ -450,48 +441,23 @@ func NewWithWriterEx(w io.WriteCloser, options ...Option) (*ClientEx, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := newWithWriter(&customWriter{w}, o, writerNameCustom)
-	if err != nil {
-		return nil, err
-	}
-	return &client, nil
-}
-
-func newWithWriterEx(w io.WriteCloser, options ...Option) (ClientEx, error) {
-	o, err := resolveOptions(options)
-	if err != nil {
-		return ClientEx{}, err
-	}
-	client, err := newWithWriter(&customWriter{w}, o, writerNameCustom)
-	if err != nil {
-		return ClientEx{}, err
-	}
-	return client, nil
+	return newWithWriter(&customWriter{w}, o, writerNameCustom)
 }
 
 // CloneWithExtraOptions create a new ClientEx with extra options
 func CloneWithExtraOptionsEx(c *ClientEx, options ...Option) (*ClientEx, error) {
-	client, err := cloneWithExtraOptionsEx(c, options...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &client, nil
-}
-
-func cloneWithExtraOptionsEx(c *ClientEx, options ...Option) (ClientEx, error) {
 	if c == nil {
-		return ClientEx{}, ErrNoClient
+		return nil, ErrNoClient
 	}
 
 	if c.addrOption == "" {
-		return ClientEx{}, fmt.Errorf("can't clone client with no addrOption")
+		return nil, fmt.Errorf("can't clone client with no addrOption")
 	}
 	opt := append(c.options, options...)
-	return newEx(c.addrOption, opt...)
+	return NewEx(c.addrOption, opt...)
 }
 
-func newWithWriter(w Transport, o *Options, writerName string) (ClientEx, error) {
+func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error) {
 	c := ClientEx{
 		namespace:             o.namespace,
 		tags:                  o.tags,
@@ -499,8 +465,6 @@ func newWithWriter(w Transport, o *Options, writerName string) (ClientEx, error)
 		errorOnBlockedChannel: o.channelModeErrorsWhenFull,
 		errorHandler:          o.errorHandler,
 		originDetection:       isOriginDetectionEnabled(o),
-		wg:                    &sync.WaitGroup{},
-		closerLock:            &sync.Mutex{},
 	}
 
 	// Inject values of DD_* environment variables as global tags.
@@ -592,13 +556,13 @@ func newWithWriter(w Transport, o *Options, writerName string) (ClientEx, error)
 			var err error
 			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout, o.connectTimeout)
 			if err != nil {
-				return ClientEx{}, err
+				return nil, err
 			}
 		}
-		c.telemetryClient.run(c.wg, c.stop)
+		c.telemetryClient.run(&c.wg, c.stop)
 	}
 
-	return c, nil
+	return &c, nil
 }
 
 func (c *ClientEx) watch() {
