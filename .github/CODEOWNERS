@@ -3,6 +3,3 @@
 # and another team can own the rest of the directory.
 
 *           @Datadog/agent-metric-pipelines
-
-# Documentation
-*.md        @DataDog/documentation
