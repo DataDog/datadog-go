@@ -35,14 +35,14 @@ func benchmarkFormat(b *testing.B, tagsNumber int) {
 	}
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		payloadSink = appendGauge(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
-		payloadSink = appendCount(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
-		payloadSink = appendHistogram(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
-		payloadSink = appendDistribution(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
-		payloadSink = appendSet(payloadSink[:0], "namespace", []string{}, "metric", "setelement", tags, 0.1)
-		payloadSink = appendTiming(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1)
-		payloadSink = appendEvent(payloadSink[:0], event, []string{})
-		payloadSink = appendServiceCheck(payloadSink[:0], serviceCheck, []string{})
+		payloadSink = appendGauge(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1, true)
+		payloadSink = appendCount(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1, true)
+		payloadSink = appendHistogram(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1, true)
+		payloadSink = appendDistribution(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1, true)
+		payloadSink = appendSet(payloadSink[:0], "namespace", []string{}, "metric", "setelement", tags, 0.1, true)
+		payloadSink = appendTiming(payloadSink[:0], "namespace", []string{}, "metric", 1, tags, 0.1, true)
+		payloadSink = appendEvent(payloadSink[:0], event, []string{}, true)
+		payloadSink = appendServiceCheck(payloadSink[:0], serviceCheck, []string{}, true)
 	}
 }
 

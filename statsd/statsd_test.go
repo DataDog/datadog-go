@@ -326,7 +326,7 @@ func TestGetTelemetry(t *testing.T) {
 	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
 }
 
-func Test_isOriginDetectionEnabled(t *testing.T) {
+func TestFillInContainerID(t *testing.T) {
 	tests := []struct {
 		name              string
 		o                 *Options
@@ -369,7 +369,7 @@ func Test_isOriginDetectionEnabled(t *testing.T) {
 			os.Setenv("DD_ORIGIN_DETECTION_ENABLED", tt.configEnvVarValue)
 			defer os.Unsetenv("DD_ORIGIN_DETECTION_ENABLED")
 
-			assert.Equal(t, tt.want, isOriginDetectionEnabled(tt.o))
+			assert.Equal(t, tt.want, fillInContainerID(tt.o))
 		})
 	}
 }

@@ -27,6 +27,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.aggregation, defaultAggregation)
 	assert.Equal(t, options.extendedAggregation, defaultExtendedAggregation)
 	assert.Zero(t, options.telemetryAddr)
+	assert.Equal(t, options.tagCardinality, defaultTagCardinality)
 }
 
 func TestOptions(t *testing.T) {
@@ -42,6 +43,7 @@ func TestOptions(t *testing.T) {
 	testChannelBufferSize := 500
 	testAggregationWindow := 10 * time.Second
 	testTelemetryAddr := "localhost:1234"
+	testTagCardinality := CardinalityHigh
 
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
@@ -59,6 +61,7 @@ func TestOptions(t *testing.T) {
 		WithAggregationInterval(testAggregationWindow),
 		WithClientSideAggregation(),
 		WithTelemetryAddr(testTelemetryAddr),
+		WithCardinality(testTagCardinality),
 	})
 
 	assert.NoError(t, err)
@@ -78,6 +81,7 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.aggregation, true)
 	assert.Equal(t, options.extendedAggregation, false)
 	assert.Equal(t, options.telemetryAddr, testTelemetryAddr)
+	assert.Equal(t, options.tagCardinality, testTagCardinality)
 }
 
 func TestExtendedAggregation(t *testing.T) {
@@ -112,4 +116,13 @@ func TestOptionsNamespaceWithoutDot(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, options.namespace, testNamespace+".")
+}
+
+func TestOptionsInvalidTagCardinality(t *testing.T) {
+	options, err := resolveOptions([]Option{
+		WithCardinality(CardinalityInvalid),
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, options.tagCardinality.String(), "")
 }
