@@ -111,7 +111,7 @@ func (s *statsdWriterWrapper) Write(p []byte) (n int, err error) {
 
 func TestNewWithWriter(t *testing.T) {
 	w := statsdWriterWrapper{}
-	client, err := NewWithWriterEx(&w, WithoutTelemetry())
+	client, err := NewWithWriter(&w, WithoutTelemetry())
 	require.Nil(t, err)
 
 	ts := &testServer{}
