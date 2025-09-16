@@ -245,6 +245,39 @@ func main() {
 }
 ```
 
+## ClientInterfaceEx
+
+[Recent updates](https://github.com/DataDog/datadog-go/pull/327) to the library have changed the
+interface, adding an extra variadic parameter to the metric functions. This was a breaking change,
+but it was felt not significant enough to warrant releasing a new major version of the library. As
+a temporary measure a new interface `ClientInterfaceEx` has been introduced that contains the telemetry
+functions with the extra parameter.
+
+If you need to specify a Cardinality override when creating a metric, you will need to do so through
+this interface. It can be accessed by calling `NewEx`.
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/DataDog/datadog-go/v5/statsd"
+)
+
+func main() {
+    statsd, err := statsd.NewEx("127.0.0.1:8125", WithCardinality(CardinalityHigh))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+	statsd.Gauge("gauge", 32, []string{"environment:dev"}, CardinalityLow)
+}
+```
+
+`ClientInterfaceEx` will be deprecated with the next major release of the
+library and the changes will be incorporated into the `ClientInterface` interface.
+
+
 ## Development
 
 Run the tests with:
