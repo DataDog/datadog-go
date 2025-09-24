@@ -43,8 +43,8 @@ func TestKownEnvTags(t *testing.T) {
 		expectedTags,
 	)
 
-	sort.Strings(client.tags)
-	assert.Equal(t, expectedTags, client.tags)
+	sort.Strings(client.clientEx.tags)
+	assert.Equal(t, expectedTags, client.clientEx.tags)
 	ts.sendAllAndAssert(t, client)
 }
 
@@ -76,8 +76,8 @@ func TestKnownEnvTagsWithCustomTags(t *testing.T) {
 	ts.sendAllAndAssert(t, client)
 
 	sort.Strings(expectedTags)
-	sort.Strings(client.tags)
-	assert.Equal(t, expectedTags, client.tags)
+	sort.Strings(client.clientEx.tags)
+	assert.Equal(t, expectedTags, client.clientEx.tags)
 }
 
 func TestKnownEnvTagsEmptyString(t *testing.T) {
@@ -102,7 +102,7 @@ func TestKnownEnvTagsEmptyString(t *testing.T) {
 		nil,
 	)
 
-	assert.Len(t, client.tags, 0)
+	assert.Len(t, client.clientEx.tags, 0)
 	ts.sendAllAndAssert(t, client)
 }
 
@@ -124,8 +124,8 @@ func TestContainerIDWithEntityID(t *testing.T) {
 		WithContainerID("fake-container-id"),
 	)
 
-	sort.Strings(client.tags)
-	assert.Equal(t, expectedTags, client.tags)
+	sort.Strings(client.clientEx.tags)
+	assert.Equal(t, expectedTags, client.clientEx.tags)
 	ts.assertContainerID(t, "fake-container-id")
 	ts.sendAllAndAssert(t, client)
 }
@@ -189,8 +189,8 @@ func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
 		WithContainerID("fake-container-id"),
 	)
 
-	sort.Strings(client.tags)
-	assert.Equal(t, expectedTags, client.tags)
+	sort.Strings(client.clientEx.tags)
+	assert.Equal(t, expectedTags, client.clientEx.tags)
 	ts.assertContainerID(t, "fake-container-id")
 	ts.sendAllAndAssert(t, client)
 }

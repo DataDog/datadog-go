@@ -78,7 +78,7 @@ func TestTelemetryCustomAddr(t *testing.T) {
 	err = client.Flush()
 	require.NoError(t, err)
 
-	client.telemetryClient.sendTelemetry()
+	client.clientEx.telemetryClient.sendTelemetry()
 
 	select {
 	case <-readDone:

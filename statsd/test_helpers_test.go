@@ -239,7 +239,7 @@ func (ts *testServer) assert(t *testing.T, client *Client, expectedMetrics []str
 	if ts.telemetryEnabled {
 		// Now that all the metrics have been handled we can flush the telemetry before the default interval of
 		// 10s
-		client.telemetryClient.sendTelemetry()
+		client.clientEx.telemetryClient.sendTelemetry()
 		expectedMetrics = append(expectedMetrics, ts.getTelemetry()...)
 		// Wait for the telemetry to arrive
 		ts.wait(t, len(expectedMetrics), 5, true)
@@ -595,7 +595,7 @@ func (ts *testServer) sendAllType(c *Client) []string {
 	)
 }
 
-func (ts *testServer) sendBasicAggregationMetrics(client *Client) []string {
+func (ts *testServer) sendBasicAggregationMetrics(client *ClientEx) []string {
 	tags := []string{"custom:1", "custom:2"}
 	client.Gauge("gauge", 1, tags, 1)
 	client.Gauge("gauge", 21, tags, 1)
