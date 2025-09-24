@@ -4,7 +4,7 @@
 
 # 5.9.0 / xxxx-xx-xx
 
-# 5.8.0 / xxxx-xx-xx
+# 5.8.0 / 2025-09-24
 - [FEATURE] Create `ClientInterfaceEx` adding Cardinality parameter to the metric functions. See [334][].
 - [IMPROVEMENT] Add support for `DD_EXTERNAL_ENV` for origin detection. See [#326][].
 - [IMPROVEMENT] Add parameter for tag cardinality. See [#327][].
