@@ -36,11 +36,11 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@be3c94b385c4f180051c996d336f57a34c397495 # v3.6.1
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
       - run: go vet ./statsd/...
       - run: go fmt ./statsd/...
       - run: go test -race -v ./statsd/...
