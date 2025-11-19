@@ -28,6 +28,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.extendedAggregation, defaultExtendedAggregation)
 	assert.Zero(t, options.telemetryAddr)
 	assert.Nil(t, options.tagCardinality)
+	assert.Equal(t, options.aggregatorShardCount, defaultAggregatorShardCount)
 }
 
 func TestOptions(t *testing.T) {
@@ -44,6 +45,7 @@ func TestOptions(t *testing.T) {
 	testAggregationWindow := 10 * time.Second
 	testTelemetryAddr := "localhost:1234"
 	testTagCardinality := CardinalityHigh
+	testAggregatorShardCount := 4
 
 	options, err := resolveOptions([]Option{
 		WithNamespace(testNamespace),
@@ -62,6 +64,7 @@ func TestOptions(t *testing.T) {
 		WithClientSideAggregation(),
 		WithTelemetryAddr(testTelemetryAddr),
 		WithCardinality(testTagCardinality),
+		WithAggregatorShardCount(testAggregatorShardCount),
 	})
 
 	assert.NoError(t, err)
@@ -82,6 +85,7 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.extendedAggregation, false)
 	assert.Equal(t, options.telemetryAddr, testTelemetryAddr)
 	assert.Equal(t, *options.tagCardinality, testTagCardinality)
+	assert.Equal(t, options.aggregatorShardCount, testAggregatorShardCount)
 }
 
 func TestExtendedAggregation(t *testing.T) {
