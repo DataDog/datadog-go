@@ -519,7 +519,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 	}
 
 	if o.aggregation || o.extendedAggregation || o.maxBufferedSamplesPerContext > 0 {
-		c.agg = newAggregator(&c, int64(o.maxBufferedSamplesPerContext))
+		c.agg = newAggregator(&c, int64(o.maxBufferedSamplesPerContext), o.aggregatorShardCount)
 		c.agg.start(o.aggregationFlushInterval)
 
 		if o.extendedAggregation {

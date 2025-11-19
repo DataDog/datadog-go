@@ -11,27 +11,67 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func getAllCounts(a *aggregator) countsMap {
+	counts := countsMap{}
+	for _, shard := range a.countShards {
+		shard.RLock()
+		for k, v := range shard.counts {
+			counts[k] = v
+		}
+		shard.RUnlock()
+	}
+	return counts
+}
+
+func getAllGauges(a *aggregator) gaugesMap {
+	gauges := gaugesMap{}
+	for _, shard := range a.gaugeShards {
+		shard.RLock()
+		for k, v := range shard.gauges {
+			gauges[k] = v
+		}
+		shard.RUnlock()
+	}
+	return gauges
+}
+
+func getAllSets(a *aggregator) setsMap {
+	sets := setsMap{}
+	for _, shard := range a.setShards {
+		shard.RLock()
+		for k, v := range shard.sets {
+			sets[k] = v
+		}
+		shard.RUnlock()
+	}
+	return sets
+}
+
 func TestAggregatorSample(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 
 	tags := []string{"tag1", "tag2"}
 
 	for i := 0; i < 2; i++ {
 		a.gauge("gaugeTest", 21, tags, defaultTagCardinality)
-		assert.Len(t, a.gauges, 1)
-		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+		gauges := getAllGauges(a)
+		assert.Len(t, gauges, 1)
+		assert.Contains(t, gauges, "gaugeTest:tag1,tag2")
 
 		a.count("countTest", 21, tags, defaultTagCardinality)
-		assert.Len(t, a.counts, 1)
-		assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		counts := getAllCounts(a)
+		assert.Len(t, counts, 1)
+		assert.Contains(t, counts, "countTest:tag1,tag2")
 
 		a.set("setTest", "value1", tags, defaultTagCardinality)
-		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		sets := getAllSets(a)
+		assert.Len(t, sets, 1)
+		assert.Contains(t, sets, "setTest:tag1,tag2")
 
 		a.set("setTest", "value1", tags, defaultTagCardinality)
-		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		sets = getAllSets(a)
+		assert.Len(t, sets, 1)
+		assert.Contains(t, sets, "setTest:tag1,tag2")
 
 		a.histogram("histogramTest", 21, tags, 1, defaultTagCardinality)
 		assert.Len(t, a.histograms.values, 1)
@@ -48,7 +88,7 @@ func TestAggregatorSample(t *testing.T) {
 }
 
 func TestAggregatorFlush(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -79,9 +119,9 @@ func TestAggregatorFlush(t *testing.T) {
 
 	metrics := a.flushMetrics()
 
-	assert.Len(t, a.gauges, 0)
-	assert.Len(t, a.counts, 0)
-	assert.Len(t, a.sets, 0)
+	assert.Len(t, getAllGauges(a), 0)
+	assert.Len(t, getAllCounts(a), 0)
+	assert.Len(t, getAllSets(a), 0)
 	assert.Len(t, a.histograms.values, 0)
 	assert.Len(t, a.distributions.values, 0)
 	assert.Len(t, a.timings.values, 0)
@@ -212,7 +252,7 @@ func TestAggregatorFlush(t *testing.T) {
 func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 	// In this test we keep only 2 samples per context for metrics where it's relevant.
 	maxSamples := int64(2)
-	a := newAggregator(nil, maxSamples)
+	a := newAggregator(nil, maxSamples, 8)
 
 	tags := []string{"tag1", "tag2"}
 
@@ -242,9 +282,9 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 
 	metrics := a.flushMetrics()
 
-	assert.Len(t, a.gauges, 0)
-	assert.Len(t, a.counts, 0)
-	assert.Len(t, a.sets, 0)
+	assert.Len(t, getAllGauges(a), 0)
+	assert.Len(t, getAllCounts(a), 0)
+	assert.Len(t, getAllSets(a), 0)
 	assert.Len(t, a.histograms.values, 0)
 	assert.Len(t, a.distributions.values, 0)
 	assert.Len(t, a.timings.values, 0)
@@ -331,7 +371,7 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 }
 
 func TestAggregatorFlushConcurrency(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 
 	var wg sync.WaitGroup
 	wg.Add(10)
@@ -363,7 +403,7 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"tag1", "tag2"}
 
 	a.gauge("gauge", 21, tags, CardinalityLow)
@@ -437,7 +477,7 @@ func BenchmarkGetContextNoTags(b *testing.B) {
 }
 
 func TestAggregatorCardinalitySeparation(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod", "service:api"}
 
 	a.gauge("test.metric", 10, tags, CardinalityLow)
@@ -507,7 +547,7 @@ func TestAggregatorCardinalitySeparation(t *testing.T) {
 }
 
 func TestAggregatorCardinalityPreservation(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod"}
 
 	// Test that cardinality is preserved in flushed metrics.
@@ -535,7 +575,7 @@ func TestAggregatorCardinalityPreservation(t *testing.T) {
 }
 
 func TestAggregatorCardinalityWithBufferedMetrics(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod"}
 
 	a.histogram("test.hist", 10, tags, 1, CardinalityLow)
@@ -610,7 +650,7 @@ func TestAggregatorCardinalityWithBufferedMetrics(t *testing.T) {
 }
 
 func TestAggregatorCardinalityEmptyVsNonEmpty(t *testing.T) {
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod"}
 
 	a.gauge("test.metric", 10, tags, CardinalityNotSet)
@@ -691,7 +731,7 @@ func TestAggregatorCardinalityGlobalSettingAggregation(t *testing.T) {
 	initTagCardinality(CardinalityLow)
 	defer resetTagCardinality()
 
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod"}
 
 	// Add metrics with different cardinality scenarios
@@ -789,7 +829,7 @@ func TestAggregatorCardinalityNoGlobalSetting(t *testing.T) {
 	// Reset to ensure no global setting.
 	resetTagCardinality()
 
-	a := newAggregator(nil, 0)
+	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod"}
 
 	// Test case 1: No cardinality specified (should use empty cardinality).

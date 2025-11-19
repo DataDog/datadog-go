@@ -29,6 +29,7 @@ var (
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
 	defaultTagCardinality               = CardinalityNotSet
+	defaultAggregatorShardCount         = 1
 )
 
 // Options contains the configuration options for a client.
@@ -50,6 +51,7 @@ type Options struct {
 	aggregation                  bool
 	extendedAggregation          bool
 	maxBufferedSamplesPerContext int
+	aggregatorShardCount         int
 	telemetryAddr                string
 	originDetection              bool
 	containerID                  string
@@ -81,6 +83,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		channelModeErrorsWhenFull:    defaultChannelModeErrorsWhenFull,
 		errorHandler:                 defaultErrorHandler,
 		tagCardinality:               defaultTagCardinality,
+		aggregatorShardCount:         defaultAggregatorShardCount,
 	}
 
 	for _, option := range options {
@@ -420,6 +423,19 @@ func WithContainerID(id string) Option {
 func WithCardinality(card Cardinality) Option {
 	return func(o *Options) error {
 		o.tagCardinality = card
+		return nil
+	}
+}
+
+// WithAggregatorShardCount sets the number of shards used for the aggregator.
+//
+// The default is 1.
+func WithAggregatorShardCount(shardCount int) Option {
+	return func(o *Options) error {
+		if shardCount < 1 {
+			return fmt.Errorf("shardCount must be a positive integer")
+		}
+		o.aggregatorShardCount = shardCount
 		return nil
 	}
 }
