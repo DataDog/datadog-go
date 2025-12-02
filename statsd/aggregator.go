@@ -96,11 +96,11 @@ func (a *aggregator) pullMetric() {
 		case m := <-a.inputMetrics:
 			switch m.metricType {
 			case histogram:
-				a.histogram(m.name, m.fvalue, m.tags, m.rate, m.overrideCard)
+				a.histogram(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
 			case distribution:
-				a.distribution(m.name, m.fvalue, m.tags, m.rate, m.overrideCard)
+				a.distribution(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
 			case timing:
-				a.timing(m.name, m.fvalue, m.tags, m.rate, m.overrideCard)
+				a.timing(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
 			}
 		case <-a.stopChannelMode:
 			a.wg.Done()
@@ -191,7 +191,7 @@ func getContextAndTags(name string, tags []string, cardinality Cardinality) (str
 		if cardString == "" {
 			return name, ""
 		}
-		return name + nameSeparatorSymbol + cardinality.String(), ""
+		return name + nameSeparatorSymbol + cardString, ""
 	}
 
 	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
@@ -224,8 +224,7 @@ func getContextAndTags(name string, tags []string, cardinality Cardinality) (str
 }
 
 func (a *aggregator) count(name string, value int64, tags []string, cardinality Cardinality) error {
-	resolvedCardinality := resolveCardinality(cardinality)
-	context := getContext(name, tags, resolvedCardinality)
+	context := getContext(name, tags, cardinality)
 	a.countsM.RLock()
 	if count, found := a.counts[context]; found {
 		count.sample(value)
@@ -234,10 +233,10 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 	}
 	a.countsM.RUnlock()
 
-	metric := newCountMetric(name, value, tags, resolvedCardinality)
+	metric := newCountMetric(name, value, tags, cardinality)
 
 	a.countsM.Lock()
-	// Check if another goroutines hasn't created the value betwen the RUnlock and 'Lock'
+	// Check if another goroutines hasn't created the value between the RUnlock and 'Lock'
 	if count, found := a.counts[context]; found {
 		count.sample(value)
 		a.countsM.Unlock()
@@ -250,8 +249,7 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 }
 
 func (a *aggregator) gauge(name string, value float64, tags []string, cardinality Cardinality) error {
-	resolvedCardinality := resolveCardinality(cardinality)
-	context := getContext(name, tags, resolvedCardinality)
+	context := getContext(name, tags, cardinality)
 	a.gaugesM.RLock()
 	if gauge, found := a.gauges[context]; found {
 		gauge.sample(value)
@@ -260,7 +258,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 	}
 	a.gaugesM.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags, resolvedCardinality)
+	gauge := newGaugeMetric(name, value, tags, cardinality)
 
 	a.gaugesM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
@@ -275,8 +273,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 }
 
 func (a *aggregator) set(name string, value string, tags []string, cardinality Cardinality) error {
-	resolvedCardinality := resolveCardinality(cardinality)
-	context := getContext(name, tags, resolvedCardinality)
+	context := getContext(name, tags, cardinality)
 	a.setsM.RLock()
 	if set, found := a.sets[context]; found {
 		set.sample(value)
@@ -285,7 +282,7 @@ func (a *aggregator) set(name string, value string, tags []string, cardinality C
 	}
 	a.setsM.RUnlock()
 
-	metric := newSetMetric(name, value, tags, resolvedCardinality)
+	metric := newSetMetric(name, value, tags, cardinality)
 
 	a.setsM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'

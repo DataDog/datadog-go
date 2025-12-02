@@ -27,7 +27,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, options.aggregation, defaultAggregation)
 	assert.Equal(t, options.extendedAggregation, defaultExtendedAggregation)
 	assert.Zero(t, options.telemetryAddr)
-	assert.Equal(t, options.tagCardinality, defaultTagCardinality)
+	assert.Nil(t, options.tagCardinality)
 }
 
 func TestOptions(t *testing.T) {
@@ -81,7 +81,7 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, options.aggregation, true)
 	assert.Equal(t, options.extendedAggregation, false)
 	assert.Equal(t, options.telemetryAddr, testTelemetryAddr)
-	assert.Equal(t, options.tagCardinality, testTagCardinality)
+	assert.Equal(t, *options.tagCardinality, testTagCardinality)
 }
 
 func TestExtendedAggregation(t *testing.T) {
@@ -119,10 +119,9 @@ func TestOptionsNamespaceWithoutDot(t *testing.T) {
 }
 
 func TestOptionsInvalidTagCardinality(t *testing.T) {
-	options, err := resolveOptions([]Option{
-		WithCardinality(CardinalityInvalid),
+	_, err := resolveOptions([]Option{
+		WithCardinality(CardinalityHigh + 1),
 	})
 
-	assert.NoError(t, err)
-	assert.Equal(t, options.tagCardinality.String(), "")
+	assert.EqualError(t, err, "invalid cardinality 5")
 }
