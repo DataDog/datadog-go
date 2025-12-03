@@ -4,11 +4,14 @@
 
 # 5.9.0 / xxxx-xx-xx
 
+# 5.8.2 / 2025-12-03
+- [IMPROVEMENT] Optimistic allocation for Count and Set metrics. See [#308][], thanks [@opsengine][].
+
 # 5.8.1 / 2025-10-10
 - [BUGFIX] Release new version to fix issue with tags.
 
 # 5.8.0 / 2025-09-24
-- [FEATURE] Create `ClientInterfaceEx` adding Cardinality parameter to the metric functions. See [334][].
+- [FEATURE] Create `ClientInterfaceEx` adding Cardinality parameter to the metric functions. See [#334][].
 - [IMPROVEMENT] Add support for `DD_EXTERNAL_ENV` for origin detection. See [#326][].
 - [IMPROVEMENT] Add parameter for tag cardinality. See [#327][].
 - [BUGFIX] Gracefully reconnect when UDS connection is severed. See [#323][].
@@ -453,6 +456,7 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#297]: https://github.com/DataDog/datadog-go/pull/297
 [#302]: https://github.com/DataDog/datadog-go/pull/302
 [#305]: https://github.com/DataDog/datadog-go/pull/305
+[#308]: https://github.com/DataDog/datadog-go/pull/308
 [#314]: https://github.com/DataDog/datadog-go/pull/314
 [#323]: https://github.com/DataDog/datadog-go/pull/323
 [#326]: https://github.com/DataDog/datadog-go/pull/326
@@ -494,3 +498,5 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@martin-sucha]: https://github.com/martin-sucha
 [@lucassscaravelli]: https://github.com/lucassscaravelli
 [@byronwolfman]: https://github.com/byronwolfman
+[@opsengine]: https://github.com/opsengine
+
