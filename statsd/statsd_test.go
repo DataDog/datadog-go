@@ -439,3 +439,46 @@ func TestErrorsReturnedWithAggregator(t *testing.T) {
 	err = client.Close()
 	require.NoError(t, err)
 }
+
+func BenchmarkConcurrentStats(b *testing.B) {
+	// TODO test server?
+
+	client, err := New("localhost:12345",
+		WithAggregationInterval(10*time.Millisecond),
+	)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	names := []string{
+		"foo",
+		"bar",
+		"baz",
+	}
+	tags := []string{
+		"tag:a",
+		"tag:b",
+		"tag:c",
+		"tag:d",
+		"tag:e",
+		"tag:f",
+		"tag:g",
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < b.N; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			err := client.Count(names[i%len(names)],
+				1,
+				tags[(i*5)%len(tags):(i*5)%len(tags)+1],
+				1.0,
+			)
+			if err != nil {
+				b.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+}
