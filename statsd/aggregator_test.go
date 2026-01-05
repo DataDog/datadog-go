@@ -12,6 +12,7 @@ import (
 )
 
 func TestAggregatorSample(t *testing.T) {
+	// TODO: adapt this to the new implementation
 	a := newAggregator(nil, 0)
 
 	tags := []string{"tag1", "tag2"}
@@ -372,6 +373,9 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+
+	// TODO: assert that we actually get the total expected cumulative metrics counts?
+	// i.e. that we didn't miss anything
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
