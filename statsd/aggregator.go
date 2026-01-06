@@ -7,25 +7,50 @@ import (
 	"time"
 )
 
-type (
-	countsMap         map[string]*countMetric
-	gaugesMap         map[string]*gaugeMetric
-	setsMap           map[string]*setMetric
-	bufferedMetricMap map[string]*bufferedMetric
-)
+type bufferedMetricMap map[string]*bufferedMetric
+
+type statMap struct {
+	// mu guards access to m (the pointer), not m (the map itself.) m is
+	// safe to access concurrently. The purpose of mu is to allow flushing
+	// to safely swap out m for a new map.
+	mu sync.RWMutex
+	m  *sync.Map
+}
+
+func newStatMap() *statMap {
+	return &statMap{m: new(sync.Map)}
+}
+
+func (s *statMap) loadOrCreate(key string, f func() any) (any, bool) {
+	v, ok := s.m.Load(key)
+	if !ok {
+		v, ok = s.m.LoadOrStore(key, f())
+	}
+	return v, ok
+}
+
+func (s *statMap) flush() func(yield func(key string, value any) bool) {
+	// This matches iter.Seq2, even though we can't
+	// depend on that yet
+	return func(yield func(key string, value any) bool) {
+		s.mu.Lock()
+		m := s.m
+		s.m = new(sync.Map)
+		s.mu.Unlock()
+		m.Range(func(k, v any) bool {
+			return yield(k.(string), v)
+		})
+	}
+}
 
 type aggregator struct {
 	nbContextGauge uint64
 	nbContextCount uint64
 	nbContextSet   uint64
 
-	countsM sync.RWMutex
-	gaugesM sync.RWMutex
-	setsM   sync.RWMutex
-
-	gauges        gaugesMap
-	counts        countsMap
-	sets          setsMap
+	gauges        *statMap
+	counts        *statMap
+	sets          *statMap
 	histograms    bufferedMetricContexts
 	distributions bufferedMetricContexts
 	timings       bufferedMetricContexts
@@ -46,9 +71,9 @@ type aggregator struct {
 func newAggregator(c *ClientEx, maxSamplesPerContext int64) *aggregator {
 	return &aggregator{
 		client:          c,
-		counts:          countsMap{},
-		gauges:          gaugesMap{},
-		sets:            setsMap{},
+		counts:          newStatMap(),
+		gauges:          newStatMap(),
+		sets:            newStatMap(),
 		histograms:      newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
 		distributions:   newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
 		timings:         newBufferedContexts(newTimingMetric, maxSamplesPerContext),
@@ -135,40 +160,34 @@ func (a *aggregator) flushMetrics() []metric {
 	// We reset the values to avoid sending 'zero' values for metrics not
 	// sampled during this flush interval
 
-	a.setsM.Lock()
-	sets := a.sets
-	a.sets = setsMap{}
-	a.setsM.Unlock()
+	sets := 0
+	a.sets.flush()(func(_ string, s any) bool {
+		metrics = append(metrics, s.(*setMetric).flushUnsafe()...)
+		sets++
+		return true
+	})
 
-	for _, s := range sets {
-		metrics = append(metrics, s.flushUnsafe()...)
-	}
+	gauges := 0
+	a.gauges.flush()(func(_ string, g any) bool {
+		metrics = append(metrics, g.(*gaugeMetric).flushUnsafe())
+		gauges++
+		return true
+	})
 
-	a.gaugesM.Lock()
-	gauges := a.gauges
-	a.gauges = gaugesMap{}
-	a.gaugesM.Unlock()
-
-	for _, g := range gauges {
-		metrics = append(metrics, g.flushUnsafe())
-	}
-
-	a.countsM.Lock()
-	counts := a.counts
-	a.counts = countsMap{}
-	a.countsM.Unlock()
-
-	for _, c := range counts {
-		metrics = append(metrics, c.flushUnsafe())
-	}
+	counts := 0
+	a.counts.flush()(func(_ string, c any) bool {
+		metrics = append(metrics, c.(*countMetric).flushUnsafe())
+		counts++
+		return true
+	})
 
 	metrics = a.histograms.flush(metrics)
 	metrics = a.distributions.flush(metrics)
 	metrics = a.timings.flush(metrics)
 
-	atomic.AddUint64(&a.nbContextCount, uint64(len(counts)))
-	atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
-	atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
+	atomic.AddUint64(&a.nbContextCount, uint64(counts))
+	atomic.AddUint64(&a.nbContextGauge, uint64(gauges))
+	atomic.AddUint64(&a.nbContextSet, uint64(sets))
 	return metrics
 }
 
@@ -226,76 +245,41 @@ func getContextAndTags(name string, tags []string, cardinality Cardinality) (str
 func (a *aggregator) count(name string, value int64, tags []string, cardinality Cardinality) error {
 	resolvedCardinality := resolveCardinality(cardinality)
 	context := getContext(name, tags, resolvedCardinality)
-	a.countsM.RLock()
-	if count, found := a.counts[context]; found {
-		count.sample(value)
-		a.countsM.RUnlock()
+	a.counts.mu.RLock()
+	defer a.counts.mu.RUnlock()
+	v, ok := a.counts.loadOrCreate(context, func() any { return newCountMetric(name, value, tags, resolvedCardinality) })
+	if !ok {
+		// This call created the value for the given key,
+		// so we don't need to sample
 		return nil
 	}
-	a.countsM.RUnlock()
-
-	metric := newCountMetric(name, value, tags, resolvedCardinality)
-
-	a.countsM.Lock()
-	// Check if another goroutines hasn't created the value betwen the RUnlock and 'Lock'
-	if count, found := a.counts[context]; found {
-		count.sample(value)
-		a.countsM.Unlock()
-		return nil
-	}
-
-	a.counts[context] = metric
-	a.countsM.Unlock()
+	v.(*countMetric).sample(value)
 	return nil
 }
 
 func (a *aggregator) gauge(name string, value float64, tags []string, cardinality Cardinality) error {
 	resolvedCardinality := resolveCardinality(cardinality)
 	context := getContext(name, tags, resolvedCardinality)
-	a.gaugesM.RLock()
-	if gauge, found := a.gauges[context]; found {
-		gauge.sample(value)
-		a.gaugesM.RUnlock()
+	a.gauges.mu.RLock()
+	defer a.gauges.mu.RUnlock()
+	v, ok := a.gauges.loadOrCreate(context, func() any { return newGaugeMetric(name, value, tags, resolvedCardinality) })
+	if !ok {
 		return nil
 	}
-	a.gaugesM.RUnlock()
-
-	gauge := newGaugeMetric(name, value, tags, resolvedCardinality)
-
-	a.gaugesM.Lock()
-	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if gauge, found := a.gauges[context]; found {
-		gauge.sample(value)
-		a.gaugesM.Unlock()
-		return nil
-	}
-	a.gauges[context] = gauge
-	a.gaugesM.Unlock()
+	v.(*gaugeMetric).sample(value)
 	return nil
 }
 
 func (a *aggregator) set(name string, value string, tags []string, cardinality Cardinality) error {
 	resolvedCardinality := resolveCardinality(cardinality)
 	context := getContext(name, tags, resolvedCardinality)
-	a.setsM.RLock()
-	if set, found := a.sets[context]; found {
-		set.sample(value)
-		a.setsM.RUnlock()
+	a.sets.mu.RLock()
+	defer a.sets.mu.RUnlock()
+	v, ok := a.sets.loadOrCreate(context, func() any { return newSetMetric(name, value, tags, resolvedCardinality) })
+	if !ok {
 		return nil
 	}
-	a.setsM.RUnlock()
-
-	metric := newSetMetric(name, value, tags, resolvedCardinality)
-
-	a.setsM.Lock()
-	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if set, found := a.sets[context]; found {
-		set.sample(value)
-		a.setsM.Unlock()
-		return nil
-	}
-	a.sets[context] = metric
-	a.setsM.Unlock()
+	v.(*setMetric).sample(value)
 	return nil
 }
 

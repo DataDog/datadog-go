@@ -12,38 +12,55 @@ import (
 )
 
 func TestAggregatorSample(t *testing.T) {
+	// TODO: adapt this to the new implementation
 	a := newAggregator(nil, 0)
 
 	tags := []string{"tag1", "tag2"}
 
 	for i := 0; i < 2; i++ {
+		// Test that gauge metrics are being aggregated correctly
 		a.gauge("gaugeTest", 21, tags, defaultTagCardinality)
-		assert.Len(t, a.gauges, 1)
-		assert.Contains(t, a.gauges, "gaugeTest:tag1,tag2")
+		metrics := a.flushMetrics()
+		assert.Len(t, metrics, 1)
+		assert.Equal(t, "gaugeTest", metrics[0].name)
+		assert.Equal(t, float64(21), metrics[0].fvalue)
 
+		// Test that count metrics are being aggregated correctly
 		a.count("countTest", 21, tags, defaultTagCardinality)
-		assert.Len(t, a.counts, 1)
-		assert.Contains(t, a.counts, "countTest:tag1,tag2")
+		metrics = a.flushMetrics()
+		assert.Len(t, metrics, 1)
+		assert.Equal(t, "countTest", metrics[0].name)
+		assert.Equal(t, int64(21), metrics[0].ivalue)
 
+		// Test that set metrics are being aggregated correctly, and
+		// that duplicate set values don't create additional metrics
 		a.set("setTest", "value1", tags, defaultTagCardinality)
-		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
-
 		a.set("setTest", "value1", tags, defaultTagCardinality)
-		assert.Len(t, a.sets, 1)
-		assert.Contains(t, a.sets, "setTest:tag1,tag2")
+		metrics = a.flushMetrics()
+		assert.Len(t, metrics, 1)
+		assert.Equal(t, "setTest", metrics[0].name)
+		assert.Equal(t, "value1", metrics[0].svalue)
 
+		// Test that histogram metrics are being collected
 		a.histogram("histogramTest", 21, tags, 1, defaultTagCardinality)
-		assert.Len(t, a.histograms.values, 1)
-		assert.Contains(t, a.histograms.values, "histogramTest:tag1,tag2")
+		metrics = a.flushMetrics()
+		assert.Len(t, metrics, 1)
+		assert.Equal(t, "histogramTest", metrics[0].name)
+		assert.Contains(t, metrics[0].fvalues, float64(21))
 
+		// Test that distribution metrics are being collected
 		a.distribution("distributionTest", 21, tags, 1, defaultTagCardinality)
-		assert.Len(t, a.distributions.values, 1)
-		assert.Contains(t, a.distributions.values, "distributionTest:tag1,tag2")
+		metrics = a.flushMetrics()
+		assert.Len(t, metrics, 1)
+		assert.Equal(t, "distributionTest", metrics[0].name)
+		assert.Contains(t, metrics[0].fvalues, float64(21))
 
+		// Test that timing metrics are being collected
 		a.timing("timingTest", 21, tags, 1, defaultTagCardinality)
-		assert.Len(t, a.timings.values, 1)
-		assert.Contains(t, a.timings.values, "timingTest:tag1,tag2")
+		metrics = a.flushMetrics()
+		assert.Len(t, metrics, 1)
+		assert.Equal(t, "timingTest", metrics[0].name)
+		assert.Contains(t, metrics[0].fvalues, float64(21))
 	}
 }
 
@@ -79,12 +96,10 @@ func TestAggregatorFlush(t *testing.T) {
 
 	metrics := a.flushMetrics()
 
-	assert.Len(t, a.gauges, 0)
-	assert.Len(t, a.counts, 0)
-	assert.Len(t, a.sets, 0)
-	assert.Len(t, a.histograms.values, 0)
-	assert.Len(t, a.distributions.values, 0)
-	assert.Len(t, a.timings.values, 0)
+	// After flush, all metrics should be cleared from the aggregator
+	// We verify this by checking that a subsequent flush returns no metrics
+	subsequentMetrics := a.flushMetrics()
+	assert.Len(t, subsequentMetrics, 0)
 
 	assert.Len(t, metrics, 13)
 
@@ -242,12 +257,10 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 
 	metrics := a.flushMetrics()
 
-	assert.Len(t, a.gauges, 0)
-	assert.Len(t, a.counts, 0)
-	assert.Len(t, a.sets, 0)
-	assert.Len(t, a.histograms.values, 0)
-	assert.Len(t, a.distributions.values, 0)
-	assert.Len(t, a.timings.values, 0)
+	// After flush, all metrics should be cleared from the aggregator
+	// We verify this by checking that a subsequent flush returns no metrics
+	subsequentMetrics := a.flushMetrics()
+	assert.Len(t, subsequentMetrics, 0)
 
 	assert.Len(t, metrics, 7)
 
@@ -360,6 +373,9 @@ func TestAggregatorFlushConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+
+	// TODO: assert that we actually get the total expected cumulative metrics counts?
+	// i.e. that we didn't miss anything
 }
 
 func TestAggregatorTagsCopy(t *testing.T) {
