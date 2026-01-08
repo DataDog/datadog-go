@@ -10,8 +10,8 @@ type Parameter interface{}
 type Cardinality int
 
 const (
-	CardinalityNotSet Cardinality = -1
-	CardinalityNone   Cardinality = iota
+	CardinalityNotSet Cardinality = iota
+	CardinalityNone
 	CardinalityLow
 	CardinalityOrchestrator
 	CardinalityHigh
