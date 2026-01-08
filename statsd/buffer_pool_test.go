@@ -33,7 +33,7 @@ func TestBufferPoolEmpty(t *testing.T) {
 func TestBufferReturn(t *testing.T) {
 	bufferPool := newBufferPool(1, 1024, 20)
 	buffer := bufferPool.borrowBuffer()
-	buffer.writeCount("", nil, "", 1, nil, 1, noTimestamp, true, defaultTagCardinality)
+	buffer.writeCount("", nil, "", 1, nil, 1, noTimestamp, true, CardinalityNotSet)
 
 	assert.Equal(t, 0, len(bufferPool.pool))
 	bufferPool.returnBuffer(buffer)
