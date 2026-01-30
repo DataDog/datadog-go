@@ -28,7 +28,6 @@ var (
 	defaultOriginDetection              = true
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
-	defaultTagCardinality               = CardinalityNotSet
 	defaultAggregatorShardCount         = 1
 )
 
