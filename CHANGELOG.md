@@ -4,6 +4,10 @@
 
 # 5.9.0 / xxxx-xx-xx
 
+# 5.8.3 / 2026-02-02
+- [IMPROVEMENT] Shard aggregator lock. See [#351][], thanks [@opsengine][].
+- [IMPROVEMENT] Fix race condition in statsd external_env initialization. See [#352][], thanks [@jprobinson][].
+
 # 5.8.2 / 2025-12-03
 - [IMPROVEMENT] Optimistic allocation for Count and Set metrics. See [#308][], thanks [@opsengine][].
 
@@ -462,6 +466,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#326]: https://github.com/DataDog/datadog-go/pull/326
 [#327]: https://github.com/DataDog/datadog-go/pull/327
 [#334]: https://github.com/DataDog/datadog-go/pull/334
+[#351]: https://github.com/DataDog/datadog-go/pull/351
+[#352]: https://github.com/DataDog/datadog-go/pull/352
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -499,4 +505,4 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@lucassscaravelli]: https://github.com/lucassscaravelli
 [@byronwolfman]: https://github.com/byronwolfman
 [@opsengine]: https://github.com/opsengine
-
+[@jprobinson]: https://github.com/jprobinson
