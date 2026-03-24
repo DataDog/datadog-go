@@ -61,6 +61,8 @@ jobs:
       - run: go1.12 version
       - name: Downgrade testify to v1.6.0 as this the last version to run on Go 1.12
         run: sed -i 's/\(github.com\/stretchr\/testify\) v[0-9.]\+/\1 v1.6.0/' go.mod
+      - name: Remove replace directives incompatible with Go 1.12
+        run: sed -i '/^replace /d' go.mod
       - name: Run all tests
         run: go1.12 test -race -v ./statsd/...
       - name: Run example under Go 1.12
