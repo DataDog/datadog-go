@@ -96,3 +96,35 @@ func TestTelemetryCustomAddr(t *testing.T) {
 
 	assert.Equal(t, expectedResult, result)
 }
+
+func TestTelemetryCardinality(t *testing.T) {
+	_, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8770",
+		nil,
+		WithCardinality(CardinalityOrchestrator),
+	)
+
+	metrics := client.clientEx.telemetryClient.flush()
+	require.NotEmpty(t, metrics)
+	for _, m := range metrics {
+		assert.Equal(t, CardinalityOrchestrator, m.cardinality, "telemetry metric %q should carry orchestrator cardinality", m.name)
+	}
+}
+
+func TestTelemetryCardinalityEnvVar(t *testing.T) {
+	patchTagCardinality("low", "")
+	defer resetTagCardinality()
+
+	_, client := newClientAndTestServer(t,
+		"udp",
+		"localhost:8771",
+		nil,
+	)
+
+	metrics := client.clientEx.telemetryClient.flush()
+	require.NotEmpty(t, metrics)
+	for _, m := range metrics {
+		assert.Equal(t, CardinalityLow, m.cardinality, "telemetry metric %q should carry low cardinality from env var", m.name)
+	}
+}

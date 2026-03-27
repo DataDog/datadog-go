@@ -260,7 +260,7 @@ func (t *telemetryClient) flush() []metric {
 
 	// same as Count but without global namespace
 	telemetryCount := func(name string, value int64, tags []string) {
-		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: tags, rate: 1})
+		m = append(m, metric{metricType: count, name: name, ivalue: value, tags: tags, rate: 1, cardinality: t.c.defaultCardinality})
 	}
 
 	tlm := t.getTelemetry()
