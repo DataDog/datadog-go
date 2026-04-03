@@ -387,7 +387,38 @@ func getTestMapDirect() map[string]testCaseDirect {
 	}
 }
 
+func TestDistributionSamplesExternalEnv(t *testing.T) {
+	resetContainerID()
+	defer resetContainerID()
+
+	patchExternalEnv("test-env")
+	defer resetExternalEnv()
+
+	ts, client := newClientDirectAndTestServer(t,
+		"udp",
+		"localhost:8765",
+		nil,
+		WithExtendedClientSideAggregation(),
+		WithMaxSamplesPerContext(2),
+		WithChannelMode(),
+		WithoutTelemetry(),
+	)
+
+	tags := []string{"custom:1", "custom:2"}
+	client.DistributionSamples("distro", []float64{1, 2}, tags, 1.0)
+
+	finalTags := ts.getFinalTags(tags...)
+	containerID := ts.getContainerID()
+	expectedMetrics := []string{
+		ts.namespace + "distro:1:2|d" + finalTags + containerID + "|e:test-env",
+	}
+	ts.assert(t, client.Client, expectedMetrics)
+}
+
 func TestFullPipelineUDP(t *testing.T) {
+	resetContainerID()
+	defer resetContainerID()
+
 	for testName, c := range getTestMap() {
 		t.Run(testName, func(t *testing.T) {
 			ts, client := newClientAndTestServer(t,
@@ -402,6 +433,9 @@ func TestFullPipelineUDP(t *testing.T) {
 }
 
 func TestFullPipelineUDPDirectClient(t *testing.T) {
+	resetContainerID()
+	defer resetContainerID()
+
 	for testName, c := range getTestMapDirect() {
 		t.Run(testName, func(t *testing.T) {
 			ts, client := newClientDirectAndTestServer(t,
