@@ -1,4 +1,4 @@
-# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
+# We use github actions to test the code on windows, linux amd64, linux arm64, and macOS.
 
 name: datadog-go
 on:
@@ -25,6 +25,7 @@ jobs:
         runs-on:
           - macos-latest
           - ubuntu-latest
+          - ubuntu-24.04-arm
           - windows-latest
         exclude:
           # These fail on macOS because of this bug https://github.com/golang/go/issues/49138
@@ -33,6 +34,13 @@ jobs:
           - runs-on: macos-latest
             go-version: 1.14
           - runs-on: macos-latest
+            go-version: 1.15
+          # No official linux/arm64 Go binaries before 1.16
+          - runs-on: ubuntu-24.04-arm
+            go-version: 1.13
+          - runs-on: ubuntu-24.04-arm
+            go-version: 1.14
+          - runs-on: ubuntu-24.04-arm
             go-version: 1.15
       fail-fast: false
     runs-on: ${{ matrix.runs-on }}
