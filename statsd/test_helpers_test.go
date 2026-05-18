@@ -657,6 +657,6 @@ func patchExternalEnv(env string) {
 }
 
 func resetExternalEnv() {
-	externalEnv = ""
+	setExternalEnvForTest("")
 	os.Unsetenv(ddExternalEnvVarName)
 }
