@@ -122,6 +122,12 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 
 	client, err := New(addr, options...)
 	require.NoError(t, err)
+	// Constructing a real Client populates the package-level containerID
+	// global via initContainerID. Reset it after the test so subsequent
+	// tests (notably the format_test.go and service_check_test.go ones,
+	// which build expected payloads assuming an empty container ID) are
+	// not affected by test ordering.
+	registerCleanup(t, resetContainerID)
 
 	startTestServer(ts)
 	return ts, client
@@ -133,6 +139,7 @@ func newClientDirectAndTestServer(t *testing.T, proto string, addr string, tags 
 
 	client, err := NewDirect(addr, options...)
 	require.NoError(t, err)
+	registerCleanup(t, resetContainerID)
 
 	startTestServer(ts)
 	return ts, client
@@ -644,11 +651,25 @@ func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSample
 	return append(expectedMetrics, ts.namespace+"distro2:5:6|d|@0.5"+finalTags)
 }
 
-func patchContainerID(id string) { containerID = id }
+func patchContainerID(id string) {
+	containerID.Store(id)
+}
 
 func resetContainerID() {
-	containerID = ""
+	containerID.Store("")
 	initOnce = sync.Once{}
+}
+
+// withoutOriginGlobals clears the package-level containerID and externalEnv
+// before the test runs and restores them after, so the test is independent
+// of any other test in the package that may have populated them through a
+// real client construction. Tests that build clients and assert wire
+// payloads which do not include container-id / external-env tags should
+// call this at the very top of the test body.
+func withoutOriginGlobals(t *testing.T) {
+	t.Helper()
+	resetContainerID()
+	resetExternalEnv()
 }
 
 func patchExternalEnv(env string) {

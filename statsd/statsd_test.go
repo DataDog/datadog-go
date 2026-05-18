@@ -110,9 +110,17 @@ func (s *statsdWriterWrapper) Write(p []byte) (n int, err error) {
 }
 
 func TestNewWithWriter(t *testing.T) {
+	// The expected payloads built by ts.sendAllType do not include any
+	// container-ID / external-env suffix, so the test only passes when
+	// origin detection is off. Without WithoutOriginDetection the client
+	// would populate the package-level containerID from /proc/self/cgroup
+	// and ClientEx.send would tag every metric with |c:<id>, breaking the
+	// assertion on hosts that have a non-empty cgroup container id.
+	withoutOriginGlobals(t)
 	w := statsdWriterWrapper{}
-	client, err := NewWithWriter(&w, WithoutTelemetry())
+	client, err := NewWithWriter(&w, WithoutTelemetry(), WithoutOriginDetection())
 	require.Nil(t, err)
+	defer resetContainerID()
 
 	ts := &testServer{}
 	expected := ts.sendAllType(client)
@@ -321,11 +329,16 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 }
 
 func TestGetTelemetry(t *testing.T) {
+	// TotalBytesSent below was computed before the client emitted
+	// |c:<id> on every payload. Disable origin detection so the byte
+	// count is independent of the host's cgroup / container id.
+	withoutOriginGlobals(t)
 	ts, client := newClientAndTestServer(t,
 		"udp",
 		"localhost:8765",
 		nil,
 		WithExtendedClientSideAggregation(),
+		WithoutOriginDetection(),
 	)
 
 	ts.sendAllAndAssert(t, client)

@@ -2,18 +2,20 @@ package statsd
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 var (
-	// containerID holds the container ID.
-	containerID = ""
-
-	initOnce sync.Once
+	containerID atomic.Value
+	initOnce    sync.Once
 )
 
 // getContainerID returns the container ID configured at the client creation
 // It can either be auto-discovered with origin detection or provided by the user.
 // User-defined container ID is prioritized.
 func getContainerID() string {
-	return containerID
+	if v := containerID.Load(); v != nil {
+		return v.(string)
+	}
+	return ""
 }
