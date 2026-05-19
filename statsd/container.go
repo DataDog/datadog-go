@@ -2,11 +2,10 @@ package statsd
 
 import (
 	"sync"
-	"sync/atomic"
 )
 
 var (
-	containerID atomic.Value
+	containerID string
 	initOnce    sync.Once
 )
 
@@ -14,8 +13,5 @@ var (
 // It can either be auto-discovered with origin detection or provided by the user.
 // User-defined container ID is prioritized.
 func getContainerID() string {
-	if v := containerID.Load(); v != nil {
-		return v.(string)
-	}
-	return ""
+	return containerID
 }

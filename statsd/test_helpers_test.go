@@ -122,12 +122,6 @@ func newClientAndTestServer(t *testing.T, proto string, addr string, tags []stri
 
 	client, err := New(addr, options...)
 	require.NoError(t, err)
-	// Constructing a real Client populates the package-level containerID
-	// global via initContainerID. Reset it after the test so subsequent
-	// tests (notably the format_test.go and service_check_test.go ones,
-	// which build expected payloads assuming an empty container ID) are
-	// not affected by test ordering.
-	registerCleanup(t, resetContainerID)
 
 	startTestServer(ts)
 	return ts, client
@@ -139,7 +133,6 @@ func newClientDirectAndTestServer(t *testing.T, proto string, addr string, tags 
 
 	client, err := NewDirect(addr, options...)
 	require.NoError(t, err)
-	registerCleanup(t, resetContainerID)
 
 	startTestServer(ts)
 	return ts, client
@@ -652,11 +645,11 @@ func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSample
 }
 
 func patchContainerID(id string) {
-	containerID.Store(id)
+	containerID = id
 }
 
 func resetContainerID() {
-	containerID.Store("")
+	containerID = ""
 	initOnce = sync.Once{}
 }
 

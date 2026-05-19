@@ -8,6 +8,7 @@ import (
 )
 
 func TestFormatAppendTags(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendTags(buffer, []string{"global:tag"}, []string{"tag:tag", "tag2:tag2"})
 	assert.Equal(t, `|#global:tag,tag:tag,tag2:tag2`, string(buffer))
@@ -26,6 +27,7 @@ func TestFormatAppendTags(t *testing.T) {
 }
 
 func TestFormatAppendTagsAggregated(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendTagsAggregated(buffer, []string{"global:tag"}, "tag:tag,tag2:tag2")
 	assert.Equal(t, `|#global:tag,tag:tag,tag2:tag2`, string(buffer))
@@ -44,84 +46,98 @@ func TestFormatAppendTagsAggregated(t *testing.T) {
 }
 
 func TestFormatAppendGauge(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "namespace.", []string{"global:tag"}, "gauge", 1., []string{"tag:tag"}, 1, true)
 	assert.Equal(t, `namespace.gauge:1|g|#global:tag,tag:tag`, string(buffer))
 }
 
 func TestFormatAppendCount(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendCount(buffer, "namespace.", []string{"global:tag"}, "count", 2, []string{"tag:tag"}, 1, true)
 	assert.Equal(t, `namespace.count:2|c|#global:tag,tag:tag`, string(buffer))
 }
 
 func TestFormatAppendHistogram(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendHistogram(buffer, "namespace.", []string{"global:tag"}, "histogram", 3., []string{"tag:tag"}, 1, true)
 	assert.Equal(t, `namespace.histogram:3|h|#global:tag,tag:tag`, string(buffer))
 }
 
 func TestFormatAppendDistribution(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendDistribution(buffer, "namespace.", []string{"global:tag"}, "distribution", 4., []string{"tag:tag"}, 1, true)
 	assert.Equal(t, `namespace.distribution:4|d|#global:tag,tag:tag`, string(buffer))
 }
 
 func TestFormatAppendSet(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendSet(buffer, "namespace.", []string{"global:tag"}, "set", "five", []string{"tag:tag"}, 1, true)
 	assert.Equal(t, `namespace.set:five|s|#global:tag,tag:tag`, string(buffer))
 }
 
 func TestFormatAppendTiming(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendTiming(buffer, "namespace.", []string{"global:tag"}, "timing", 6., []string{"tag:tag"}, 1, true)
 	assert.Equal(t, `namespace.timing:6.000000|ms|#global:tag,tag:tag`, string(buffer))
 }
 
 func TestFormatNoTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "gauge", 1., []string{}, 1, true)
 	assert.Equal(t, `gauge:1|g`, string(buffer))
 }
 
 func TestFormatOneTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "gauge", 1., []string{"tag1:tag1"}, 1, true)
 	assert.Equal(t, `gauge:1|g|#tag1:tag1`, string(buffer))
 }
 
 func TestFormatTwoTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{"tag1:tag1", "tag2:tag2"}, 1, true)
 	assert.Equal(t, `metric:1|g|#tag1:tag1,tag2:tag2`, string(buffer))
 }
 
 func TestFormatRate(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{}, 0.1, true)
 	assert.Equal(t, `metric:1|g|@0.1`, string(buffer))
 }
 
 func TestFormatRateAndTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{}, "metric", 1., []string{"tag1:tag1"}, 0.1, true)
 	assert.Equal(t, `metric:1|g|@0.1|#tag1:tag1`, string(buffer))
 }
 
 func TestFormatNil(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", nil, "metric", 1., nil, 1, true)
 	assert.Equal(t, `metric:1|g`, string(buffer))
 }
 
 func TestFormatTagRemoveNewLines(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendGauge(buffer, "", []string{"tag\n:d\nog\n"}, "metric", 1., []string{"\ntag\n:d\nog2\n"}, 0.1, true)
 	assert.Equal(t, `metric:1|g|@0.1|#tag:dog,tag:dog2`, string(buffer))
 }
 
 func TestFormatEvent(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
@@ -131,6 +147,7 @@ func TestFormatEvent(t *testing.T) {
 }
 
 func TestFormatEventEscapeText(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
@@ -140,6 +157,7 @@ func TestFormatEventEscapeText(t *testing.T) {
 }
 
 func TestFormatEventTimeStamp(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:     "EvenTitle",
@@ -150,6 +168,7 @@ func TestFormatEventTimeStamp(t *testing.T) {
 }
 
 func TestFormatEventHostname(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:    "EvenTitle",
@@ -160,6 +179,7 @@ func TestFormatEventHostname(t *testing.T) {
 }
 
 func TestFormatEventAggregationKey(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:          "EvenTitle",
@@ -170,6 +190,7 @@ func TestFormatEventAggregationKey(t *testing.T) {
 }
 
 func TestFormatEventPriority(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:    "EvenTitle",
@@ -180,6 +201,7 @@ func TestFormatEventPriority(t *testing.T) {
 }
 
 func TestFormatEventSourceTypeName(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:          "EvenTitle",
@@ -190,6 +212,7 @@ func TestFormatEventSourceTypeName(t *testing.T) {
 }
 
 func TestFormatEventAlertType(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:     "EvenTitle",
@@ -200,6 +223,7 @@ func TestFormatEventAlertType(t *testing.T) {
 }
 
 func TestFormatEventOneTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
@@ -209,6 +233,7 @@ func TestFormatEventOneTag(t *testing.T) {
 }
 
 func TestFormatEventTwoTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title: "EvenTitle",
@@ -219,6 +244,7 @@ func TestFormatEventTwoTag(t *testing.T) {
 }
 
 func TestFormatEventAllOptions(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{
 		Title:          "EvenTitle",
@@ -235,12 +261,14 @@ func TestFormatEventAllOptions(t *testing.T) {
 }
 
 func TestFormatEventNil(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendEvent(buffer, &Event{}, []string{}, true)
 	assert.Equal(t, `_e{0,0}:|`, string(buffer))
 }
 
 func TestFormatServiceCheck(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:   "service.check",
@@ -250,6 +278,7 @@ func TestFormatServiceCheck(t *testing.T) {
 }
 
 func TestFormatServiceCheckEscape(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:    "service.check",
@@ -260,6 +289,7 @@ func TestFormatServiceCheckEscape(t *testing.T) {
 }
 
 func TestFormatServiceCheckTimestamp(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:      "service.check",
@@ -270,6 +300,7 @@ func TestFormatServiceCheckTimestamp(t *testing.T) {
 }
 
 func TestFormatServiceCheckHostname(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:     "service.check",
@@ -280,6 +311,7 @@ func TestFormatServiceCheckHostname(t *testing.T) {
 }
 
 func TestFormatServiceCheckMessage(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:    "service.check",
@@ -290,6 +322,7 @@ func TestFormatServiceCheckMessage(t *testing.T) {
 }
 
 func TestFormatServiceCheckOneTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:   "service.check",
@@ -300,6 +333,7 @@ func TestFormatServiceCheckOneTag(t *testing.T) {
 }
 
 func TestFormatServiceCheckTwoTag(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:   "service.check",
@@ -310,6 +344,7 @@ func TestFormatServiceCheckTwoTag(t *testing.T) {
 }
 
 func TestFormatServiceCheckAllOptions(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{
 		Name:      "service.check",
@@ -323,12 +358,14 @@ func TestFormatServiceCheckAllOptions(t *testing.T) {
 }
 
 func TestFormatServiceCheckNil(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendServiceCheck(buffer, &ServiceCheck{}, nil, true)
 	assert.Equal(t, `_sc||0`, string(buffer))
 }
 
 func TestFormatSeparator(t *testing.T) {
+	withoutOriginGlobals(t)
 	var buffer []byte
 	buffer = appendSeparator(buffer)
 	assert.Equal(t, "\n", string(buffer))

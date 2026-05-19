@@ -10,7 +10,7 @@ func isHostCgroupNamespace() bool {
 var initContainerID = func(userProvidedID string, _, _ bool) {
 	initOnce.Do(func() {
 		if userProvidedID != "" {
-			containerID.Store(userProvidedID)
+			containerID = userProvidedID
 		}
 	})
 }

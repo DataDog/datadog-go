@@ -193,29 +193,27 @@ func internalInitContainerID(userProvidedID string, cgroupFallback, isHostCgroup
 // readCIDOrInode reads the container ID from the user provided ID, cgroups or mountinfo.
 func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath string, cgroupFallback, isHostCgroupNs bool) {
 	if userProvidedID != "" {
-		containerID.Store(userProvidedID)
+		containerID = userProvidedID
 		return
 	}
 
 	if cgroupFallback {
-		if cid := readContainerID(cgroupPath); cid != "" {
-			containerID.Store(cid)
+		containerID = readContainerID(cgroupPath)
+		if containerID != "" {
 			return
 		}
 
-		if cid := readMountinfo(selfMountInfoPath); cid != "" {
-			containerID.Store(cid)
+		containerID = readMountinfo(selfMountInfoPath)
+		if containerID != "" {
 			return
 		}
 
 		// If we're in the host cgroup namespace, the cid should be retrievable in /proc/self/cgroup
 		// In private cgroup namespace, we can retrieve the cgroup controller inode.
-		if isHostCgroupNs {
+		if containerID == "" && isHostCgroupNs {
 			return
 		}
 
-		if cid := getCgroupInode(defaultCgroupMountPath, cgroupPath); cid != "" {
-			containerID.Store(cid)
-		}
+		containerID = getCgroupInode(defaultCgroupMountPath, cgroupPath)
 	}
 }
