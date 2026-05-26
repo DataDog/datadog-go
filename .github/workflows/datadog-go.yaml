@@ -1,8 +1,8 @@
+---
 # We use github actions to test the code on windows, linux amd64, linux arm64, and macOS.
 
 name: datadog-go
-on:
-  pull_request:
+on: [ "pull_request", "push" ]
 
 jobs:
   native:
