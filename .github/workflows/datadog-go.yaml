@@ -1,4 +1,4 @@
-# We use github actions to test the code on windows and linux amd64. Circleci is used for linux arm64.
+# We use github actions to test the code on windows, linux amd64, linux arm64, and macOS.
 
 name: datadog-go
 on:
@@ -25,6 +25,7 @@ jobs:
         runs-on:
           - macos-latest
           - ubuntu-latest
+          - ubuntu-24.04-arm
           - windows-latest
         exclude:
           # These fail on macOS because of this bug https://github.com/golang/go/issues/49138
@@ -34,15 +35,22 @@ jobs:
             go-version: 1.14
           - runs-on: macos-latest
             go-version: 1.15
+          # No official linux/arm64 Go binaries before 1.16
+          - runs-on: ubuntu-24.04-arm
+            go-version: 1.13
+          - runs-on: ubuntu-24.04-arm
+            go-version: 1.14
+          - runs-on: ubuntu-24.04-arm
+            go-version: 1.15
       fail-fast: false
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Setup go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - run: go vet ./statsd/...
       - run: go fmt ./statsd/...
       - run: go test -race -v ./statsd/...
@@ -51,11 +59,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: stable
       - name: Checkout code
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - run: go install golang.org/dl/go1.12@latest
       - run: go1.12 download
       - run: go1.12 version
