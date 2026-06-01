@@ -641,7 +641,8 @@ func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSample
 	client.DistributionSamples("distro2", []float64{5, 6}, tags, 0.5)
 
 	finalTags := ts.getFinalTags(tags...)
-	return append(expectedMetrics, ts.namespace+"distro2:5:6|d|@0.5"+finalTags)
+	containerID := ts.getContainerID()
+	return append(expectedMetrics, ts.namespace+"distro2:5:6|d|@0.5"+finalTags+containerID)
 }
 
 func patchContainerID(id string) { containerID = id }
