@@ -288,6 +288,87 @@ func TestWorkerDistributionAggregatedMultiple(t *testing.T) {
 	assert.Equal(t, "namespace.test_distribution:3.3:4.4|d|#globalTags,globalTags2,tag1,tag2\n", string(data.buffer))
 }
 
+func TestWorkerHistogramAggregatedMultipleWithContainerID(t *testing.T) {
+	patchContainerID("container-id")
+	defer resetContainerID()
+
+	m := metric{
+		metricType: histogramAggregated,
+		namespace:  "namespace.",
+		globalTags: []string{"globalTags", "globalTags2"},
+		name:       "test_histogram",
+		fvalues:    []float64{1.1, 2.2, 3.3, 4.4},
+		stags:      "tag1,tag2",
+		rate:       1,
+	}
+
+	// maxSize=82: single-value packet = 80 bytes (≤82), all-4 packet = 92 bytes (>82 — bug)
+	_, s, w := initWorker(82)
+	err := w.processMetric(m)
+	assert.Nil(t, err)
+	w.flush()
+
+	data := <-s.queue
+	assert.Equal(t, "namespace.test_histogram:1.1|h|#globalTags,globalTags2,tag1,tag2|c:container-id\n", string(data.buffer))
+	data = <-s.queue
+	assert.Equal(t, "namespace.test_histogram:2.2|h|#globalTags,globalTags2,tag1,tag2|c:container-id\n", string(data.buffer))
+	data = <-s.queue
+	assert.Equal(t, "namespace.test_histogram:3.3|h|#globalTags,globalTags2,tag1,tag2|c:container-id\n", string(data.buffer))
+	data = <-s.queue
+	assert.Equal(t, "namespace.test_histogram:4.4|h|#globalTags,globalTags2,tag1,tag2|c:container-id\n", string(data.buffer))
+}
+
+func TestWorkerHistogramAggregatedMultipleWithExternalEnv(t *testing.T) {
+	patchExternalEnv("prod")
+	defer resetExternalEnv()
+
+	m := metric{
+		metricType:      histogramAggregated,
+		namespace:       "namespace.",
+		globalTags:      []string{"globalTags", "globalTags2"},
+		name:            "test_histogram",
+		fvalues:         []float64{1.1, 2.2, 3.3, 4.4},
+		stags:           "tag1,tag2",
+		rate:            1,
+		originDetection: true,
+	}
+
+	// maxSize=83: 3-value packet = 80 bytes (≤83), all-4 packet = 84 bytes (>83 — bug)
+	_, s, w := initWorker(83)
+	err := w.processMetric(m)
+	assert.Nil(t, err)
+	w.flush()
+
+	data := <-s.queue
+	assert.Equal(t, "namespace.test_histogram:1.1:2.2:3.3|h|#globalTags,globalTags2,tag1,tag2|e:prod\n", string(data.buffer))
+	data = <-s.queue
+	assert.Equal(t, "namespace.test_histogram:4.4|h|#globalTags,globalTags2,tag1,tag2|e:prod\n", string(data.buffer))
+}
+
+func TestWorkerHistogramAggregatedMultipleWithCardinality(t *testing.T) {
+	m := metric{
+		metricType:  histogramAggregated,
+		namespace:   "namespace.",
+		globalTags:  []string{"globalTags", "globalTags2"},
+		name:        "test_histogram",
+		fvalues:     []float64{1.1, 2.2, 3.3, 4.4},
+		stags:       "tag1,tag2",
+		rate:        1,
+		cardinality: CardinalityLow,
+	}
+
+	// maxSize=85: 3-value packet = 82 bytes (≤85), all-4 packet = 86 bytes (>85 — bug)
+	_, s, w := initWorker(85)
+	err := w.processMetric(m)
+	assert.Nil(t, err)
+	w.flush()
+
+	data := <-s.queue
+	assert.Equal(t, "namespace.test_histogram:1.1:2.2:3.3|h|#globalTags,globalTags2,tag1,tag2|card:low\n", string(data.buffer))
+	data = <-s.queue
+	assert.Equal(t, "namespace.test_histogram:4.4|h|#globalTags,globalTags2,tag1,tag2|card:low\n", string(data.buffer))
+}
+
 func TestWorkerMultipleDifferentDistributionAggregated(t *testing.T) {
 	// first metric will fit but not the second one
 	_, s, w := initWorker(160)
