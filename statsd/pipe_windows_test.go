@@ -53,7 +53,6 @@ func TestPipeWriter(t *testing.T) {
 
 	client, err := New(pipepath)
 	require.Nil(t, err)
-	defer client.Close()
 
 	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
 	require.Nil(t, err)
@@ -74,7 +73,6 @@ func TestPipeWriterEnv(t *testing.T) {
 
 	client, err := New("")
 	require.Nil(t, err)
-	defer client.Close()
 
 	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
 	require.Nil(t, err)
@@ -92,7 +90,6 @@ func TestPipeWriterReconnect(t *testing.T) {
 
 	client, err := New(pipepath)
 	require.Nil(t, err)
-	defer client.Close()
 
 	// first attempt works, then connection closes
 	err = client.Gauge("metric", 1, []string{"key:val"}, 1)
