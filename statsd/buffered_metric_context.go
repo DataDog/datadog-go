@@ -11,6 +11,7 @@ import (
 // and Timing. Since those 3 metric types behave the same way and are sampled
 // with the same type they're represented by the same class.
 type bufferedMetricContexts struct {
+	_         [4]byte // Aligin to a 4-byte boundary
 	nbContext uint64
 	mutex     sync.RWMutex
 	values    bufferedMetricMap
