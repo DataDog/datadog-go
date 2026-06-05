@@ -645,11 +645,11 @@ func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSample
 }
 
 func patchContainerID(id string) {
-	containerID = id
+	setContainerIDForTest(id)
 }
 
 func resetContainerID() {
-	containerID = ""
+	setContainerIDForTest("")
 	initOnce = sync.Once{}
 }
 
