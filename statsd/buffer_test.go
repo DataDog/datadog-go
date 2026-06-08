@@ -7,6 +7,7 @@ import (
 )
 
 func TestBufferGauge(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -44,6 +45,7 @@ func TestBufferGauge(t *testing.T) {
 }
 
 func TestBufferCount(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeCount("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -81,6 +83,7 @@ func TestBufferCount(t *testing.T) {
 }
 
 func TestBufferHistogram(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeHistogram("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -112,6 +115,7 @@ func TestBufferHistogram(t *testing.T) {
 }
 
 func TestBufferDistribution(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeDistribution("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -142,6 +146,7 @@ func TestBufferDistribution(t *testing.T) {
 	assert.Equal(t, "namespace.metric:1|d|#tag:tag|c:container-id|e:external-env|card:low\n", string(buffer.bytes()))
 }
 func TestBufferSet(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeSet("namespace.", []string{"tag:tag"}, "metric", "value", []string{}, 1, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -173,6 +178,7 @@ func TestBufferSet(t *testing.T) {
 }
 
 func TestBufferTiming(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeTiming("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -204,6 +210,7 @@ func TestBufferTiming(t *testing.T) {
 }
 
 func TestBufferEvent(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeEvent(&Event{Title: "title", Text: "text"}, []string{"tag:tag"}, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -235,6 +242,7 @@ func TestBufferEvent(t *testing.T) {
 }
 
 func TestBufferServiceCheck(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	err := buffer.writeServiceCheck(&ServiceCheck{Name: "name", Status: Ok}, []string{"tag:tag"}, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -266,6 +274,7 @@ func TestBufferServiceCheck(t *testing.T) {
 }
 
 func TestBufferFullSize(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(30, 10)
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -275,6 +284,7 @@ func TestBufferFullSize(t *testing.T) {
 }
 
 func TestBufferSeparator(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 10)
 	err := buffer.writeGauge("namespace.", []string{"tag:tag"}, "metric", 1, []string{}, 1, noTimestamp, true, CardinalityNotSet)
 	assert.Nil(t, err)
@@ -284,6 +294,7 @@ func TestBufferSeparator(t *testing.T) {
 }
 
 func TestBufferAggregated(t *testing.T) {
+	withoutOriginGlobals(t)
 	buffer := newStatsdBuffer(1024, 1)
 	pos, err := buffer.writeAggregated([]byte("h"), "namespace.", []string{"tag:tag"}, "metric", []float64{1}, "", 12, -1, 1, true, CardinalityNotSet)
 	assert.Nil(t, err)

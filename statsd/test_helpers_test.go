@@ -654,11 +654,10 @@ func resetContainerID() {
 }
 
 // withoutOriginGlobals clears the package-level containerID and externalEnv
-// before the test runs and restores them after, so the test is independent
-// of any other test in the package that may have populated them through a
-// real client construction. Tests that build clients and assert wire
-// payloads which do not include container-id / external-env tags should
-// call this at the very top of the test body.
+// so the test is independent of any other test in the package that may have
+// populated them through a real client construction. Tests that build clients
+// and assert wire payloads which do not include container id/external env
+// tags should call this at the very top of the test body.
 func withoutOriginGlobals(t *testing.T) {
 	t.Helper()
 	resetContainerID()
