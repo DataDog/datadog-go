@@ -458,24 +458,6 @@ func TestGetContextAndTags(t *testing.T) {
 	}
 }
 
-func BenchmarkGetContext(b *testing.B) {
-	name := "test.metric"
-	tags := []string{"tag:tag", "foo:bar"}
-	for i := 0; i < b.N; i++ {
-		getContext(name, tags, CardinalityLow)
-	}
-	b.ReportAllocs()
-}
-
-func BenchmarkGetContextNoTags(b *testing.B) {
-	name := "test.metric"
-	var tags []string
-	for i := 0; i < b.N; i++ {
-		getContext(name, tags, CardinalityLow)
-	}
-	b.ReportAllocs()
-}
-
 func TestAggregatorCardinalitySeparation(t *testing.T) {
 	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod", "service:api"}
