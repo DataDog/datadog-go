@@ -14,6 +14,11 @@ type (
 	bufferedMetricMap map[string]*bufferedMetric
 )
 
+const (
+	smallContextBufferSize = 512
+	largeContextBufferSize = 4 * 1024
+)
+
 type countShard struct {
 	sync.RWMutex
 	counts countsMap
@@ -256,16 +261,150 @@ func getContextAndTags(name string, tags []string, cardinality Cardinality) (str
 	return s, s[len(name)+len(nameSeparatorSymbol)+cardStringLen:]
 }
 
-func getShardIndex(shardsCount int, context string) int {
+func getContextLength(name string, tags []string, cardString string) int {
+	if len(tags) == 0 {
+		if cardString == "" {
+			return len(name)
+		}
+		return len(name) + len(nameSeparatorSymbol) + len(cardString)
+	}
+
+	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
+	for _, tag := range tags {
+		n += len(tag)
+	}
+	if cardString != "" {
+		n += len(cardString) + len(cardSeparatorSymbol)
+	}
+	return n
+}
+
+func appendContextAndHash(buf []byte, name string, tags []string, cardString string) ([]byte, uint32) {
+	h := init32
+
+	buf, h = appendString32(buf, h, name)
+	if len(tags) == 0 {
+		if cardString == "" {
+			return buf, h
+		}
+		buf, h = appendString32(buf, h, nameSeparatorSymbol)
+		buf, h = appendString32(buf, h, cardString)
+		return buf, h
+	}
+
+	buf, h = appendString32(buf, h, nameSeparatorSymbol)
+	if cardString != "" {
+		buf, h = appendString32(buf, h, cardString)
+		buf, h = appendString32(buf, h, cardSeparatorSymbol)
+	}
+	buf, h = appendString32(buf, h, tags[0])
+	for _, tag := range tags[1:] {
+		buf, h = appendString32(buf, h, tagSeparatorSymbol)
+		buf, h = appendString32(buf, h, tag)
+	}
+	return buf, h
+}
+
+func appendContext(buf []byte, name string, tags []string, cardString string) ([]byte, int) {
+	tagsStart := -1
+
+	buf = append(buf, name...)
+	if len(tags) == 0 {
+		if cardString == "" {
+			return buf, tagsStart
+		}
+		buf = append(buf, nameSeparatorSymbol...)
+		buf = append(buf, cardString...)
+		return buf, tagsStart
+	}
+
+	buf = append(buf, nameSeparatorSymbol...)
+	if cardString != "" {
+		buf = append(buf, cardString...)
+		buf = append(buf, cardSeparatorSymbol...)
+	}
+	tagsStart = len(buf)
+	buf = append(buf, tags[0]...)
+	for _, tag := range tags[1:] {
+		buf = append(buf, tagSeparatorSymbol...)
+		buf = append(buf, tag...)
+	}
+	return buf, tagsStart
+}
+
+func getShardIndexFromHash(shardsCount int, contextHash uint32) int {
 	if shardsCount <= 1 {
 		return 0
 	}
-	return int(hashString32(context) % uint32(shardsCount))
+	return int(contextHash % uint32(shardsCount))
 }
 
 func (a *aggregator) count(name string, value int64, tags []string, cardinality Cardinality) error {
-	context := getContext(name, tags, cardinality)
-	shard := &a.countShards[getShardIndex(a.shardsCount, context)]
+	if len(tags) == 0 && cardinality == CardinalityNotSet {
+		contextHash := uint32(0)
+		if a.shardsCount > 1 {
+			contextHash = hashString32(name)
+		}
+		return a.countWithStringContext(name, contextHash, name, value)
+	}
+
+	cardString := cardinality.String()
+	contextLen := getContextLength(name, tags, cardString)
+	if contextLen <= smallContextBufferSize {
+		var contextBuffer [smallContextBufferSize]byte
+		return a.countWithContextBuffer(contextBuffer[:0], name, value, tags, cardinality, cardString)
+	}
+	return a.countWithLargeContextBuffer(contextLen, name, value, tags, cardinality, cardString)
+}
+
+// countWithLargeContextBuffer keeps the 4 KiB stack array out of count's frame
+// so the common small-context path is not penalized by the larger frame.
+func (a *aggregator) countWithLargeContextBuffer(contextLen int, name string, value int64, tags []string, cardinality Cardinality, cardString string) error {
+	if contextLen <= largeContextBufferSize {
+		var contextBuffer [largeContextBufferSize]byte
+		return a.countWithContextBuffer(contextBuffer[:0], name, value, tags, cardinality, cardString)
+	}
+	return a.countWithContextBuffer(make([]byte, 0, contextLen), name, value, tags, cardinality, cardString)
+}
+
+func (a *aggregator) countWithContextBuffer(contextBuffer []byte, name string, value int64, tags []string, cardinality Cardinality, cardString string) error {
+	contextHash := uint32(0)
+	if a.shardsCount > 1 {
+		contextBuffer, contextHash = appendContextAndHash(contextBuffer, name, tags, cardString)
+	} else {
+		contextBuffer, _ = appendContext(contextBuffer, name, tags, cardString)
+	}
+	shard := &a.countShards[getShardIndexFromHash(a.shardsCount, contextHash)]
+	shard.RLock()
+	if count, found := shard.counts[string(contextBuffer)]; found {
+		count.sample(value)
+		shard.RUnlock()
+		return nil
+	}
+	shard.RUnlock()
+
+	metric := newCountMetric(name, value, tags, cardinality)
+
+	shard.Lock()
+	// Check if another goroutines hasn't created the value between the RUnlock and 'Lock'
+	if count, found := shard.counts[string(contextBuffer)]; found {
+		count.sample(value)
+		shard.Unlock()
+		return nil
+	}
+
+	if shard.counts == nil {
+		shard.counts = countsMap{}
+	}
+	context := string(contextBuffer)
+	shard.counts[context] = metric
+	shard.Unlock()
+	return nil
+}
+
+// handles the no-tags/no-cardinality fast path where the context key is the metric name itself.
+func (a *aggregator) countWithStringContext(context string, contextHash uint32, name string, value int64) error {
+	shard := &a.countShards[getShardIndexFromHash(a.shardsCount, contextHash)]
 	shard.RLock()
 	if count, found := shard.counts[context]; found {
 		count.sample(value)
@@ -274,7 +413,7 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 	}
 	shard.RUnlock()
 
-	metric := newCountMetric(name, value, tags, cardinality)
+	metric := newCountMetric(name, value, nil, CardinalityNotSet)
 
 	shard.Lock()
 	// Check if another goroutines hasn't created the value between the RUnlock and 'Lock'
@@ -293,8 +432,70 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 }
 
 func (a *aggregator) gauge(name string, value float64, tags []string, cardinality Cardinality) error {
-	context := getContext(name, tags, cardinality)
-	shard := &a.gaugeShards[getShardIndex(a.shardsCount, context)]
+	if len(tags) == 0 && cardinality == CardinalityNotSet {
+		contextHash := uint32(0)
+		if a.shardsCount > 1 {
+			contextHash = hashString32(name)
+		}
+		return a.gaugeWithStringContext(name, contextHash, name, value)
+	}
+
+	cardString := cardinality.String()
+	contextLen := getContextLength(name, tags, cardString)
+	if contextLen <= smallContextBufferSize {
+		var contextBuffer [smallContextBufferSize]byte
+		return a.gaugeWithContextBuffer(contextBuffer[:0], name, value, tags, cardinality, cardString)
+	}
+	return a.gaugeWithLargeContextBuffer(contextLen, name, value, tags, cardinality, cardString)
+}
+
+// gaugeWithLargeContextBuffer keeps the 4 KiB stack array out of gauge's frame
+// so the common small-context path is not penalized by the larger frame.
+func (a *aggregator) gaugeWithLargeContextBuffer(contextLen int, name string, value float64, tags []string, cardinality Cardinality, cardString string) error {
+	if contextLen <= largeContextBufferSize {
+		var contextBuffer [largeContextBufferSize]byte
+		return a.gaugeWithContextBuffer(contextBuffer[:0], name, value, tags, cardinality, cardString)
+	}
+	return a.gaugeWithContextBuffer(make([]byte, 0, contextLen), name, value, tags, cardinality, cardString)
+}
+
+func (a *aggregator) gaugeWithContextBuffer(contextBuffer []byte, name string, value float64, tags []string, cardinality Cardinality, cardString string) error {
+	contextHash := uint32(0)
+	if a.shardsCount > 1 {
+		contextBuffer, contextHash = appendContextAndHash(contextBuffer, name, tags, cardString)
+	} else {
+		contextBuffer, _ = appendContext(contextBuffer, name, tags, cardString)
+	}
+	shard := &a.gaugeShards[getShardIndexFromHash(a.shardsCount, contextHash)]
+	shard.RLock()
+	if gauge, found := shard.gauges[string(contextBuffer)]; found {
+		gauge.sample(value)
+		shard.RUnlock()
+		return nil
+	}
+	shard.RUnlock()
+
+	gauge := newGaugeMetric(name, value, tags, cardinality)
+
+	shard.Lock()
+	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
+	if gauge, found := shard.gauges[string(contextBuffer)]; found {
+		gauge.sample(value)
+		shard.Unlock()
+		return nil
+	}
+	if shard.gauges == nil {
+		shard.gauges = gaugesMap{}
+	}
+	context := string(contextBuffer)
+	shard.gauges[context] = gauge
+	shard.Unlock()
+	return nil
+}
+
+// handles the no-tags/no-cardinality fast path where the context key is the metric name itself.
+func (a *aggregator) gaugeWithStringContext(context string, contextHash uint32, name string, value float64) error {
+	shard := &a.gaugeShards[getShardIndexFromHash(a.shardsCount, contextHash)]
 	shard.RLock()
 	if gauge, found := shard.gauges[context]; found {
 		gauge.sample(value)
@@ -303,7 +504,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 	}
 	shard.RUnlock()
 
-	gauge := newGaugeMetric(name, value, tags, cardinality)
+	gauge := newGaugeMetric(name, value, nil, CardinalityNotSet)
 
 	shard.Lock()
 	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
@@ -321,8 +522,70 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 }
 
 func (a *aggregator) set(name string, value string, tags []string, cardinality Cardinality) error {
-	context := getContext(name, tags, cardinality)
-	shard := &a.setShards[getShardIndex(a.shardsCount, context)]
+	if len(tags) == 0 && cardinality == CardinalityNotSet {
+		contextHash := uint32(0)
+		if a.shardsCount > 1 {
+			contextHash = hashString32(name)
+		}
+		return a.setWithStringContext(name, contextHash, name, value)
+	}
+
+	cardString := cardinality.String()
+	contextLen := getContextLength(name, tags, cardString)
+	if contextLen <= smallContextBufferSize {
+		var contextBuffer [smallContextBufferSize]byte
+		return a.setWithContextBuffer(contextBuffer[:0], name, value, tags, cardinality, cardString)
+	}
+	return a.setWithLargeContextBuffer(contextLen, name, value, tags, cardinality, cardString)
+}
+
+// setWithLargeContextBuffer keeps the 4 KiB stack array out of set's frame so
+// the common small-context path is not penalized by the larger frame.
+func (a *aggregator) setWithLargeContextBuffer(contextLen int, name string, value string, tags []string, cardinality Cardinality, cardString string) error {
+	if contextLen <= largeContextBufferSize {
+		var contextBuffer [largeContextBufferSize]byte
+		return a.setWithContextBuffer(contextBuffer[:0], name, value, tags, cardinality, cardString)
+	}
+	return a.setWithContextBuffer(make([]byte, 0, contextLen), name, value, tags, cardinality, cardString)
+}
+
+func (a *aggregator) setWithContextBuffer(contextBuffer []byte, name string, value string, tags []string, cardinality Cardinality, cardString string) error {
+	contextHash := uint32(0)
+	if a.shardsCount > 1 {
+		contextBuffer, contextHash = appendContextAndHash(contextBuffer, name, tags, cardString)
+	} else {
+		contextBuffer, _ = appendContext(contextBuffer, name, tags, cardString)
+	}
+	shard := &a.setShards[getShardIndexFromHash(a.shardsCount, contextHash)]
+	shard.RLock()
+	if set, found := shard.sets[string(contextBuffer)]; found {
+		set.sample(value)
+		shard.RUnlock()
+		return nil
+	}
+	shard.RUnlock()
+
+	metric := newSetMetric(name, value, tags, cardinality)
+
+	shard.Lock()
+	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
+	if set, found := shard.sets[string(contextBuffer)]; found {
+		set.sample(value)
+		shard.Unlock()
+		return nil
+	}
+	if shard.sets == nil {
+		shard.sets = setsMap{}
+	}
+	context := string(contextBuffer)
+	shard.sets[context] = metric
+	shard.Unlock()
+	return nil
+}
+
+// handles the no-tags/no-cardinality fast path where the context key is the metric name itself.
+func (a *aggregator) setWithStringContext(context string, contextHash uint32, name string, value string) error {
+	shard := &a.setShards[getShardIndexFromHash(a.shardsCount, contextHash)]
 	shard.RLock()
 	if set, found := shard.sets[context]; found {
 		set.sample(value)
@@ -331,7 +594,7 @@ func (a *aggregator) set(name string, value string, tags []string, cardinality C
 	}
 	shard.RUnlock()
 
-	metric := newSetMetric(name, value, tags, cardinality)
+	metric := newSetMetric(name, value, nil, CardinalityNotSet)
 
 	shard.Lock()
 	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
