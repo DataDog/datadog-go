@@ -35,9 +35,9 @@ type aggregator struct {
 	nbContextSet   uint64
 
 	shardsCount int
-	countShards []*countShard
-	gaugeShards []*gaugeShard
-	setShards   []*setShard
+	countShards []countShard
+	gaugeShards []gaugeShard
+	setShards   []setShard
 
 	histograms    bufferedMetricContexts
 	distributions bufferedMetricContexts
@@ -60,19 +60,14 @@ func newAggregator(c *ClientEx, maxSamplesPerContext int64, shardsCount int) *ag
 	agg := &aggregator{
 		client:          c,
 		shardsCount:     shardsCount,
-		countShards:     make([]*countShard, shardsCount),
-		gaugeShards:     make([]*gaugeShard, shardsCount),
-		setShards:       make([]*setShard, shardsCount),
+		countShards:     make([]countShard, shardsCount),
+		gaugeShards:     make([]gaugeShard, shardsCount),
+		setShards:       make([]setShard, shardsCount),
 		histograms:      newBufferedContexts(newHistogramMetric, maxSamplesPerContext),
 		distributions:   newBufferedContexts(newDistributionMetric, maxSamplesPerContext),
 		timings:         newBufferedContexts(newTimingMetric, maxSamplesPerContext),
 		closed:          make(chan struct{}),
 		stopChannelMode: make(chan struct{}),
-	}
-	for i := 0; i < shardsCount; i++ {
-		agg.countShards[i] = &countShard{counts: countsMap{}}
-		agg.gaugeShards[i] = &gaugeShard{gauges: gaugesMap{}}
-		agg.setShards[i] = &setShard{sets: setsMap{}}
 	}
 	return agg
 }
@@ -155,10 +150,15 @@ func (a *aggregator) flushMetrics() []metric {
 	// We reset the values to avoid sending 'zero' values for metrics not
 	// sampled during this flush interval
 
-	for _, shard := range a.setShards {
+	for i := range a.setShards {
+		shard := &a.setShards[i]
 		shard.Lock()
 		sets := shard.sets
-		shard.sets = setsMap{}
+		if len(sets) == 0 {
+			shard.Unlock()
+			continue
+		}
+		shard.sets = nil
 		shard.Unlock()
 		for _, s := range sets {
 			metrics = append(metrics, s.flushUnsafe()...)
@@ -166,10 +166,15 @@ func (a *aggregator) flushMetrics() []metric {
 		atomic.AddUint64(&a.nbContextSet, uint64(len(sets)))
 	}
 
-	for _, shard := range a.gaugeShards {
+	for i := range a.gaugeShards {
+		shard := &a.gaugeShards[i]
 		shard.Lock()
 		gauges := shard.gauges
-		shard.gauges = gaugesMap{}
+		if len(gauges) == 0 {
+			shard.Unlock()
+			continue
+		}
+		shard.gauges = nil
 		shard.Unlock()
 		for _, g := range gauges {
 			metrics = append(metrics, g.flushUnsafe())
@@ -177,10 +182,15 @@ func (a *aggregator) flushMetrics() []metric {
 		atomic.AddUint64(&a.nbContextGauge, uint64(len(gauges)))
 	}
 
-	for _, shard := range a.countShards {
+	for i := range a.countShards {
+		shard := &a.countShards[i]
 		shard.Lock()
 		counts := shard.counts
-		shard.counts = countsMap{}
+		if len(counts) == 0 {
+			shard.Unlock()
+			continue
+		}
+		shard.counts = nil
 		shard.Unlock()
 		for _, c := range counts {
 			metrics = append(metrics, c.flushUnsafe())
@@ -255,7 +265,7 @@ func getShardIndex(shardsCount int, context string) int {
 
 func (a *aggregator) count(name string, value int64, tags []string, cardinality Cardinality) error {
 	context := getContext(name, tags, cardinality)
-	shard := a.countShards[getShardIndex(a.shardsCount, context)]
+	shard := &a.countShards[getShardIndex(a.shardsCount, context)]
 	shard.RLock()
 	if count, found := shard.counts[context]; found {
 		count.sample(value)
@@ -274,6 +284,9 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 		return nil
 	}
 
+	if shard.counts == nil {
+		shard.counts = countsMap{}
+	}
 	shard.counts[context] = metric
 	shard.Unlock()
 	return nil
@@ -281,7 +294,7 @@ func (a *aggregator) count(name string, value int64, tags []string, cardinality 
 
 func (a *aggregator) gauge(name string, value float64, tags []string, cardinality Cardinality) error {
 	context := getContext(name, tags, cardinality)
-	shard := a.gaugeShards[getShardIndex(a.shardsCount, context)]
+	shard := &a.gaugeShards[getShardIndex(a.shardsCount, context)]
 	shard.RLock()
 	if gauge, found := shard.gauges[context]; found {
 		gauge.sample(value)
@@ -299,6 +312,9 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 		shard.Unlock()
 		return nil
 	}
+	if shard.gauges == nil {
+		shard.gauges = gaugesMap{}
+	}
 	shard.gauges[context] = gauge
 	shard.Unlock()
 	return nil
@@ -306,7 +322,7 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 
 func (a *aggregator) set(name string, value string, tags []string, cardinality Cardinality) error {
 	context := getContext(name, tags, cardinality)
-	shard := a.setShards[getShardIndex(a.shardsCount, context)]
+	shard := &a.setShards[getShardIndex(a.shardsCount, context)]
 	shard.RLock()
 	if set, found := shard.sets[context]; found {
 		set.sample(value)
@@ -323,6 +339,9 @@ func (a *aggregator) set(name string, value string, tags []string, cardinality C
 		set.sample(value)
 		shard.Unlock()
 		return nil
+	}
+	if shard.sets == nil {
+		shard.sets = setsMap{}
 	}
 	shard.sets[context] = metric
 	shard.Unlock()

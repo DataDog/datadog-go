@@ -13,7 +13,8 @@ import (
 
 func getAllCounts(a *aggregator) countsMap {
 	counts := countsMap{}
-	for _, shard := range a.countShards {
+	for i := range a.countShards {
+		shard := &a.countShards[i]
 		shard.RLock()
 		for k, v := range shard.counts {
 			counts[k] = v
@@ -25,7 +26,8 @@ func getAllCounts(a *aggregator) countsMap {
 
 func getAllGauges(a *aggregator) gaugesMap {
 	gauges := gaugesMap{}
-	for _, shard := range a.gaugeShards {
+	for i := range a.gaugeShards {
+		shard := &a.gaugeShards[i]
 		shard.RLock()
 		for k, v := range shard.gauges {
 			gauges[k] = v
@@ -37,7 +39,8 @@ func getAllGauges(a *aggregator) gaugesMap {
 
 func getAllSets(a *aggregator) setsMap {
 	sets := setsMap{}
-	for _, shard := range a.setShards {
+	for i := range a.setShards {
+		shard := &a.setShards[i]
 		shard.RLock()
 		for k, v := range shard.sets {
 			sets[k] = v
