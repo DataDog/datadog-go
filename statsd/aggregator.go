@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 type (
@@ -15,23 +16,49 @@ type (
 )
 
 const (
+	// cacheLineSize is the size shards are padded to so that adjacent shards never
+	// share a cache line. Apple silicon and some other arm64 cores use 128-byte
+	// lines, so we pad to 128 to cover every platform we run on. Without this,
+	// several shards pack into one line and an RLock on one shard (which writes the
+	// mutex's reader count) bounces the neighbouring shards' mutexes between cores.
+	cacheLineSize          = 128
 	smallContextBufferSize = 512
 	largeContextBufferSize = 4 * 1024
 )
 
-type countShard struct {
+// The *Inner structs hold the actual shard state; the outer shard types embed
+// them and append trailing padding so each shard fills a whole cache line (see
+// cacheLineSize). Sizing the padding off the inner struct keeps the math
+// correct automatically when fields are added or removed.
+
+type countShardInner struct {
 	sync.RWMutex
 	counts countsMap
 }
 
-type gaugeShard struct {
+type countShard struct {
+	countShardInner
+	_ [cacheLineSize - unsafe.Sizeof(countShardInner{})%cacheLineSize]byte
+}
+
+type gaugeShardInner struct {
 	sync.RWMutex
 	gauges gaugesMap
 }
 
-type setShard struct {
+type gaugeShard struct {
+	gaugeShardInner
+	_ [cacheLineSize - unsafe.Sizeof(gaugeShardInner{})%cacheLineSize]byte
+}
+
+type setShardInner struct {
 	sync.RWMutex
 	sets setsMap
+}
+
+type setShard struct {
+	setShardInner
+	_ [cacheLineSize - unsafe.Sizeof(setShardInner{})%cacheLineSize]byte
 }
 
 type aggregator struct {
