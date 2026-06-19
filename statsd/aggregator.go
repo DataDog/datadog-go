@@ -1,7 +1,6 @@
 package statsd
 
 import (
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -235,57 +234,6 @@ func (a *aggregator) flushMetrics() []metric {
 	metrics = a.timings.flush(metrics)
 
 	return metrics
-}
-
-// getContext returns the context for a metric name, tags, and cardinality.
-//
-// The context is the metric name, tags, and cardinality separated by separator symbols.
-// It is not intended to be used as a metric name but as a unique key to aggregate
-func getContext(name string, tags []string, cardinality Cardinality) string {
-	c, _ := getContextAndTags(name, tags, cardinality)
-	return c
-}
-
-// getContextAndTags returns the context and tags for a metric name, tags, and cardinality.
-//
-// See getContext for usage for context
-// The tags are the tags separated by a separator symbol and can be re-used to pass down to the writer
-func getContextAndTags(name string, tags []string, cardinality Cardinality) (string, string) {
-	cardString := cardinality.String()
-	if len(tags) == 0 {
-		if cardString == "" {
-			return name, ""
-		}
-		return name + nameSeparatorSymbol + cardString, ""
-	}
-
-	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
-	for _, s := range tags {
-		n += len(s)
-	}
-	var cardStringLen = 0
-	if cardString != "" {
-		n += len(cardString) + len(cardSeparatorSymbol)
-		cardStringLen = len(cardString) + len(cardSeparatorSymbol)
-	}
-
-	var sb strings.Builder
-	sb.Grow(n)
-	sb.WriteString(name)
-	sb.WriteString(nameSeparatorSymbol)
-	if cardString != "" {
-		sb.WriteString(cardString)
-		sb.WriteString(cardSeparatorSymbol)
-	}
-	sb.WriteString(tags[0])
-	for _, s := range tags[1:] {
-		sb.WriteString(tagSeparatorSymbol)
-		sb.WriteString(s)
-	}
-
-	s := sb.String()
-
-	return s, s[len(name)+len(nameSeparatorSymbol)+cardStringLen:]
 }
 
 func getContextLength(name string, tags []string, cardString string) int {
