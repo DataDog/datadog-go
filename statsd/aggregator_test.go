@@ -1,11 +1,11 @@
 package statsd
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -422,45 +422,6 @@ func TestAggregatorTagsCopy(t *testing.T) {
 	}
 }
 
-func TestGetContextAndTags(t *testing.T) {
-	tests := []struct {
-		testName    string
-		name        string
-		tags        []string
-		wantContext string
-		wantTags    string
-	}{
-		{
-			testName:    "no tags",
-			name:        "name",
-			tags:        nil,
-			wantContext: "name:low",
-			wantTags:    "",
-		},
-		{
-			testName:    "one tag",
-			name:        "name",
-			tags:        []string{"tag1"},
-			wantContext: "name:low|tag1",
-			wantTags:    "tag1",
-		},
-		{
-			testName:    "two tags",
-			name:        "name",
-			tags:        []string{"tag1", "tag2"},
-			wantContext: "name:low|tag1,tag2",
-			wantTags:    "tag1,tag2",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.testName, func(t *testing.T) {
-			gotContext, gotTags := getContextAndTags(test.name, test.tags, CardinalityLow)
-			assert.Equal(t, test.wantContext, gotContext)
-			assert.Equal(t, test.wantTags, gotTags)
-		})
-	}
-}
-
 func TestAggregatorCardinalitySeparation(t *testing.T) {
 	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod", "service:api"}
@@ -529,6 +490,39 @@ func TestAggregatorCardinalitySeparation(t *testing.T) {
 
 	assert.Len(t, highSetValues, 1)
 	assert.Contains(t, highSetValues, "value2")
+}
+
+func TestAggregatorSampleNoTagsWithCardinality(t *testing.T) {
+	a := newAggregator(nil, 0, 8)
+
+	for i := 0; i < 2; i++ {
+		a.gauge("gaugeTest", 21, nil, CardinalityLow)
+		gauges := getAllGauges(a)
+		assert.Len(t, gauges, 1)
+		assert.Contains(t, gauges, "gaugeTest:low")
+
+		a.count("countTest", 21, nil, CardinalityLow)
+		counts := getAllCounts(a)
+		assert.Len(t, counts, 1)
+		assert.Contains(t, counts, "countTest:low")
+
+		a.set("setTest", "value1", nil, CardinalityLow)
+		sets := getAllSets(a)
+		assert.Len(t, sets, 1)
+		assert.Contains(t, sets, "setTest:low")
+
+		a.histogram("histogramTest", 21, nil, 1, CardinalityLow)
+		assert.Len(t, a.histograms.values, 1)
+		assert.Contains(t, a.histograms.values, "histogramTest:low")
+
+		a.distribution("distributionTest", 21, nil, 1, CardinalityLow)
+		assert.Len(t, a.distributions.values, 1)
+		assert.Contains(t, a.distributions.values, "distributionTest:low")
+
+		a.timing("timingTest", 21, nil, 1, CardinalityLow)
+		assert.Len(t, a.timings.values, 1)
+		assert.Contains(t, a.timings.values, "timingTest:low")
+	}
 }
 
 func TestAggregatorCardinalityPreservation(t *testing.T) {
@@ -660,57 +654,267 @@ func TestAggregatorCardinalityEmptyVsNonEmpty(t *testing.T) {
 	assert.Equal(t, float64(20), lowCard.fvalue)
 }
 
-func TestAggregatorCardinalityContextGeneration(t *testing.T) {
-	// Test that getContextAndTags generates correct contexts for different cardinalities
-	tests := []struct {
-		name        string
-		tags        []string
-		cardinality Cardinality
-		wantContext string
-		wantTags    string
+// Verifies that count, gauge, and set correctly forward tags through all three
+// context-buffer allocation paths: the small stack buffer (≤512 B), the large
+// stack buffer (≤4 KiB), and heap allocation (>4 KiB)
+func TestAggregatorContextBufferTiers(t *testing.T) {
+	// Each tag is sized so that len("m") + len(":") + len(tag) lands in the
+	// target tier: small ≤512, large 513–4096, heap ≥4097.
+	smallTag := strings.Repeat("x", 10)                       // total 12
+	largeTag := strings.Repeat("x", smallContextBufferSize+1) // total 514
+	heapTag := strings.Repeat("x", largeContextBufferSize+1)  // total 4098
+
+	tiers := []struct {
+		name string
+		tags []string
 	}{
-		{
-			name:        "test.metric",
-			tags:        []string{"env:prod"},
-			cardinality: CardinalityNotSet,
-			wantContext: "test.metric:env:prod",
-			wantTags:    "env:prod",
-		},
-		{
-			name:        "test.metric",
-			tags:        []string{"env:prod"},
-			cardinality: CardinalityLow,
-			wantContext: "test.metric:low|env:prod",
-			wantTags:    "env:prod",
-		},
-		{
-			name:        "test.metric",
-			tags:        []string{"env:prod"},
-			cardinality: CardinalityHigh,
-			wantContext: "test.metric:high|env:prod",
-			wantTags:    "env:prod",
-		},
-		{
-			name:        "test.metric",
-			tags:        []string{"env:prod", "service:api"},
-			cardinality: CardinalityOrchestrator,
-			wantContext: "test.metric:orchestrator|env:prod,service:api",
-			wantTags:    "env:prod,service:api",
-		},
-		{
-			name:        "test.metric",
-			tags:        []string{},
-			cardinality: CardinalityLow,
-			wantContext: "test.metric:low",
-			wantTags:    "",
-		},
+		{"small", []string{smallTag}},
+		{"large", []string{largeTag}},
+		{"heap", []string{heapTag}},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s_%s", test.name, test.cardinality.String()), func(t *testing.T) {
-			gotContext, gotTags := getContextAndTags(test.name, test.tags, test.cardinality)
-			assert.Equal(t, test.wantContext, gotContext)
-			assert.Equal(t, test.wantTags, gotTags)
+	for _, tier := range tiers {
+		tier := tier
+		t.Run("count/"+tier.name, func(t *testing.T) {
+			a := newAggregator(nil, 0, 8)
+			require.NoError(t, a.count("m", 3, tier.tags, CardinalityNotSet))
+			require.NoError(t, a.count("m", 7, tier.tags, CardinalityNotSet))
+			metrics := a.flushMetrics()
+			require.Len(t, metrics, 1)
+			assert.Equal(t, "m", metrics[0].name)
+			assert.Equal(t, int64(10), metrics[0].ivalue)
+			assert.Equal(t, tier.tags, metrics[0].tags)
+		})
+		t.Run("gauge/"+tier.name, func(t *testing.T) {
+			a := newAggregator(nil, 0, 8)
+			require.NoError(t, a.gauge("m", 1.0, tier.tags, CardinalityNotSet))
+			require.NoError(t, a.gauge("m", 2.0, tier.tags, CardinalityNotSet))
+			metrics := a.flushMetrics()
+			require.Len(t, metrics, 1)
+			assert.Equal(t, "m", metrics[0].name)
+			assert.Equal(t, 2.0, metrics[0].fvalue)
+			assert.Equal(t, tier.tags, metrics[0].tags)
+		})
+		t.Run("set/"+tier.name, func(t *testing.T) {
+			a := newAggregator(nil, 0, 8)
+			require.NoError(t, a.set("m", "a", tier.tags, CardinalityNotSet))
+			require.NoError(t, a.set("m", "b", tier.tags, CardinalityNotSet))
+			metrics := a.flushMetrics()
+			require.Len(t, metrics, 2)
+			for _, m := range metrics {
+				assert.Equal(t, "m", m.name)
+				assert.Equal(t, tier.tags, m.tags)
+			}
 		})
 	}
 }
+
+// Verifies the StringContext fast path taken when a metric has no tags and
+// CardinalityNotSet. The context key must be the bare metric name, aggregation
+// semantics must match the regular path, and flushed metrics must carry nil
+// tags and CardinalityNotSet.
+func TestAggregatorNoTagsFastPath(t *testing.T) {
+	a := newAggregator(nil, 0, 8)
+
+	// Count: values accumulate
+	require.NoError(t, a.count("my.count", 3, nil, CardinalityNotSet))
+	require.NoError(t, a.count("my.count", 7, nil, CardinalityNotSet))
+	counts := getAllCounts(a)
+	assert.Len(t, counts, 1)
+	assert.Contains(t, counts, "my.count")
+
+	// Gauge: last value wins
+	require.NoError(t, a.gauge("my.gauge", 1.0, nil, CardinalityNotSet))
+	require.NoError(t, a.gauge("my.gauge", 2.0, nil, CardinalityNotSet))
+	gauges := getAllGauges(a)
+	assert.Len(t, gauges, 1)
+	assert.Contains(t, gauges, "my.gauge")
+
+	// Set: unique values tracked
+	require.NoError(t, a.set("my.set", "a", nil, CardinalityNotSet))
+	require.NoError(t, a.set("my.set", "a", nil, CardinalityNotSet))
+	require.NoError(t, a.set("my.set", "b", nil, CardinalityNotSet))
+	sets := getAllSets(a)
+	assert.Len(t, sets, 1)
+	assert.Contains(t, sets, "my.set")
+
+	metrics := a.flushMetrics()
+
+	var gotCount, gotGauge, gotSet *metric
+	for i := range metrics {
+		m := &metrics[i]
+		switch m.name {
+		case "my.count":
+			gotCount = m
+		case "my.gauge":
+			gotGauge = m
+		case "my.set":
+			gotSet = m
+		}
+	}
+
+	require.NotNil(t, gotCount)
+	assert.Equal(t, int64(10), gotCount.ivalue)
+	assert.Nil(t, gotCount.tags)
+	assert.Equal(t, CardinalityNotSet, gotCount.cardinality)
+
+	require.NotNil(t, gotGauge)
+	assert.Equal(t, float64(2.0), gotGauge.fvalue)
+	assert.Nil(t, gotGauge.tags)
+	assert.Equal(t, CardinalityNotSet, gotGauge.cardinality)
+
+	require.NotNil(t, gotSet)
+	assert.Nil(t, gotSet.tags)
+	assert.Equal(t, CardinalityNotSet, gotSet.cardinality)
+}
+
+// Checks that the no-tags fast path and the regular (tagged) path produce
+// separate context keys and do not collide.
+func TestAggregatorNoTagsFastPathIsolation(t *testing.T) {
+	a := newAggregator(nil, 0, 8)
+	tags := []string{"env:prod"}
+
+	require.NoError(t, a.count("my.count", 1, nil, CardinalityNotSet))
+	require.NoError(t, a.count("my.count", 2, tags, CardinalityNotSet))
+	require.NoError(t, a.count("my.count", 4, tags, CardinalityLow))
+
+	counts := getAllCounts(a)
+	assert.Len(t, counts, 3)
+	assert.Contains(t, counts, "my.count")
+	assert.Contains(t, counts, "my.count:env:prod")
+	assert.Contains(t, counts, "my.count:low|env:prod")
+}
+
+// Verifies the double-check locking in the StringContext fast path under
+// concurrent writers.
+func TestAggregatorNoTagsFastPathConcurrency(t *testing.T) {
+	a := newAggregator(nil, 0, 8)
+
+	const goroutines = 20
+	const samplesEach = 100
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < samplesEach; j++ {
+				a.count("concurrent.count", 1, nil, CardinalityNotSet)
+				a.gauge("concurrent.gauge", float64(j), nil, CardinalityNotSet)
+				a.set("concurrent.set", "v", nil, CardinalityNotSet)
+			}
+		}()
+	}
+	wg.Wait()
+
+	counts := getAllCounts(a)
+	assert.Len(t, counts, 1)
+	assert.Contains(t, counts, "concurrent.count")
+
+	gauges := getAllGauges(a)
+	assert.Len(t, gauges, 1)
+	assert.Contains(t, gauges, "concurrent.gauge")
+
+	sets := getAllSets(a)
+	assert.Len(t, sets, 1)
+	assert.Contains(t, sets, "concurrent.set")
+
+	metrics := a.flushMetrics()
+	var gotCount *metric
+	for i := range metrics {
+		if metrics[i].name == "concurrent.count" {
+			gotCount = &metrics[i]
+		}
+	}
+	require.NotNil(t, gotCount)
+	assert.Equal(t, int64(goroutines*samplesEach), gotCount.ivalue)
+}
+
+func TestContextHelpersNoTagsNoCardinality(t *testing.T) {
+	name := "test.metric"
+
+	assert.Equal(t, len(name), getContextLength(name, nil, ""))
+
+	withHash, hash := appendContextAndHash(nil, name, nil, "")
+	assert.Equal(t, []byte(name), withHash)
+	assert.Equal(t, hashString32(name), hash)
+
+	context, tagsStart := appendContext(nil, name, nil, "")
+	assert.Equal(t, []byte(name), context)
+	assert.Equal(t, -1, tagsStart)
+}
+
+func TestAggregatorContextBufferSecondCheckLocking(t *testing.T) {
+	const goroutines = 128
+
+	tags := []string{"env:prod"}
+
+	runConcurrentMetricInsertions := func(t *testing.T, lockShard func(a *aggregator), unlockShard func(a *aggregator), sample func(a *aggregator, i int), assertAfter func(t *testing.T, a *aggregator)) {
+		t.Helper()
+		a := newAggregator(nil, 0, 1)
+		lockShard(a)
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			i := i
+			go func() {
+				defer wg.Done()
+				<-start
+				sample(a, i)
+			}()
+		}
+		close(start)
+		time.Sleep(20 * time.Millisecond)
+		unlockShard(a)
+		wg.Wait()
+		assertAfter(t, a)
+	}
+
+	t.Run("count", func(t *testing.T) {
+		runConcurrentMetricInsertions(t, func(a *aggregator) {
+			a.countShards[0].RLock()
+		}, func(a *aggregator) {
+			a.countShards[0].RUnlock()
+		}, func(a *aggregator, _ int) {
+			require.NoError(t, a.count("race.count", 1, tags, CardinalityLow))
+		}, func(t *testing.T, a *aggregator) {
+			counts := getAllCounts(a)
+			require.Len(t, counts, 1)
+			m, found := counts["race.count:low|env:prod"]
+			require.True(t, found)
+			assert.Equal(t, int64(goroutines), m.value)
+		})
+	})
+
+	t.Run("gauge", func(t *testing.T) {
+		runConcurrentMetricInsertions(t, func(a *aggregator) {
+			a.gaugeShards[0].RLock()
+		}, func(a *aggregator) {
+			a.gaugeShards[0].RUnlock()
+		}, func(a *aggregator, i int) {
+			require.NoError(t, a.gauge("race.gauge", float64(i), tags, CardinalityLow))
+		}, func(t *testing.T, a *aggregator) {
+			gauges := getAllGauges(a)
+			require.Len(t, gauges, 1)
+			_, found := gauges["race.gauge:low|env:prod"]
+			require.True(t, found)
+		})
+	})
+
+	t.Run("set", func(t *testing.T) {
+		runConcurrentMetricInsertions(t, func(a *aggregator) {
+			a.setShards[0].RLock()
+		}, func(a *aggregator) {
+			a.setShards[0].RUnlock()
+		}, func(a *aggregator, i int) {
+			require.NoError(t, a.set("race.set", string(rune('a'+(i%26))), tags, CardinalityLow))
+		}, func(t *testing.T, a *aggregator) {
+			sets := getAllSets(a)
+			require.Len(t, sets, 1)
+			_, found := sets["race.set:low|env:prod"]
+			require.True(t, found)
+		})
+	})
+}
+

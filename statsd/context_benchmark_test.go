@@ -6,11 +6,7 @@ import (
 	"testing"
 )
 
-var (
-	benchContextString string
-	benchStringTags    string
-	benchContextErr    error
-)
+var benchContextErr error
 
 func benchGenerateTags(n int) []string {
 	tags := make([]string, n)
@@ -120,24 +116,6 @@ func benchmarkContextCases() []struct {
 	}
 }
 
-func BenchmarkGetContextAndTagsShapes(b *testing.B) {
-	for _, tc := range benchmarkContextCases() {
-		tc := tc
-		b.Run(tc.name, func(b *testing.B) {
-			var context string
-			var stringTags string
-
-			b.ReportAllocs()
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				context, stringTags = getContextAndTags(tc.metricName, tc.tags, tc.cardinality)
-			}
-			benchContextString = context
-			benchStringTags = stringTags
-		})
-	}
-}
-
 func BenchmarkAggregatorSampleExistingByMetricType(b *testing.B) {
 	const (
 		shards     = 256
@@ -238,24 +216,6 @@ func BenchmarkBufferedMetricContextsSampleExistingByShape(b *testing.B) {
 			if benchContextErr != nil {
 				b.Fatal(benchContextErr)
 			}
-		})
-	}
-}
-
-// Isolates the cost of building the context key as the number of tags grows.
-// Measures the appendContext/buffer-tier cost on its own.
-func BenchmarkGetContextByTagCount(b *testing.B) {
-	for _, tagCount := range benchmarkTagCounts {
-		tags := benchGenerateSizedTags(tagCount, benchTagByteLen)
-		b.Run(fmt.Sprintf("Tags_%d", tagCount), func(b *testing.B) {
-			var context string
-
-			b.ReportAllocs()
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				context = getContext("test.metric", tags, CardinalityLow)
-			}
-			benchContextString = context
 		})
 	}
 }
