@@ -448,9 +448,9 @@ func TestReadCIDOrInode(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			prevContainerID := containerID
+			prevContainerID := getContainerID()
 			defer func() {
-				containerID = prevContainerID
+				patchContainerID(prevContainerID)
 			}()
 
 			sysFsCgroupPath := path.Join(os.TempDir(), "sysfscgroup")
@@ -483,7 +483,7 @@ func TestReadCIDOrInode(t *testing.T) {
 			require.NoError(t, err)
 
 			readCIDOrInode("", procSelfCgroup.Name(), mountInfo.Name(), sysFsCgroupPath, true, tc.isHostCgroupNs)
-			require.Equal(t, expectedResult, containerID)
+			require.Equal(t, expectedResult, getContainerID())
 		})
 	}
 }

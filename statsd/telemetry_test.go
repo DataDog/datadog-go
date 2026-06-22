@@ -18,6 +18,11 @@ import (
 //
 
 func TestTelemetryCustomAddr(t *testing.T) {
+	// The expected strings below were written for an empty container ID;
+	// disable origin detection so the test is hermetic and does not depend
+	// on /proc/self/cgroup or on test ordering populating the package
+	// global.
+	withoutOriginGlobals(t)
 	telAddr := "localhost:8764"
 	ts, client := newClientAndTestServer(t,
 		"udp",
@@ -25,6 +30,7 @@ func TestTelemetryCustomAddr(t *testing.T) {
 		nil,
 		WithTelemetryAddr(telAddr),
 		WithNamespace("test_namespace"),
+		WithoutOriginDetection(),
 	)
 
 	udpAddr, err := net.ResolveUDPAddr("udp", telAddr)

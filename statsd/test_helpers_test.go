@@ -644,11 +644,24 @@ func (ts *testServer) sendExtendedBasicAggregationMetricsWithPreAggregatedSample
 	return append(expectedMetrics, ts.namespace+"distro2:5:6|d|@0.5"+finalTags)
 }
 
-func patchContainerID(id string) { containerID = id }
+func patchContainerID(id string) {
+	setContainerIDForTest(id)
+}
 
 func resetContainerID() {
-	containerID = ""
+	setContainerIDForTest("")
 	initOnce = sync.Once{}
+}
+
+// withoutOriginGlobals clears the package-level containerID and externalEnv
+// so the test is independent of any other test in the package that may have
+// populated them through a real client construction. Tests that build clients
+// and assert wire payloads which do not include container id/external env
+// tags should call this at the very top of the test body.
+func withoutOriginGlobals(t *testing.T) {
+	t.Helper()
+	resetContainerID()
+	resetExternalEnv()
 }
 
 func patchExternalEnv(env string) {

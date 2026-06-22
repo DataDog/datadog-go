@@ -18,6 +18,7 @@ func encodeSC(sc *ServiceCheck) (string, error) {
 }
 
 func TestServiceChecks(t *testing.T) {
+	withoutOriginGlobals(t)
 	matrix := []struct {
 		serviceCheck   *ServiceCheck
 		expectedEncode string
@@ -78,6 +79,7 @@ func TestUnknownStatus(t *testing.T) {
 }
 
 func TestNewServiceCheckWithTags(t *testing.T) {
+	withoutOriginGlobals(t)
 	sc := NewServiceCheck("hello", Warn)
 	sc.Tags = []string{"tag1", "tag2"}
 	s, err := encodeSC(sc)
@@ -87,6 +89,7 @@ func TestNewServiceCheckWithTags(t *testing.T) {
 }
 
 func TestNewServiceCheckWithTagsAppend(t *testing.T) {
+	withoutOriginGlobals(t)
 	sc := NewServiceCheck("hello", Warn)
 	sc.Tags = append(sc.Tags, "tag1", "tag2")
 	s, err := encodeSC(sc)
