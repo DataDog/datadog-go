@@ -1,10 +1,12 @@
 package statsd
 
 import (
+	"math"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -659,9 +661,9 @@ func TestAggregatorCardinalityEmptyVsNonEmpty(t *testing.T) {
 func TestAggregatorContextBufferTiers(t *testing.T) {
 	// Each tag is sized so that len("m") + len(":") + len(tag) lands in the
 	// target tier: small ≤512, large 513–4096, heap ≥4097.
-	smallTag := strings.Repeat("x", 10)                           // total 12
-	largeTag := strings.Repeat("x", smallContextBufferSize+1)     // total 514
-	heapTag := strings.Repeat("x", largeContextBufferSize+1)      // total 4098
+	smallTag := strings.Repeat("x", 10)                       // total 12
+	largeTag := strings.Repeat("x", smallContextBufferSize+1) // total 514
+	heapTag := strings.Repeat("x", largeContextBufferSize+1)  // total 4098
 
 	tiers := []struct {
 		name string
@@ -827,4 +829,175 @@ func TestAggregatorNoTagsFastPathConcurrency(t *testing.T) {
 	}
 	require.NotNil(t, gotCount)
 	assert.Equal(t, int64(goroutines*samplesEach), gotCount.ivalue)
+}
+
+func TestContextHelpersNoTagsNoCardinality(t *testing.T) {
+	name := "test.metric"
+
+	assert.Equal(t, len(name), getContextLength(name, nil, ""))
+
+	withHash, hash := appendContextAndHash(nil, name, nil, "")
+	assert.Equal(t, []byte(name), withHash)
+	assert.Equal(t, hashString32(name), hash)
+
+	context, tagsStart := appendContext(nil, name, nil, "")
+	assert.Equal(t, []byte(name), context)
+	assert.Equal(t, -1, tagsStart)
+}
+
+func TestAggregatorContextBufferSecondCheckLocking(t *testing.T) {
+	const goroutines = 128
+
+	tags := []string{"env:prod"}
+
+	runConcurrentMetricInsertions := func(t *testing.T, lockShard func(a *aggregator), unlockShard func(a *aggregator), sample func(a *aggregator, i int), assertAfter func(t *testing.T, a *aggregator)) {
+		t.Helper()
+		a := newAggregator(nil, 0, 1)
+		lockShard(a)
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			i := i
+			go func() {
+				defer wg.Done()
+				<-start
+				sample(a, i)
+			}()
+		}
+		close(start)
+		time.Sleep(20 * time.Millisecond)
+		unlockShard(a)
+		wg.Wait()
+		assertAfter(t, a)
+	}
+
+	t.Run("count", func(t *testing.T) {
+		runConcurrentMetricInsertions(t, func(a *aggregator) {
+			a.countShards[0].RLock()
+		}, func(a *aggregator) {
+			a.countShards[0].RUnlock()
+		}, func(a *aggregator, _ int) {
+			require.NoError(t, a.count("race.count", 1, tags, CardinalityLow))
+		}, func(t *testing.T, a *aggregator) {
+			counts := getAllCounts(a)
+			require.Len(t, counts, 1)
+			m, found := counts["race.count:low|env:prod"]
+			require.True(t, found)
+			assert.Equal(t, int64(goroutines), m.value)
+		})
+	})
+
+	t.Run("gauge", func(t *testing.T) {
+		runConcurrentMetricInsertions(t, func(a *aggregator) {
+			a.gaugeShards[0].RLock()
+		}, func(a *aggregator) {
+			a.gaugeShards[0].RUnlock()
+		}, func(a *aggregator, i int) {
+			require.NoError(t, a.gauge("race.gauge", float64(i), tags, CardinalityLow))
+		}, func(t *testing.T, a *aggregator) {
+			gauges := getAllGauges(a)
+			require.Len(t, gauges, 1)
+			_, found := gauges["race.gauge:low|env:prod"]
+			require.True(t, found)
+		})
+	})
+
+	t.Run("set", func(t *testing.T) {
+		runConcurrentMetricInsertions(t, func(a *aggregator) {
+			a.setShards[0].RLock()
+		}, func(a *aggregator) {
+			a.setShards[0].RUnlock()
+		}, func(a *aggregator, i int) {
+			require.NoError(t, a.set("race.set", string(rune('a'+(i%26))), tags, CardinalityLow))
+		}, func(t *testing.T, a *aggregator) {
+			sets := getAllSets(a)
+			require.Len(t, sets, 1)
+			_, found := sets["race.set:low|env:prod"]
+			require.True(t, found)
+		})
+	})
+}
+
+func TestAggregatorContextBufferSecondCheckInjectedInsert(t *testing.T) {
+	tags := []string{"env:prod"}
+	cardString := CardinalityLow.String()
+
+	t.Run("count", func(t *testing.T) {
+		covered := false
+		for attempt := 0; attempt < 200 && !covered; attempt++ {
+			a := newAggregator(nil, 0, 1)
+			shard := &a.countShards[0]
+			shard.counts = countsMap{}
+			contextBuffer, _ := appendContext(nil, "count.injected", tags, cardString)
+			context := string(contextBuffer)
+			existing := newCountMetric("count.injected", 10, tags, CardinalityLow)
+
+			shard.RLock()
+			done := make(chan struct{})
+			go func() {
+				_ = a.countWithContextBuffer(nil, "count.injected", 1, tags, CardinalityLow, cardString)
+				close(done)
+			}()
+			time.Sleep(time.Millisecond)
+			shard.counts[context] = existing
+			shard.RUnlock()
+			<-done
+
+			covered = existing.value == 11
+		}
+		require.True(t, covered)
+	})
+
+	t.Run("gauge", func(t *testing.T) {
+		covered := false
+		for attempt := 0; attempt < 200 && !covered; attempt++ {
+			a := newAggregator(nil, 0, 1)
+			shard := &a.gaugeShards[0]
+			shard.gauges = gaugesMap{}
+			contextBuffer, _ := appendContext(nil, "gauge.injected", tags, cardString)
+			context := string(contextBuffer)
+			existing := newGaugeMetric("gauge.injected", 10, tags, CardinalityLow)
+
+			shard.RLock()
+			done := make(chan struct{})
+			go func() {
+				_ = a.gaugeWithContextBuffer(nil, "gauge.injected", 1, tags, CardinalityLow, cardString)
+				close(done)
+			}()
+			time.Sleep(time.Millisecond)
+			shard.gauges[context] = existing
+			shard.RUnlock()
+			<-done
+
+			covered = math.Float64frombits(existing.value) == 1
+		}
+		require.True(t, covered)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		covered := false
+		for attempt := 0; attempt < 200 && !covered; attempt++ {
+			a := newAggregator(nil, 0, 1)
+			shard := &a.setShards[0]
+			shard.sets = setsMap{}
+			contextBuffer, _ := appendContext(nil, "set.injected", tags, cardString)
+			context := string(contextBuffer)
+			existing := newSetMetric("set.injected", "a", tags, CardinalityLow)
+
+			shard.RLock()
+			done := make(chan struct{})
+			go func() {
+				_ = a.setWithContextBuffer(nil, "set.injected", "b", tags, CardinalityLow, cardString)
+				close(done)
+			}()
+			time.Sleep(time.Millisecond)
+			shard.sets[context] = existing
+			shard.RUnlock()
+			<-done
+
+			_, covered = existing.data["b"]
+		}
+		require.True(t, covered)
+	})
 }
