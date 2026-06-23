@@ -35,6 +35,8 @@ jobs:
             go-version: 1.14
           - runs-on: macos-latest
             go-version: 1.15
+          - runs-on: macos-latest
+            go-version: 1.21
           # No official linux/arm64 Go binaries before 1.16
           - runs-on: ubuntu-24.04-arm
             go-version: 1.13
@@ -54,6 +56,23 @@ jobs:
       - run: go vet ./statsd/...
       - run: go fmt ./statsd/...
       - run: go test -race -v ./statsd/...
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version: "1.24"
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Run tests with coverage
+        run: go test -coverprofile=coverage.out -covermode=atomic ./statsd/...
+      - name: Upload coverage to Datadog
+        uses: datadog/coverage-upload-github-action@d9548b1c3c4ab639d5d3ab29a1508af188975f77
+        with:
+          api_key: ${{ secrets.DD_API_KEY }}
+          site: datadoghq.com
 
   go_12_test:
     runs-on: ubuntu-latest

@@ -1,0 +1,8 @@
+schema-version: v1
+gates:
+  - type: total_coverage_percentage
+    config:
+      threshold: 83
+  - type: patch_coverage_percentage
+    config:
+      threshold: 90
