@@ -476,6 +476,50 @@ func BenchmarkGetContextNoTags(b *testing.B) {
 	b.ReportAllocs()
 }
 
+func BenchmarkGetContextAndTags(b *testing.B) {
+	name := "test.metric"
+	tags := []string{"tag:tag", "foo:bar", "env:prod", "version:1.0"}
+	for i := 0; i < b.N; i++ {
+		getContextAndTags(name, tags, CardinalityLow)
+	}
+	b.ReportAllocs()
+}
+
+// getContextAndTagsOld is an older implementation without pooling for benchmarking comparison.
+// Probably should delete this and the related benchmark if satisfied with results.
+func getContextAndTagsOld(name string, tags []string) (string, string) {
+	if len(tags) == 0 {
+		return name, ""
+	}
+	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
+	for _, s := range tags {
+		n += len(s)
+	}
+
+	var sb strings.Builder
+	sb.Grow(n)
+	sb.WriteString(name)
+	sb.WriteString(nameSeparatorSymbol)
+	sb.WriteString(tags[0])
+	for _, s := range tags[1:] {
+		sb.WriteString(tagSeparatorSymbol)
+		sb.WriteString(s)
+	}
+
+	s := sb.String()
+
+	return s, s[len(name)+len(nameSeparatorSymbol):]
+}
+
+func BenchmarkGetContextAndTagsOld(b *testing.B) {
+	name := "test.metric"
+	tags := []string{"tag:tag", "foo:bar", "env:prod", "version:1.0"}
+	for i := 0; i < b.N; i++ {
+		getContextAndTagsOld(name, tags)
+	}
+	b.ReportAllocs()
+}
+
 func TestAggregatorCardinalitySeparation(t *testing.T) {
 	a := newAggregator(nil, 0, 8)
 	tags := []string{"env:prod", "service:api"}

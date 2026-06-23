@@ -204,6 +204,11 @@ func getContext(name string, tags []string, cardinality Cardinality) string {
 	return c
 }
 
+// stringBuilderPool pools strings.Builder objects to reduce allocations
+var stringBuilderPool = sync.Pool{
+	New: func() interface{} { return &strings.Builder{} },
+}
+
 // getContextAndTags returns the context and tags for a metric name, tags, and cardinality.
 //
 // See getContext for usage for context
@@ -227,7 +232,12 @@ func getContextAndTags(name string, tags []string, cardinality Cardinality) (str
 		cardStringLen = len(cardString) + len(cardSeparatorSymbol)
 	}
 
-	var sb strings.Builder
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		sb.Reset()
+		stringBuilderPool.Put(sb)
+	}()
+
 	sb.Grow(n)
 	sb.WriteString(name)
 	sb.WriteString(nameSeparatorSymbol)
