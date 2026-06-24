@@ -2,7 +2,14 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
-# 5.9.0 / xxxx-xx-xx
+# 5.9.0 / 2026-06-24
+- [IMPROVEMENT] Improve aggregator performance: inline shard allocation, FNV-1a metric context hashing, and cache-line padding on shards. See [#389][].
+- [IMPROVEMENT] Make `externalEnv` an atomic to reduce lock contention on the sampling hot path. See [#380][], thanks [@KowalskiThomas][].
+- [IMPROVEMENT] Optimize origin-detection condition check order. See [#381][], thanks [@KowalskiThomas][].
+- [BUGFIX] Fix payload length calculation for aggregated metrics to prevent datagram truncation when container ID, external env, or cardinality are set. See [#368][].
+- [BUGFIX] Fix data race when reading the origin-detection container ID. See [#379][], thanks [@KowalskiThomas][].
+- [BUGFIX] Fix telemetry metrics not using the client's configured cardinality setting. See [#367][].
+- [BUGFIX] Replace vulnerable `logrus` `v1.7.0` transitive dependency (CVE-2025-65637). See [#358][], thanks [@nadavshatz][].
 
 # 5.8.3 / 2026-02-02
 - [IMPROVEMENT] Shard aggregator lock. See [#351][], thanks [@opsengine][].
@@ -468,6 +475,13 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#334]: https://github.com/DataDog/datadog-go/pull/334
 [#351]: https://github.com/DataDog/datadog-go/pull/351
 [#352]: https://github.com/DataDog/datadog-go/pull/352
+[#358]: https://github.com/DataDog/datadog-go/pull/358
+[#367]: https://github.com/DataDog/datadog-go/pull/367
+[#368]: https://github.com/DataDog/datadog-go/issues/368
+[#379]: https://github.com/DataDog/datadog-go/pull/379
+[#380]: https://github.com/DataDog/datadog-go/pull/380
+[#381]: https://github.com/DataDog/datadog-go/pull/381
+[#389]: https://github.com/DataDog/datadog-go/pull/389
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
@@ -506,3 +520,5 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [@byronwolfman]: https://github.com/byronwolfman
 [@opsengine]: https://github.com/opsengine
 [@jprobinson]: https://github.com/jprobinson
+[@KowalskiThomas]: https://github.com/KowalskiThomas
+[@nadavshatz]: https://github.com/nadavshatz
