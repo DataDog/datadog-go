@@ -1,7 +1,6 @@
 package statsd
 
 import (
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -181,9 +180,51 @@ func getContext(name string, tags []string, cardinality Cardinality) string {
 	return c
 }
 
-// stringBuilderPool pools strings.Builder objects to reduce allocations
-var stringBuilderPool = sync.Pool{
-	New: func() interface{} { return &strings.Builder{} },
+// keyBufPool pools scratch buffers used to build context keys. Map lookups
+// written as m[string(buf)] are allocation-free (the compiler elides the
+// conversion), so hot paths build the key in a pooled buffer, probe the map,
+// and only materialize a string on the insert path, where the key is retained.
+var keyBufPool = sync.Pool{
+	New: func() interface{} {
+		b := make([]byte, 0, 128)
+		return &b
+	},
+}
+
+func putKeyBuf(bufp *[]byte, buf []byte) {
+	if cap(buf) > 1<<16 {
+		// Don't pin pathologically large buffers in the pool.
+		return
+	}
+	*bufp = buf[:0]
+	keyBufPool.Put(bufp)
+}
+
+// appendContext appends the context key for a metric to buf and returns the
+// extended buffer along with the offset at which the tags portion starts.
+// The tags portion is empty iff the offset equals len(buf).
+func appendContext(buf []byte, name string, tags []string, cardinality Cardinality) ([]byte, int) {
+	cardString := cardinality.String()
+
+	buf = append(buf, name...)
+	if len(tags) == 0 && cardString == "" {
+		return buf, len(buf)
+	}
+	buf = append(buf, nameSeparatorSymbol...)
+	if cardString != "" {
+		buf = append(buf, cardString...)
+		if len(tags) == 0 {
+			return buf, len(buf)
+		}
+		buf = append(buf, cardSeparatorSymbol...)
+	}
+	tagsOffset := len(buf)
+	buf = append(buf, tags[0]...)
+	for _, s := range tags[1:] {
+		buf = append(buf, tagSeparatorSymbol...)
+		buf = append(buf, s...)
+	}
+	return buf, tagsOffset
 }
 
 // getContextAndTags returns the context and tags for a metric name, tags, and cardinality.
@@ -196,74 +237,57 @@ func getContextAndTags(name string, tags []string, cardinality Cardinality) (str
 		if cardString == "" {
 			return name, ""
 		}
-		return name + nameSeparatorSymbol + cardinality.String(), ""
+		return name + nameSeparatorSymbol + cardString, ""
 	}
-
 	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
 	for _, s := range tags {
 		n += len(s)
 	}
-	var cardStringLen = 0
 	if cardString != "" {
 		n += len(cardString) + len(cardSeparatorSymbol)
-		cardStringLen = len(cardString) + len(cardSeparatorSymbol)
 	}
-
-	sb := stringBuilderPool.Get().(*strings.Builder)
-	defer func() {
-		sb.Reset()
-		stringBuilderPool.Put(sb)
-	}()
-
-	sb.Grow(n)
-	sb.WriteString(name)
-	sb.WriteString(nameSeparatorSymbol)
-	if cardString != "" {
-		sb.WriteString(cardString)
-		sb.WriteString(cardSeparatorSymbol)
-	}
-	sb.WriteString(tags[0])
-	for _, s := range tags[1:] {
-		sb.WriteString(tagSeparatorSymbol)
-		sb.WriteString(s)
-	}
-
-	s := sb.String()
-
-	return s, s[len(name)+len(nameSeparatorSymbol)+cardStringLen:]
+	buf, tagsOffset := appendContext(make([]byte, 0, n), name, tags, cardinality)
+	context := string(buf)
+	return context, context[tagsOffset:]
 }
 
 func (a *aggregator) count(name string, value int64, tags []string, cardinality Cardinality) error {
 	resolvedCardinality := resolveCardinality(cardinality)
-	context := getContext(name, tags, resolvedCardinality)
+	bufp := keyBufPool.Get().(*[]byte)
+	buf, _ := appendContext((*bufp)[:0], name, tags, resolvedCardinality)
 	a.countsM.RLock()
-	if count, found := a.counts[context]; found {
+	if count, found := a.counts[string(buf)]; found {
 		count.sample(value)
 		a.countsM.RUnlock()
+		putKeyBuf(bufp, buf)
 		return nil
 	}
 	a.countsM.RUnlock()
 
 	a.countsM.Lock()
 	// Check if another goroutines hasn't created the value betwen the RUnlock and 'Lock'
-	if count, found := a.counts[context]; found {
+	if count, found := a.counts[string(buf)]; found {
 		count.sample(value)
 		a.countsM.Unlock()
+		putKeyBuf(bufp, buf)
 		return nil
 	}
 
-	a.counts[context] = newCountMetric(name, value, tags, resolvedCardinality)
+	a.counts[string(buf)] = newCountMetric(name, value, tags, resolvedCardinality)
 	a.countsM.Unlock()
+	putKeyBuf(bufp, buf)
 	return nil
 }
 
 func (a *aggregator) gauge(name string, value float64, tags []string, cardinality Cardinality) error {
 	resolvedCardinality := resolveCardinality(cardinality)
-	context := getContext(name, tags, resolvedCardinality)
+	bufp := keyBufPool.Get().(*[]byte)
+	buf, _ := appendContext((*bufp)[:0], name, tags, resolvedCardinality)
 	a.gaugesM.RLock()
-	if gauge, found := a.gauges[context]; found {
+	if gauge, found := a.gauges[string(buf)]; found {
 		gauge.sample(value)
 		a.gaugesM.RUnlock()
+		putKeyBuf(bufp, buf)
 		return nil
 	}
 	a.gaugesM.RUnlock()
@@ -272,36 +296,42 @@ func (a *aggregator) gauge(name string, value float64, tags []string, cardinalit
 
 	a.gaugesM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if gauge, found := a.gauges[context]; found {
+	if gauge, found := a.gauges[string(buf)]; found {
 		gauge.sample(value)
 		a.gaugesM.Unlock()
+		putKeyBuf(bufp, buf)
 		return nil
 	}
-	a.gauges[context] = gauge
+	a.gauges[string(buf)] = gauge
 	a.gaugesM.Unlock()
+	putKeyBuf(bufp, buf)
 	return nil
 }
 
 func (a *aggregator) set(name string, value string, tags []string, cardinality Cardinality) error {
 	resolvedCardinality := resolveCardinality(cardinality)
-	context := getContext(name, tags, resolvedCardinality)
+	bufp := keyBufPool.Get().(*[]byte)
+	buf, _ := appendContext((*bufp)[:0], name, tags, resolvedCardinality)
 	a.setsM.RLock()
-	if set, found := a.sets[context]; found {
+	if set, found := a.sets[string(buf)]; found {
 		set.sample(value)
 		a.setsM.RUnlock()
+		putKeyBuf(bufp, buf)
 		return nil
 	}
 	a.setsM.RUnlock()
 
 	a.setsM.Lock()
 	// Check if another goroutines hasn't created the value betwen the 'RUnlock' and 'Lock'
-	if set, found := a.sets[context]; found {
+	if set, found := a.sets[string(buf)]; found {
 		set.sample(value)
 		a.setsM.Unlock()
+		putKeyBuf(bufp, buf)
 		return nil
 	}
-	a.sets[context] = newSetMetric(name, value, tags, resolvedCardinality)
+	a.sets[string(buf)] = newSetMetric(name, value, tags, resolvedCardinality)
 	a.setsM.Unlock()
+	putKeyBuf(bufp, buf)
 	return nil
 }
 

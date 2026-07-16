@@ -68,27 +68,31 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 	}
 
 	resolvedCardinality := resolveCardinality(cardinality)
-	context, stringTags := getContextAndTags(name, tags, resolvedCardinality)
+	bufp := keyBufPool.Get().(*[]byte)
+	buf, tagsOffset := appendContext((*bufp)[:0], name, tags, resolvedCardinality)
 	var v *bufferedMetric
 
 	bc.mutex.RLock()
-	v, _ = bc.values[context]
+	v = bc.values[string(buf)]
 	bc.mutex.RUnlock()
 
 	// Create it if it wasn't found
 	if v == nil {
 		bc.mutex.Lock()
 		// It might have been created by another goroutine since last call
-		v, _ = bc.values[context]
+		v = bc.values[string(buf)]
 		if v == nil {
 			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
-			bc.values[context] = bc.newMetric(name, value, stringTags, rate, resolvedCardinality)
+			context := string(buf)
+			bc.values[context] = bc.newMetric(name, value, context[tagsOffset:], rate, resolvedCardinality)
 			// We added a new value, we need to unlock the mutex and quit
 			bc.mutex.Unlock()
+			putKeyBuf(bufp, buf)
 			return nil
 		}
 		bc.mutex.Unlock()
 	}
+	putKeyBuf(bufp, buf)
 
 	// Now we can keep the sample or skip it
 	if keepingSample {

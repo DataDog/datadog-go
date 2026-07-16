@@ -445,39 +445,44 @@ func BenchmarkGetContextAndTags(b *testing.B) {
 	b.ReportAllocs()
 }
 
-// getContextAndTagsOld is an older implementation without pooling for benchmarking comparison.
-// Probably should delete this and the related benchmark if satisfied with results.
-func getContextAndTagsOld(name string, tags []string) (string, string) {
-	if len(tags) == 0 {
-		return name, ""
-	}
-	n := len(name) + len(nameSeparatorSymbol) + len(tagSeparatorSymbol)*(len(tags)-1)
-	for _, s := range tags {
-		n += len(s)
-	}
+// Steady-state benchmarks: the context already exists in the aggregator map,
+// which is the common case in production (one insert per context per flush
+// window, then many samples). These paths are expected to be allocation-free.
 
-	var sb strings.Builder
-	sb.Grow(n)
-	sb.WriteString(name)
-	sb.WriteString(nameSeparatorSymbol)
-	sb.WriteString(tags[0])
-	for _, s := range tags[1:] {
-		sb.WriteString(tagSeparatorSymbol)
-		sb.WriteString(s)
-	}
-
-	s := sb.String()
-
-	return s, s[len(name)+len(nameSeparatorSymbol):]
-}
-
-func BenchmarkGetContextAndTagsOld(b *testing.B) {
+func BenchmarkAggregatorCountHot(b *testing.B) {
+	a := newAggregator(nil, 0)
 	name := "test.metric"
 	tags := []string{"tag:tag", "foo:bar", "env:prod", "version:1.0"}
-	for i := 0; i < b.N; i++ {
-		getContextAndTagsOld(name, tags)
-	}
+	a.count(name, 1, tags, CardinalityLow)
 	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		a.count(name, 21, tags, CardinalityLow)
+	}
+}
+
+func BenchmarkAggregatorGaugeHot(b *testing.B) {
+	a := newAggregator(nil, 0)
+	name := "test.metric"
+	tags := []string{"tag:tag", "foo:bar", "env:prod", "version:1.0"}
+	a.gauge(name, 1, tags, CardinalityLow)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		a.gauge(name, 21, tags, CardinalityLow)
+	}
+}
+
+func BenchmarkAggregatorHistogramHot(b *testing.B) {
+	a := newAggregator(nil, 64)
+	name := "test.metric"
+	tags := []string{"tag:tag", "foo:bar", "env:prod", "version:1.0"}
+	a.histogram(name, 1, tags, 1, CardinalityLow)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		a.histogram(name, 21, tags, 1, CardinalityLow)
+	}
 }
 
 func TestAggregatorCardinalitySeparation(t *testing.T) {
