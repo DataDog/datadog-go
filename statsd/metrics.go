@@ -166,15 +166,15 @@ func (s *bufferedMetric) sample(v float64) {
 func (s *bufferedMetric) sampleUnsafe(v float64) {
 	s.data = append(s.data, v)
 	s.storedSamples++
-	// Total samples needs to be incremented though an atomic because it can be accessed without the lock.
-	atomic.AddInt64(&s.totalSamples, 1)
+	s.totalSamples++
 }
 
 func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *sync.Mutex) {
 	s.Lock()
 	defer s.Unlock()
 	if s.maxSamples > 0 {
-		total := atomic.AddInt64(&s.totalSamples, 1)
+		s.totalSamples++
+		total := s.totalSamples
 		if s.storedSamples >= s.maxSamples {
 			// We reached the maximum number of samples we can keep in memory, so we randomly
 			// replace a sample.
@@ -196,7 +196,7 @@ func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *s
 
 
 func (s *bufferedMetric) flushUnsafe() metric {
-	totalSamples := atomic.LoadInt64(&s.totalSamples)
+	totalSamples := s.totalSamples
 	var rate float64
 
 	// If the user had a specified rate send it because we don't know better.
