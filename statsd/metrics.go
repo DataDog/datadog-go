@@ -174,11 +174,12 @@ func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *s
 	s.Lock()
 	defer s.Unlock()
 	if s.maxSamples > 0 {
+		total := atomic.AddInt64(&s.totalSamples, 1)
 		if s.storedSamples >= s.maxSamples {
 			// We reached the maximum number of samples we can keep in memory, so we randomly
 			// replace a sample.
 			randLock.Lock()
-			i := rand.Int63n(atomic.LoadInt64(&s.totalSamples))
+			i := rand.Int63n(total)
 			randLock.Unlock()
 			if i < s.maxSamples {
 				s.data[i] = v
@@ -187,7 +188,6 @@ func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *s
 			s.data[s.storedSamples] = v
 			s.storedSamples++
 		}
-		s.totalSamples++
 	} else {
 		// This code path appends to the slice since we did not pre-allocate memory in this case.
 		s.sampleUnsafe(v)

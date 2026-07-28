@@ -2,8 +2,10 @@ package statsd
 
 import (
 	"math"
+	"math/rand"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -247,6 +249,26 @@ func TestTimingMetricSample(t *testing.T) {
 	assert.Equal(t, s.tags, "tag1,tag2")
 	assert.Equal(t, s.mtype, timingAggregated)
 	assert.Equal(t, s.cardinality, CardinalityLow)
+}
+
+func TestMaybeKeepSampleReplacesWithProbabilityOneOverK(t *testing.T) {
+	// With maxSamples = 1, the reservoir is full as soon as the founding
+	// sample lands, so the very next sample (k=2) must replace it with
+	// probability 1/2, not with certainty.
+	r := rand.New(rand.NewSource(1))
+	var randLock sync.Mutex
+
+	const trials = 20000
+	replaced := 0
+	for i := 0; i < trials; i++ {
+		s := newHistogramMetric("test", 0, "", 1, 1.0, CardinalityLow)
+		s.maybeKeepSample(1, r, &randLock)
+		if s.data[0] == 1 {
+			replaced++
+		}
+	}
+
+	assert.InDelta(t, 0.5, float64(replaced)/float64(trials), 0.02)
 }
 
 func TestFlushUnsafeTimingMetricSample(t *testing.T) {
