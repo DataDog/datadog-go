@@ -174,12 +174,11 @@ func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *s
 	defer s.Unlock()
 	if s.maxSamples > 0 {
 		s.totalSamples++
-		total := s.totalSamples
 		if s.storedSamples >= s.maxSamples {
 			// We reached the maximum number of samples we can keep in memory, so we randomly
 			// replace a sample.
 			randLock.Lock()
-			i := rand.Int63n(total)
+			i := rand.Int63n(s.totalSamples)
 			randLock.Unlock()
 			if i < s.maxSamples {
 				s.data[i] = v
