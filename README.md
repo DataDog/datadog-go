@@ -21,6 +21,7 @@ The following documentation is available:
 * [Installation](#installation)
     - [Supported environment variables](#supported-environment-variables)
     - [Unix Domain Sockets Client](#unix-domain-sockets-client)
+    - [vsock Client](#vsock-client)
 * [Usage](#usage)
     - [Metrics](#metrics)
     - [Events](#events)
@@ -85,12 +86,13 @@ Find a list of all the available options for your DogStatsD Client in the [Datad
 ### Supported environment variables
 
 * If the `addr` parameter is empty, the client will:
-  * First use the `DD_DOGSTATSD_URL` environment variables to build a target address. This must be a URL that start with either `udp://` (to connect using UDP) or with `unix://` (to use a Unix Domain Socket).
+  * First use the `DD_DOGSTATSD_URL` environment variables to build a target address. This must be a URL that start with either `udp://` (to connect using UDP), with `unix://` (to use a Unix Domain Socket) or with `vsock://` (to use a vsock socket).
     Example for UDP url: `DD_DOGSTATSD_URL=udp://localhost:8125`
     Example for UDS: `DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket`
+    Example for vsock: `DD_DOGSTATSD_URL=vsock://host:8125`
     Example for Windows named pipe`DD_AGENT_HOST=\\.\pipe\my_windows_pipe`
   * Fallback to the `DD_AGENT_HOST` environment variables to build a target address.
-    Example: `DD_AGENT_HOST=127.0.0.1:8125` for UDP, `DD_AGENT_HOST=unix:///path/to/socket` for UDS and `DD_AGENT_HOST=\\.\pipe\my_windows_pipe` for Windows named pipe.
+    Example: `DD_AGENT_HOST=127.0.0.1:8125` for UDP, `DD_AGENT_HOST=unix:///path/to/socket` for UDS, `DD_AGENT_HOST=vsock://host:8125` for vsock and `DD_AGENT_HOST=\\.\pipe\my_windows_pipe` for Windows named pipe.
     * If `DD_AGENT_HOST` has no port it will default the port to `8125`
     * You can use `DD_AGENT_PORT` to set the port if `DD_AGENT_HOST` does not have a port set for UDP
       Example: `DD_AGENT_HOST=127.0.0.1` and `DD_AGENT_PORT=1234` will create a UDP connection to `127.0.0.1:1234`. 
@@ -111,6 +113,23 @@ env:
 ### Unix Domain Sockets Client
 
 Agent v6+ accepts packets through a Unix Socket datagram connection. Details about the advantages of using UDS over UDP are available in the [DogStatsD Unix Socket documentation](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/). You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
+
+### vsock Client
+
+When the Agent runs outside of the virtual machine the application runs in, neither a Unix Domain
+Socket nor a routable network address may be available to reach it, but a vsock channel usually is.
+You can use this protocol, on Linux only, by giving a `vsock://<CID>:<port>` address argument to the
+`New` constructor, where `<CID>` is either a context ID or one of the following shorthands:
+
+| Shorthand    | Context ID | Destination                              |
+|--------------|------------|------------------------------------------|
+| `hypervisor` | 0          | The hypervisor process                   |
+| `local`      | 1          | The local machine, for loopback purposes |
+| `host`       | 2          | Any process running on the host          |
+
+For example, `vsock://host:8125` sends to port `8125` of the host running the virtual machine. Like
+Unix Domain Socket streams, payloads are prefixed with their length so that the Agent can tell them
+apart.
 
 ## Usage
 

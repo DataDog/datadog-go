@@ -303,6 +303,10 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 		{"UDS socket env", "", "unix://test/path.socket", "", "", "unix://test/path.socket"},
 		{"UDS socket env with port", "", "unix://test/path.socket", "8125", "", "unix://test/path.socket"},
 
+		{"vsock passed", "vsock://2:8125", "", "", "", "vsock://2:8125"},
+		{"vsock env", "", "vsock://host:8125", "", "", "vsock://host:8125"},
+		{"vsock env with port", "", "vsock://host:8125", "1234", "", "vsock://host:8125"},
+
 		{"Pipe passed", "\\\\.\\pipe\\my_pipe", "", "", "", "\\\\.\\pipe\\my_pipe"},
 		{"Pipe env", "", "\\\\.\\pipe\\my_pipe", "", "", "\\\\.\\pipe\\my_pipe"},
 		{"Pipe env with port", "", "\\\\.\\pipe\\my_pipe", "8125", "", "\\\\.\\pipe\\my_pipe"},
@@ -312,6 +316,8 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 		{"DD_DOGSTATSD_URL UDS", "", "", "", "unix://test/path.socket", "unix://test/path.socket"},
 		{"DD_DOGSTATSD_URL UDS, ignore env port", "", "", "1234", "udp://198.51.100.123:4321", "198.51.100.123:4321"},
 		{"DD_DOGSTATSD_URL UDS, ignore env host", "", "localhost", "", "udp://198.51.100.123:4321", "198.51.100.123:4321"},
+		{"DD_DOGSTATSD_URL vsock", "", "", "", "vsock://2:8125", "vsock://2:8125"},
+		{"DD_DOGSTATSD_URL vsock, ignore env host", "", "localhost", "", "vsock://host:8125", "vsock://host:8125"},
 		{"DD_DOGSTATSD_URL Pipe", "", "", "", "\\\\.\\pipe\\my_pipe", "\\\\.\\pipe\\my_pipe"},
 		{"DD_DOGSTATSD_URL with no valid scheme", "", "", "", "localhost:1234", ""},
 

@@ -7,6 +7,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 )
 
 replace github.com/sirupsen/logrus v1.7.0 => github.com/sirupsen/logrus v1.9.3

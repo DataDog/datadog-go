@@ -79,8 +79,15 @@ traffic instead of UDP.
 */
 const WindowsPipeAddressPrefix = `\\.\pipe\`
 
+/*
+VsockAddressPrefix holds the prefix to use to enable vsock traffic instead of UDP. The address that
+follows is a context ID and a port, such as "vsock://2:8125", where the context ID is either a
+number or one of the well-known shorthands: hypervisor, local or host.
+*/
+const VsockAddressPrefix = "vsock://"
+
 var (
-	AddressPrefixes = []string{UnixAddressPrefix, UnixAddressDatagramPrefix, UnixAddressStreamPrefix, WindowsPipeAddressPrefix}
+	AddressPrefixes = []string{UnixAddressPrefix, UnixAddressDatagramPrefix, UnixAddressStreamPrefix, WindowsPipeAddressPrefix, VsockAddressPrefix}
 )
 
 const (
@@ -143,6 +150,7 @@ const (
 	writerNameUDS       string = "uds"
 	writerNameUDSStream string = "uds-stream"
 	writerWindowsPipe   string = "pipe"
+	writerNameVsock     string = "vsock"
 	writerNameCustom    string = "custom"
 )
 
@@ -374,7 +382,7 @@ func parseAgentURL(agentURL string) string {
 			return fmt.Sprintf("%s:%s", parsedURL.Host, defaultUDPPort)
 		}
 
-		if parsedURL.Scheme == "unix" {
+		if parsedURL.Scheme == "unix" || parsedURL.Scheme == "vsock" {
 			return agentURL
 		}
 	}
@@ -399,6 +407,9 @@ func createWriter(addr string, writeTimeout time.Duration, connectTimeout time.D
 	case strings.HasPrefix(addr, UnixAddressStreamPrefix):
 		w, err := newUDSWriter(addr[len(UnixAddressStreamPrefix):], writeTimeout, connectTimeout, "unix")
 		return w, writerNameUDS, err
+	case strings.HasPrefix(addr, VsockAddressPrefix):
+		w, err := newVsockWriter(addr, writeTimeout, connectTimeout)
+		return w, writerNameVsock, err
 	default:
 		w, err := newUDPWriter(addr, writeTimeout)
 		return w, writerNameUDP, err
@@ -487,24 +498,26 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 	}
 
 	initContainerID(o.containerID, fillInContainerID(o), isHostCgroupNamespace())
-	isUDS := writerName == writerNameUDS
+	// UDS and vsock both talk to a local Agent, which accepts larger payloads than what we can fit
+	// in a UDP datagram.
+	isLocalTransport := writerName == writerNameUDS || writerName == writerNameVsock
 
 	if o.maxBytesPerPayload == 0 {
-		if isUDS {
+		if isLocalTransport {
 			o.maxBytesPerPayload = DefaultMaxAgentPayloadSize
 		} else {
 			o.maxBytesPerPayload = OptimalUDPPayloadSize
 		}
 	}
 	if o.bufferPoolSize == 0 {
-		if isUDS {
+		if isLocalTransport {
 			o.bufferPoolSize = DefaultUDSBufferPoolSize
 		} else {
 			o.bufferPoolSize = DefaultUDPBufferPoolSize
 		}
 	}
 	if o.senderQueueSize == 0 {
-		if isUDS {
+		if isLocalTransport {
 			o.senderQueueSize = DefaultUDSBufferPoolSize
 		} else {
 			o.senderQueueSize = DefaultUDPBufferPoolSize
