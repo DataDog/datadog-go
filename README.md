@@ -21,7 +21,7 @@ The following documentation is available:
 * [Installation](#installation)
     - [Supported environment variables](#supported-environment-variables)
     - [Unix Domain Sockets Client](#unix-domain-sockets-client)
-    - [vsock Client](#vsock-client)
+    - [Vsock Client (experimental)](#vsock-client-experimental)
 * [Usage](#usage)
     - [Metrics](#metrics)
     - [Events](#events)
@@ -114,10 +114,11 @@ env:
 
 Agent v6+ accepts packets through a Unix Socket datagram connection. Details about the advantages of using UDS over UDP are available in the [DogStatsD Unix Socket documentation](https://docs.datadoghq.com/developers/dogstatsd/unix_socket/). You can use this protocol by giving a `unix:///path/to/dsd.socket` address argument to the `New` constructor.
 
-### vsock Client
+### Vsock Client (experimental)
 
-When the Agent runs outside of the virtual machine the application runs in, neither a Unix Domain
-Socket nor a routable network address may be available to reach it, but a vsock channel usually is.
+VM Sockets (vsock) are a Linux-only transport available for allowing hypervisors and guest virtual machines
+to communicate with each other in a fast and secure way, similar to Unix Domain Sockets.
+
 You can use this protocol, on Linux only, by giving a `vsock://<CID>:<port>` address argument to the
 `New` constructor, where `<CID>` is either a context ID or one of the following shorthands:
 
@@ -129,7 +130,10 @@ You can use this protocol, on Linux only, by giving a `vsock://<CID>:<port>` add
 
 For example, `vsock://host:8125` sends to port `8125` of the host running the virtual machine. Like
 Unix Domain Socket streams, payloads are prefixed with their length so that the Agent can tell them
-apart.
+apart. Other CIDs can be passed in their raw numerical form, which is required for non-standard CIDs,
+such as those utilized by [AWS Nitro Enclaves](https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-concepts.html#term-socket).
+
+This feature is experimental, and depends on experimental support in the Agent.
 
 ## Usage
 
