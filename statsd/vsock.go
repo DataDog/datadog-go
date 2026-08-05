@@ -57,9 +57,10 @@ func (d *vsockDialer) tryToDial(connectTimeout time.Duration) (net.Conn, error) 
 		return nil, fmt.Errorf("failed to create vsock socket: %v", err)
 	}
 
-	// connect(2) honors SO_SNDTIMEO on a blocking socket, so this bounds how long we wait for the
-	// Agent to accept the connection.
-	if err := setSocketTimeout(fd, unix.SO_SNDTIMEO, connectTimeout); err != nil {
+	// vsock does not honor SO_SNDTIMEO while connecting: af_vsock waits on the socket's own
+	// connect timeout instead, which defaults to 2 seconds. Set that one so that the connect
+	// timeout the client was configured with is the one that actually applies.
+	if err := setSocketTimeout(fd, unix.AF_VSOCK, unix.SO_VM_SOCKETS_CONNECT_TIMEOUT, connectTimeout); err != nil {
 		unix.Close(fd)
 		return nil, fmt.Errorf("failed to set vsock connect timeout: %v", err)
 	}
@@ -220,17 +221,17 @@ func (c *vsockConn) applyDeadline(opt int, deadline time.Time) error {
 	if timeLeft <= 0 {
 		return unix.EAGAIN
 	}
-	return setSocketTimeout(c.fd, opt, timeLeft)
+	return setSocketTimeout(c.fd, unix.SOL_SOCKET, opt, timeLeft)
 }
 
-// setSocketTimeout sets a send or receive timeout on fd. A zero timeval means "no timeout" to the
-// kernel, so non-positive timeouts are clamped to the smallest value the kernel understands to make
-// the next operation fail fast instead of blocking forever.
-func setSocketTimeout(fd int, opt int, timeout time.Duration) error {
+// setSocketTimeout sets a timeout option on fd. A zero timeval means "no timeout" to the kernel, so
+// non-positive timeouts are clamped to the smallest value it understands to make the operation they
+// bound fail fast instead of blocking forever.
+func setSocketTimeout(fd int, level int, opt int, timeout time.Duration) error {
 	if timeout < time.Microsecond {
 		timeout = time.Microsecond
 	}
 
 	tv := unix.NsecToTimeval(timeout.Nanoseconds())
-	return unix.SetsockoptTimeval(fd, unix.SOL_SOCKET, opt, &tv)
+	return unix.SetsockoptTimeval(fd, level, opt, &tv)
 }

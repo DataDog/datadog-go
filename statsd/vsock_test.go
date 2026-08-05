@@ -41,7 +41,7 @@ func newVsockTestListener(t *testing.T) (int, uint32) {
 	}
 
 	// Bound so that a missing connection never hangs the test suite.
-	if err := setSocketTimeout(fd, unix.SO_RCVTIMEO, 10*time.Second); err != nil {
+	if err := setSocketTimeout(fd, unix.SOL_SOCKET, unix.SO_RCVTIMEO, 10*time.Second); err != nil {
 		unix.Close(fd)
 		require.NoError(t, err)
 	}
@@ -70,7 +70,7 @@ func newVsockTestListener(t *testing.T) (int, uint32) {
 	}
 	// Bound so that a machine on which loopback connections hang, rather than fail, doesn't hang the
 	// test suite with them.
-	if err := setSocketTimeout(probe, unix.SO_SNDTIMEO, 10*time.Second); err != nil {
+	if err := setSocketTimeout(probe, unix.SOL_SOCKET, unix.SO_SNDTIMEO, 10*time.Second); err != nil {
 		unix.Close(probe)
 		unix.Close(fd)
 		require.NoError(t, err)
@@ -155,6 +155,31 @@ func TestVsockStreamWriteUnsetConnection(t *testing.T) {
 		unix.Close(conn)
 		w.unsetConnection()
 	}
+}
+
+// vsock ignores SO_SNDTIMEO while connecting and waits on its own connect timeout instead, which
+// defaults to 2 seconds. Check that the timeout the client is configured with is the one that ends
+// up on the socket, otherwise a peer that never answers blocks the sender for longer than asked.
+func TestVsockConnectTimeoutIsAppliedToTheSocket(t *testing.T) {
+	listener, port := newVsockTestListener(t)
+	defer unix.Close(listener)
+
+	connectTimeout := 250 * time.Millisecond
+	w, err := newVsockWriter(fmt.Sprintf("vsock://local:%d", port), 100*time.Millisecond, connectTimeout)
+	require.NoError(t, err)
+	defer w.Close()
+
+	conn, err := w.ensureConnection()
+	require.NoError(t, err)
+
+	tv, err := unix.GetsockoptTimeval(conn.(*vsockConn).fd, unix.AF_VSOCK, unix.SO_VM_SOCKETS_CONNECT_TIMEOUT)
+	require.NoError(t, err)
+
+	applied := time.Duration(tv.Sec)*time.Second + time.Duration(tv.Usec)*time.Microsecond
+	// The kernel stores the timeout in jiffies, so it is rounded up to the resolution of the clock
+	// tick this kernel was built with.
+	assert.True(t, applied >= connectTimeout && applied < connectTimeout+50*time.Millisecond,
+		"expected roughly %v, got %v", connectTimeout, applied)
 }
 
 // A payload we can't even start to write is reported as a timeout, and costs us the connection
