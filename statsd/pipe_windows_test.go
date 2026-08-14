@@ -83,6 +83,19 @@ func TestPipeWriterEnv(t *testing.T) {
 	assert.Equal(t, got, "metric:1|g|#key:val\n")
 }
 
+// TestPipeWriterCloseWithoutWrite ensures closing a writer that never
+// established a connection does not panic. newWindowsPipeWriter defers
+// connecting to the first write, so conn is nil until then.
+func TestPipeWriterCloseWithoutWrite(t *testing.T) {
+	pipepath, f, _ := createNamedPipe(t)
+	defer os.Remove(f.Name())
+
+	w, err := newWindowsPipeWriter(pipepath, defaultWriteTimeout)
+	require.Nil(t, err)
+
+	assert.Nil(t, w.Close())
+}
+
 func TestPipeWriterReconnect(t *testing.T) {
 	pipepath, f, ln := createNamedPipe(t)
 	defer os.Remove(f.Name())
