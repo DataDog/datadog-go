@@ -69,7 +69,7 @@ func (p *pipeWriter) Close() error {
 	if p.conn == nil {
 		return nil
 	}
-	
+
 	return p.conn.Close()
 }
 
