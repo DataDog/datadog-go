@@ -63,7 +63,14 @@ func (p *pipeWriter) ensureConnection() (net.Conn, error) {
 }
 
 func (p *pipeWriter) Close() error {
-	return p.conn.Close()
+	p.mu.RLock()
+	conn := p.conn
+	p.mu.RUnlock()
+	// conn is nil if no write ever established a connection
+	if conn != nil {
+		return conn.Close()
+	}
+	return nil
 }
 
 // GetTransportName returns the name of the transport
