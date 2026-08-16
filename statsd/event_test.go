@@ -18,6 +18,7 @@ func encodeEvent(e *Event) (string, error) {
 }
 
 func TestEventEncode(t *testing.T) {
+	withoutOriginGlobals(t)
 	matrix := []struct {
 		event   *Event
 		encoded string
@@ -51,6 +52,7 @@ func TestEventEncode(t *testing.T) {
 }
 
 func TestNewEventTitleMissing(t *testing.T) {
+	withoutOriginGlobals(t)
 	e := NewEvent("", "hi")
 	_, err := encodeEvent(e)
 	require.Error(t, err)
@@ -58,6 +60,7 @@ func TestNewEventTitleMissing(t *testing.T) {
 }
 
 func TestNewEvent(t *testing.T) {
+	withoutOriginGlobals(t)
 	e := NewEvent("hello", "world")
 	e.Tags = []string{"tag1", "tag2"}
 	eventEncoded, err := encodeEvent(e)
@@ -67,6 +70,7 @@ func TestNewEvent(t *testing.T) {
 }
 
 func TestNewEventTagsAppend(t *testing.T) {
+	withoutOriginGlobals(t)
 	e := NewEvent("hello", "world")
 	e.Tags = append(e.Tags, "tag1", "tag2")
 	eventEncoded, err := encodeEvent(e)
@@ -76,6 +80,7 @@ func TestNewEventTagsAppend(t *testing.T) {
 }
 
 func TestNewEventEmptyText(t *testing.T) {
+	withoutOriginGlobals(t)
 	e := NewEvent("hello", "")
 	e.Tags = append(e.Tags, "tag1", "tag2")
 	eventEncoded, err := encodeEvent(e)
