@@ -2,6 +2,10 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# 5.9.1 / 2026-08-14
+- [BUGFIX] Prevent a panic when closing a Windows named pipe client that never sent a metric. See [#397][].
+- [BUGFIX] Fix an off-by-one error in reservoir sampling that biased which samples were kept once `WithMaxSamplesPerContext()` was reached. See [#395][].
+
 # 5.9.0 / 2026-06-24
 - [IMPROVEMENT] Improve aggregator performance: inline shard allocation, FNV-1a metric context hashing, and cache-line padding on shards. See [#389][].
 - [IMPROVEMENT] Make `externalEnv` an atomic to reduce lock contention on the sampling hot path. See [#380][], thanks [@KowalskiThomas][].
@@ -482,6 +486,8 @@ Below, for reference, the latest improvements made in 07/2016 - 08/2016
 [#380]: https://github.com/DataDog/datadog-go/pull/380
 [#381]: https://github.com/DataDog/datadog-go/pull/381
 [#389]: https://github.com/DataDog/datadog-go/pull/389
+[#395]: https://github.com/DataDog/datadog-go/pull/395
+[#397]: https://github.com/DataDog/datadog-go/pull/397
 [@Aceeri]: https://github.com/Aceeri
 [@Jasrags]: https://github.com/Jasrags
 [@KJTsanaktsidis]: https://github.com/KJTsanaktsidis
