@@ -298,6 +298,12 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 		{"UPD Host and port passed as env", "", "10.12.16.9", "1234", "", "10.12.16.9:1234"},
 		{"UPD Host env, default port", "", "10.12.16.9", "", "", "10.12.16.9:8125"},
 		{"UPD Host passed, ignore env port", "10.12.16.9", "", "1234", "", "10.12.16.9:8125"},
+		{"UDP IPv6 host passed, default port", "::1", "", "", "", "[::1]:8125"},
+		{"UDP bracketed IPv6 host passed, default port", "[::1]", "", "", "", "[::1]:8125"},
+		{"UDP IPv6 host and port passed", "[::1]:1234", "", "", "", "[::1]:1234"},
+		{"UDP IPv6 zone host passed, default port", "fe80::1%lo0", "", "", "", "[fe80::1%lo0]:8125"},
+		{"UDP IPv6 host and port passed as env", "", "::1", "1234", "", "[::1]:1234"},
+		{"UDP bracketed IPv6 host passed as env, default port", "", "[::1]", "", "", "[::1]:8125"},
 
 		{"UDS socket passed", "unix://test/path.socket", "", "", "", "unix://test/path.socket"},
 		{"UDS socket env", "", "unix://test/path.socket", "", "", "unix://test/path.socket"},
@@ -309,6 +315,8 @@ func TestResolveAddressFromEnvironment(t *testing.T) {
 
 		{"DD_DOGSTATSD_URL UDP", "", "", "", "udp://localhost:1234", "localhost:1234"},
 		{"DD_DOGSTATSD_URL UDP, default port", "", "", "", "udp://localhost", "localhost:8125"},
+		{"DD_DOGSTATSD_URL UDP IPv6", "", "", "", "udp://[::1]:1234", "[::1]:1234"},
+		{"DD_DOGSTATSD_URL UDP IPv6, default port", "", "", "", "udp://[::1]", "[::1]:8125"},
 		{"DD_DOGSTATSD_URL UDS", "", "", "", "unix://test/path.socket", "unix://test/path.socket"},
 		{"DD_DOGSTATSD_URL UDS, ignore env port", "", "", "1234", "udp://198.51.100.123:4321", "198.51.100.123:4321"},
 		{"DD_DOGSTATSD_URL UDS, ignore env host", "", "localhost", "", "udp://198.51.100.123:4321", "198.51.100.123:4321"},

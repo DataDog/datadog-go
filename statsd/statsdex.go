@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -344,16 +345,20 @@ func resolveAddr(addr string) string {
 			return addr
 		}
 	}
-	// TODO: How does this work for IPv6?
-	if strings.Contains(addr, ":") {
+	if envPort != "" {
+		return withPort(addr, envPort)
+	}
+	return withPort(addr, defaultUDPPort)
+}
+
+func withPort(addr, port string) string {
+	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return addr
 	}
-	if envPort != "" {
-		addr = fmt.Sprintf("%s:%s", addr, envPort)
-	} else {
-		addr = fmt.Sprintf("%s:%s", addr, defaultUDPPort)
-	}
-	return addr
+
+	host := strings.TrimPrefix(addr, "[")
+	host = strings.TrimSuffix(host, "]")
+	return net.JoinHostPort(host, port)
 }
 
 func parseAgentURL(agentURL string) string {
@@ -368,10 +373,7 @@ func parseAgentURL(agentURL string) string {
 		}
 
 		if parsedURL.Scheme == "udp" {
-			if strings.Contains(parsedURL.Host, ":") {
-				return parsedURL.Host
-			}
-			return fmt.Sprintf("%s:%s", parsedURL.Host, defaultUDPPort)
+			return withPort(parsedURL.Host, defaultUDPPort)
 		}
 
 		if parsedURL.Scheme == "unix" {
