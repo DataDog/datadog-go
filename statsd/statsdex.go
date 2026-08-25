@@ -10,7 +10,7 @@ statsd is based on go-statsd-client.
 */
 package statsd
 
-//go:generate mockgen -source=statsd.go -destination=mocks/statsd.go
+//go:generate mockgen -source=statsd.go -package=mock_statsd -destination=mocks/statsd.go
 
 import (
 	"errors"

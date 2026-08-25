@@ -7,7 +7,7 @@ package mock_statsd
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockClientDirectInterface is a mock of ClientDirectInterface interface.

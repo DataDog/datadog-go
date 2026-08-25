@@ -9,7 +9,7 @@ import (
 	time "time"
 
 	statsd "github.com/DataDog/datadog-go/v5/statsd"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockClientInterface is a mock of ClientInterface interface.
