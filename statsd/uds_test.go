@@ -5,17 +5,31 @@ package statsd
 
 import (
 	"encoding/binary"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
+	"runtime"
 	"testing"
 	"time"
-
-	"golang.org/x/net/nettest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Returns a temporary path suitable for Unix-domain socket testing. 
+func localSocketPath(t *testing.T) string {
+	dir := ""
+	if runtime.GOOS == "darwin" {
+		dir = "/tmp"
+	}
+	f, err := ioutil.TempFile(dir, "uds-test")
+	require.NoError(t, err)
+	path := f.Name()
+	f.Close()
+	os.Remove(path)
+	return path
+}
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -34,8 +48,7 @@ func TestNewUDSWriter(t *testing.T) {
 }
 
 func TestUDSDatagramWrite(t *testing.T) {
-	socketPath, err := nettest.LocalPath()
-	require.NoError(t, err)
+	socketPath := localSocketPath(t)
 	defer os.Remove(socketPath)
 
 	address, err := net.ResolveUnixAddr("unixgram", socketPath)
@@ -64,8 +77,7 @@ func TestUDSDatagramWrite(t *testing.T) {
 }
 
 func TestUDSDatagramWriteUnsetConnection(t *testing.T) {
-	socketPath, err := nettest.LocalPath()
-	require.NoError(t, err)
+	socketPath := localSocketPath(t)
 	defer os.Remove(socketPath)
 
 	address, err := net.ResolveUnixAddr("unixgram", socketPath)
@@ -97,8 +109,7 @@ func TestUDSDatagramWriteUnsetConnection(t *testing.T) {
 }
 
 func TestUDSStreamWrite(t *testing.T) {
-	socketPath, err := nettest.LocalPath()
-	require.NoError(t, err)
+	socketPath := localSocketPath(t)
 	defer os.Remove(socketPath)
 
 	address, err := net.ResolveUnixAddr("unix", socketPath)
@@ -139,8 +150,7 @@ func TestUDSStreamWrite(t *testing.T) {
 }
 
 func TestUDSStreamWriteUnsetConnection(t *testing.T) {
-	socketPath, err := nettest.LocalPath()
-	require.NoError(t, err)
+	socketPath := localSocketPath(t)
 	defer os.Remove(socketPath)
 
 	address, err := net.ResolveUnixAddr("unix", socketPath)
@@ -185,8 +195,7 @@ func TestUDSStreamWriteUnsetConnection(t *testing.T) {
 }
 
 func TestUDSStreamPartialWrite(t *testing.T) {
-	socketPath, err := nettest.LocalPath()
-	require.NoError(t, err)
+	socketPath := localSocketPath(t)
 	defer os.Remove(socketPath)
 
 	address, err := net.ResolveUnixAddr("unix", socketPath)
