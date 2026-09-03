@@ -148,6 +148,39 @@ func (bc *bufferedMetricContexts) sampleWithContextBuffer(contextBuffer []byte, 
 	return nil
 }
 
+// sampleWithPrebuiltContext is the MetricContext entry point. The context key
+// and its tags substring have already been built once, so this skips the
+// per-sample appendContext (and the memmove it performs). It mirrors
+// sample + sampleWithContextBuffer otherwise, including the rate check that
+// sample performs before building the context.
+func (bc *bufferedMetricContexts) sampleWithPrebuiltContext(context string, stringTags string, name string, value float64, rate float64, cardinality Cardinality) error {
+	if rate < 1 && !shouldSample(rate, bc.random, &bc.randomLock) {
+		return nil
+	}
+
+	bc.mutex.RLock()
+	v := bc.values[context]
+	bc.mutex.RUnlock()
+
+	// Create it if it wasn't found
+	if v == nil {
+		bc.mutex.Lock()
+		// It might have been created by another goroutine since last call
+		v = bc.values[context]
+		if v == nil {
+			bc.values[context] = bc.newMetric(name, value, stringTags, rate, cardinality)
+			bc.mutex.Unlock()
+			return nil
+		}
+		bc.mutex.Unlock()
+	}
+
+	// Now we can keep the sample.
+	v.maybeKeepSample(value, bc.random, &bc.randomLock)
+
+	return nil
+}
+
 func (bc *bufferedMetricContexts) getNbContext() uint64 {
 	return atomic.LoadUint64(&bc.nbContext)
 }
