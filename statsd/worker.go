@@ -14,8 +14,9 @@ type worker struct {
 	randomLock sync.Mutex
 	sync.Mutex
 
-	inputMetrics chan metric
-	stop         chan struct{}
+	flushRequests chan struct{}
+	inputMetrics  chan metric
+	stop          chan struct{}
 }
 
 func newWorker(pool *bufferPool, sender *sender) *worker {
@@ -66,10 +67,17 @@ func (w *worker) processMetric(m metric) error {
 		}
 	}
 	w.Lock()
+	wasEmpty := len(w.buffer.bytes()) == 0
 	var err error
 	if err = w.writeMetricUnsafe(m); err == errBufferFull {
 		w.flushUnsafe()
 		err = w.writeMetricUnsafe(m)
+	}
+	if wasEmpty && len(w.buffer.bytes()) > 0 {
+		select {
+		case w.flushRequests <- struct{}{}:
+		default:
+		}
 	}
 	w.Unlock()
 	return err

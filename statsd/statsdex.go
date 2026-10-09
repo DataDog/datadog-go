@@ -284,6 +284,7 @@ type ClientEx struct {
 	// tags are global tags to be added to every statsd call
 	tags                  []string
 	flushTime             time.Duration
+	flushRequests         chan struct{}
 	telemetry             *statsdTelemetry
 	telemetryClient       *telemetryClient
 	stop                  chan struct{}
@@ -537,8 +538,10 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 		}
 	}
 
+	c.flushRequests = make(chan struct{}, 1)
 	for i := 0; i < o.workersCount; i++ {
 		w := newWorker(bufferPool, c.sender)
+		w.flushRequests = c.flushRequests
 		c.workers = append(c.workers, w)
 
 		if c.workersMode == channelMode {
@@ -572,17 +575,30 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 }
 
 func (c *ClientEx) watch() {
-	ticker := time.NewTicker(c.flushTime)
-
+	timer := time.NewTimer(c.flushTime)
+	if !timer.Stop() {
+		<-timer.C
+	}
+	defer timer.Stop()
 	for {
 		select {
-		case <-ticker.C:
-			for _, w := range c.workers {
-				w.flush()
-			}
+		case <-c.flushRequests:
 		case <-c.stop:
-			ticker.Stop()
 			return
+		}
+		timer.Reset(c.flushTime)
+		select {
+		case <-timer.C:
+		case <-c.stop:
+			return
+		}
+		// Drain before flushing so a write after its worker is flushed schedules another flush.
+		select {
+		case <-c.flushRequests:
+		default:
+		}
+		for _, w := range c.workers {
+			w.flush()
 		}
 	}
 }
