@@ -23,6 +23,8 @@ type bufferedMetricContexts struct {
 	// pseudorandom number).
 	random     *rand.Rand
 	randomLock sync.Mutex
+
+	_ [4]byte // Make the struct size a multiple of 8 on 32-bit systems.
 }
 
 func newBufferedContexts(newMetric func(string, float64, string, int64, float64, Cardinality) *bufferedMetric, maxSamples int64) bufferedMetricContexts {

@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"math/rand"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -59,7 +60,6 @@ func TestBufferedMetricContextsSampleNoTagsSecondCheckLocking(t *testing.T) {
 	assert.Equal(t, int64(goroutines), v.storedSamples)
 }
 
-
 func TestBufferedMetricContextsLargeContextBuffers(t *testing.T) {
 	contexts := newBufferedContexts(newHistogramMetric, 0)
 
@@ -71,4 +71,31 @@ func TestBufferedMetricContextsLargeContextBuffers(t *testing.T) {
 
 	assert.Contains(t, contexts.values, "metric.large:low|"+largeTag)
 	assert.Contains(t, contexts.values, "metric.heap:low|"+heapTag)
+}
+
+func TestBufferedMetricContextsAlignment(t *testing.T) {
+	contextType := reflect.TypeOf(bufferedMetricContexts{})
+
+	if got := contextType.Size() % 8; got != 0 {
+		t.Errorf("bufferedMetricContexts size must be a multiple of 8: size=%d", contextType.Size())
+	}
+
+	nbContext, ok := contextType.FieldByName("nbContext")
+	if !ok {
+		t.Fatal("nbContext field not found")
+	}
+	if nbContext.Offset != 0 {
+		t.Errorf("nbContext must be the first field: offset=%d", nbContext.Offset)
+	}
+
+	aggregatorType := reflect.TypeOf(aggregator{})
+	for _, name := range []string{"histograms", "distributions", "timings"} {
+		field, ok := aggregatorType.FieldByName(name)
+		if !ok {
+			t.Fatalf("%s field not found", name)
+		}
+		if field.Offset%8 != 0 {
+			t.Errorf("%s must be 8-byte aligned: offset=%d", name, field.Offset)
+		}
+	}
 }
