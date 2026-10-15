@@ -78,10 +78,14 @@ jobs:
         run: go test -coverprofile=coverage.out -covermode=atomic ./statsd/...
       - name: Get Datadog credentials
         id: dd-sts
+        # Skip on PRs from forks: OIDC token exchange requires repo secrets/trust
+        # that aren't available to forked pull requests.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: DataDog/dd-sts-action@2e8187910199bd93129520183c093e19aa585c75 # v1.0.0
         with:
           policy: datadog-go-coverage-upload
       - name: Upload coverage to Datadog
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: datadog/coverage-upload-github-action@d9548b1c3c4ab639d5d3ab29a1508af188975f77
         with:
           api_key: ${{ steps.dd-sts.outputs.api_key }}
