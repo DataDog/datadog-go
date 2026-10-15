@@ -136,6 +136,67 @@ func TestFormatTagRemoveNewLines(t *testing.T) {
 	assert.Equal(t, `metric:1|g|@0.1|#tag:dog,tag:dog2`, string(buffer))
 }
 
+func TestFormatTagSanitizeCommas(t *testing.T) {
+	withoutOriginGlobals(t)
+
+	tests := []struct {
+		name       string
+		globalTags []string
+		tags       []string
+		want       string
+	}{
+		{
+			name: "comma in tag value becomes underscore",
+			tags: []string{"env:prod,us"},
+			want: `|#env:prod_us`,
+		},
+		{
+			name: "comma inside a slice tag value stays one tag",
+			tags: []string{"a:b,c"},
+			want: `|#a:b_c`,
+		},
+		{
+			name: "mixed newline and comma",
+			tags: []string{"env:prod,\nus"},
+			want: `|#env:prod_us`,
+		},
+		{
+			name: "tags without special chars unchanged",
+			tags: []string{"env:prod", "region:us"},
+			want: `|#env:prod,region:us`,
+		},
+		{
+			name:       "global and per-call tags both sanitized",
+			globalTags: []string{"g:a,b"},
+			tags:       []string{"t:c,d"},
+			want:       `|#g:a_b,t:c_d`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buffer []byte
+			buffer = appendTags(buffer, tt.globalTags, tt.tags)
+			assert.Equal(t, tt.want, string(buffer))
+		})
+	}
+}
+
+func TestFormatAppendTagsAggregatedSanitize(t *testing.T) {
+	withoutOriginGlobals(t)
+
+	var buffer []byte
+	buffer = appendTagsAggregated(buffer, nil, "a:b,c:d,e")
+	assert.Equal(t, `|#a:b,c:d,e`, string(buffer))
+
+	var buffer2 []byte
+	buffer2 = appendTagsAggregated(buffer2, []string{"env:prod,us"}, "a:b,c:d,e")
+	assert.Equal(t, `|#env:prod_us,a:b,c:d,e`, string(buffer2))
+
+	var buffer3 []byte
+	buffer3 = appendTagsAggregated(buffer3, nil, "a:\nb,c:d")
+	assert.Equal(t, `|#a:b,c:d`, string(buffer3))
+}
+
 func TestFormatEvent(t *testing.T) {
 	withoutOriginGlobals(t)
 	var buffer []byte
