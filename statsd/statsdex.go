@@ -166,6 +166,13 @@ type metric struct {
 	timestamp       int64
 	originDetection bool
 	cardinality     Cardinality
+
+	// prebuilt is set when the metric carries a context key already built by a
+	// MetricContext. When true, the aggregator worker samples via
+	// samplePrebuiltBuffered instead of rebuilding the context key.
+	prebuilt         bool
+	prebuiltContext  string
+	prebuiltTagStart int
 }
 
 type noClientErr string
@@ -686,11 +693,12 @@ func (c *ClientEx) sendBlocking(m metric) error {
 func (c *ClientEx) sendToAggregator(mType metricType, name string, value float64, tags []string, rate float64, f bufferedMetricSampleFunc, cardinality Cardinality) error {
 	if c.aggregatorMode == channelMode {
 		m := metric{metricType: mType, name: name, fvalue: value, tags: tags, rate: rate, cardinality: cardinality}
+		input := c.aggExtended.inputMetrics[hashString32(name)%uint32(len(c.aggExtended.inputMetrics))]
 		select {
-		case c.aggExtended.inputMetrics <- m:
+		case input <- m:
 		default:
 			atomic.AddUint64(&c.telemetry.totalDroppedOnReceive, 1)
-			err := &ErrorInputChannelFull{m, len(c.aggExtended.inputMetrics), "Aggregator input channel full"}
+			err := &ErrorInputChannelFull{m, len(input), "Aggregator input channel full"}
 			if c.errorHandler != nil {
 				c.errorHandler(err)
 			}
