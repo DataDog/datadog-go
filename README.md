@@ -85,15 +85,17 @@ Find a list of all the available options for your DogStatsD Client in the [Datad
 ### Supported environment variables
 
 * If the `addr` parameter is empty, the client will:
-  * First use the `DD_DOGSTATSD_URL` environment variables to build a target address. This must be a URL that start with either `udp://` (to connect using UDP) or with `unix://` (to use a Unix Domain Socket).
+  * First use the `DD_DOGSTATSD_URL` environment variables to build a target address. This must either be a URL that starts with `udp://` (to connect using UDP) or `unix://` (to use a Unix Domain Socket), or a Windows named pipe path.
     Example for UDP url: `DD_DOGSTATSD_URL=udp://localhost:8125`
     Example for UDS: `DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket`
-    Example for Windows named pipe`DD_AGENT_HOST=\\.\pipe\my_windows_pipe`
+    Example for Windows named pipe: `DD_DOGSTATSD_URL=\\.\pipe\my_windows_pipe`
   * Fallback to the `DD_AGENT_HOST` environment variables to build a target address.
     Example: `DD_AGENT_HOST=127.0.0.1:8125` for UDP, `DD_AGENT_HOST=unix:///path/to/socket` for UDS and `DD_AGENT_HOST=\\.\pipe\my_windows_pipe` for Windows named pipe.
     * If `DD_AGENT_HOST` has no port it will default the port to `8125`
-    * You can use `DD_AGENT_PORT` to set the port if `DD_AGENT_HOST` does not have a port set for UDP
-      Example: `DD_AGENT_HOST=127.0.0.1` and `DD_AGENT_PORT=1234` will create a UDP connection to `127.0.0.1:1234`. 
+    * You can use `DD_DOGSTATSD_PORT` to set the port if `DD_AGENT_HOST` does not have a port set for UDP
+      Example: `DD_AGENT_HOST=127.0.0.1` and `DD_DOGSTATSD_PORT=1234` will create a UDP connection to `127.0.0.1:1234`.
+* If the `addr` parameter is set, the environment variables above are ignored. If `addr` has no port, the port defaults to `8125`
+  (`DD_DOGSTATSD_PORT` is not used): `localhost` will create a UDP connection to `localhost:8125`.
 * If the `DD_ENTITY_ID` environment variable is found, its value is injected as a global `dd.internal.entity_id` tag. The Datadog Agent uses this tag to insert container tags into the metrics.
 
 To enable origin detection and set the `DD_ENTITY_ID` environment variable, add the following lines to your application manifest:
