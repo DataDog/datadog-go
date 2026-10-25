@@ -103,6 +103,24 @@ func TestTelemetryCustomAddr(t *testing.T) {
 	assert.Equal(t, expectedResult, result)
 }
 
+type closeTrackingWriter struct {
+	statsdWriterWrapper
+	closed bool
+}
+
+func (w *closeTrackingWriter) Close() error {
+	w.closed = true
+	return nil
+}
+
+func TestTelemetryCustomAddrErrorClosesClient(t *testing.T) {
+	w := &closeTrackingWriter{}
+	client, err := NewWithWriter(w, WithTelemetryAddr("localhost:notaport"))
+	require.Error(t, err)
+	assert.Nil(t, client)
+	assert.True(t, w.closed, "the writer should be closed when the client cannot be created")
+}
+
 func TestTelemetryCardinality(t *testing.T) {
 	_, client := newClientAndTestServer(t,
 		"udp",
