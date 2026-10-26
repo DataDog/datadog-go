@@ -562,6 +562,8 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 			var err error
 			c.telemetryClient, err = newTelemetryClientWithCustomAddr(&c, o.telemetryAddr, c.agg != nil, bufferPool, o.writeTimeout, o.connectTimeout)
 			if err != nil {
+				// Stop the goroutines started above and close the transport.
+				c.Close()
 				return nil, err
 			}
 		}
