@@ -3,6 +3,7 @@ package statsd
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -224,6 +225,45 @@ func TestIsClosed(t *testing.T) {
 
 	assert.NoError(t, c.Close())
 	assert.True(t, c.IsClosed())
+}
+
+func TestChannelModeCloseKeepsAcceptedMetrics(t *testing.T) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	const n = 200
+
+	t.Run("worker", func(t *testing.T) {
+		w := statsdWriterWrapper{}
+		c, err := NewWithWriter(&w, WithoutTelemetry(), WithoutOriginDetection(),
+			WithoutClientSideAggregation(), WithWorkersCount(1),
+			WithMaxMessagesPerPayload(1), WithChannelMode())
+		require.NoError(t, err)
+
+		for i := 0; i < n; i++ {
+			require.NoError(t, c.Count("test.count", 1, nil, 1))
+		}
+		require.NoError(t, c.Close())
+
+		assert.Len(t, w.data, n)
+	})
+
+	t.Run("aggregator", func(t *testing.T) {
+		w := statsdWriterWrapper{}
+		c, err := NewWithWriter(&w, WithoutTelemetry(), WithoutOriginDetection(),
+			WithWorkersCount(1), WithChannelMode(), WithExtendedClientSideAggregation(),
+			WithAggregationInterval(time.Hour))
+		require.NoError(t, err)
+
+		for i := 0; i < n; i++ {
+			require.NoError(t, c.Histogram("test.hist", 1, nil, 1))
+		}
+		require.NoError(t, c.Close())
+
+		samples := 0
+		for _, m := range w.data {
+			samples += strings.Count(strings.SplitN(m, "|", 2)[0], ":")
+		}
+		assert.Equal(t, n, samples)
+	})
 }
 
 func TestCloneWithExtraOptions(t *testing.T) {

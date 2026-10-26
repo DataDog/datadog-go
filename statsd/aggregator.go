@@ -140,18 +140,29 @@ func (a *aggregator) pullMetric() {
 	for {
 		select {
 		case m := <-a.inputMetrics:
-			switch m.metricType {
-			case histogram:
-				a.histogram(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
-			case distribution:
-				a.distribution(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
-			case timing:
-				a.timing(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
-			}
+			a.sampleMetric(m)
 		case <-a.stopChannelMode:
+			for n := len(a.inputMetrics); n > 0; n-- {
+				select {
+				case m := <-a.inputMetrics:
+					a.sampleMetric(m)
+				default:
+				}
+			}
 			a.wg.Done()
 			return
 		}
+	}
+}
+
+func (a *aggregator) sampleMetric(m metric) {
+	switch m.metricType {
+	case histogram:
+		a.histogram(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
+	case distribution:
+		a.distribution(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
+	case timing:
+		a.timing(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
 	}
 }
 

@@ -45,6 +45,9 @@ func (w *worker) startReceivingMetric(bufferSize int) {
 
 func (w *worker) stopReceivingMetric() {
 	w.stop <- struct{}{}
+	for n := len(w.inputMetrics); n > 0; n-- {
+		w.processMetric(<-w.inputMetrics)
+	}
 }
 
 func (w *worker) pullMetric() {
