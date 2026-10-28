@@ -175,14 +175,19 @@ func appendEscapedEventText(buffer []byte, text string) []byte {
 }
 
 func appendEvent(buffer []byte, event *Event, globalTags []string, originDetection bool) []byte {
+	escapedTitleLen := escapedEventTextLen(event.Title)
 	escapedTextLen := escapedEventTextLen(event.Text)
 
 	buffer = append(buffer, "_e{"...)
-	buffer = strconv.AppendInt(buffer, int64(len(event.Title)), 10)
+	buffer = strconv.AppendInt(buffer, int64(escapedTitleLen), 10)
 	buffer = append(buffer, tagSeparatorSymbol...)
 	buffer = strconv.AppendInt(buffer, int64(escapedTextLen), 10)
 	buffer = append(buffer, "}:"...)
-	buffer = append(buffer, event.Title...)
+	if escapedTitleLen != len(event.Title) {
+		buffer = appendEscapedEventText(buffer, event.Title)
+	} else {
+		buffer = append(buffer, event.Title...)
+	}
 	buffer = append(buffer, '|')
 	if escapedTextLen != len(event.Text) {
 		buffer = appendEscapedEventText(buffer, event.Text)
