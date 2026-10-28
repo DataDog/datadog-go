@@ -156,6 +156,16 @@ func TestFormatEventEscapeText(t *testing.T) {
 	assert.Equal(t, `_e{9,29}:EvenTitle|\nEventText\nLine2\n\nLine4\n`, string(buffer))
 }
 
+func TestFormatEventEscapeTitle(t *testing.T) {
+	withoutOriginGlobals(t)
+	var buffer []byte
+	buffer = appendEvent(buffer, &Event{
+		Title: "Event\nTitle",
+		Text:  "EventText",
+	}, []string{}, true)
+	assert.Equal(t, `_e{12,9}:Event\nTitle|EventText`, string(buffer))
+}
+
 func TestFormatEventTimeStamp(t *testing.T) {
 	withoutOriginGlobals(t)
 	var buffer []byte
