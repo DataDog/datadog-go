@@ -82,7 +82,12 @@ type aggregator struct {
 	// distributions and timings. Since they need sampling they need to
 	// lock for random. When using both channelMode and ExtendedAggregation
 	// we don't want goroutine to fight over the lock.
-	inputMetrics    chan metric
+	//
+	// Each worker has its own input channel so that a single goroutine
+	// receives from each channel. Sharing one channel between all workers
+	// makes every send/receive contend on that channel's runtime lock and
+	// forces the receivers into the expensive selectgo/sellock path.
+	inputMetrics    []chan metric
 	stopChannelMode chan struct{}
 	wg              sync.WaitGroup
 }
@@ -120,10 +125,19 @@ func (a *aggregator) start(flushInterval time.Duration) {
 }
 
 func (a *aggregator) startReceivingMetric(bufferSize int, nbWorkers int) {
-	a.inputMetrics = make(chan metric, bufferSize)
+	// Always keep at least one channel so senders have somewhere to write
+	// even when there are no worker goroutines.
+	nbChannels := nbWorkers
+	if nbChannels < 1 {
+		nbChannels = 1
+	}
+	a.inputMetrics = make([]chan metric, nbChannels)
+	for i := range a.inputMetrics {
+		a.inputMetrics[i] = make(chan metric, bufferSize)
+	}
 	for i := 0; i < nbWorkers; i++ {
 		a.wg.Add(1)
-		go a.pullMetric()
+		go a.pullMetric(a.inputMetrics[i])
 	}
 }
 
@@ -136,10 +150,14 @@ func (a *aggregator) stop() {
 	a.closed <- struct{}{}
 }
 
-func (a *aggregator) pullMetric() {
+func (a *aggregator) pullMetric(input chan metric) {
 	for {
 		select {
-		case m := <-a.inputMetrics:
+		case m := <-input:
+			if m.prebuilt {
+				a.samplePrebuiltBuffered(m.metricType, m.prebuiltContext, m.prebuiltTagStart, m.name, m.fvalue, m.rate, m.cardinality)
+				continue
+			}
 			switch m.metricType {
 			case histogram:
 				a.histogram(m.name, m.fvalue, m.tags, m.rate, m.cardinality)
@@ -584,6 +602,117 @@ func (a *aggregator) setWithStringContext(context string, contextHash uint32, na
 	shard.sets[context] = metric
 	shard.Unlock()
 	return nil
+}
+
+// The *PrebuiltContext methods below are the entry points used by MetricContext.
+// The caller has already built the context key and its hash once (when the
+// MetricContext was created), so these methods skip appendContext /
+// appendContextAndHash entirely. This removes the per-sample memmove that copies
+// the name and every tag into the key buffer. The stored key is a heap string
+// owned by the MetricContext, so it can be used directly as a map key without
+// the extra copy the buffer paths need.
+
+func (a *aggregator) countPrebuiltContext(context string, contextHash uint32, name string, value int64, tags []string, cardinality Cardinality) error {
+	shard := &a.countShards[getShardIndexFromHash(a.shardsCount, contextHash)]
+	shard.RLock()
+	if count, found := shard.counts[context]; found {
+		count.sample(value)
+		shard.RUnlock()
+		return nil
+	}
+	shard.RUnlock()
+
+	metric := newCountMetric(name, value, tags, cardinality)
+
+	shard.Lock()
+	// Check if another goroutines hasn't created the value between the RUnlock and 'Lock'
+	if count, found := shard.counts[context]; found {
+		count.sample(value)
+		shard.Unlock()
+		return nil
+	}
+	if shard.counts == nil {
+		shard.counts = countsMap{}
+	}
+	shard.counts[context] = metric
+	shard.Unlock()
+	return nil
+}
+
+func (a *aggregator) gaugePrebuiltContext(context string, contextHash uint32, name string, value float64, tags []string, cardinality Cardinality) error {
+	shard := &a.gaugeShards[getShardIndexFromHash(a.shardsCount, contextHash)]
+	shard.RLock()
+	if gauge, found := shard.gauges[context]; found {
+		gauge.sample(value)
+		shard.RUnlock()
+		return nil
+	}
+	shard.RUnlock()
+
+	gauge := newGaugeMetric(name, value, tags, cardinality)
+
+	shard.Lock()
+	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
+	if gauge, found := shard.gauges[context]; found {
+		gauge.sample(value)
+		shard.Unlock()
+		return nil
+	}
+	if shard.gauges == nil {
+		shard.gauges = gaugesMap{}
+	}
+	shard.gauges[context] = gauge
+	shard.Unlock()
+	return nil
+}
+
+func (a *aggregator) setPrebuiltContext(context string, contextHash uint32, name string, value string, tags []string, cardinality Cardinality) error {
+	shard := &a.setShards[getShardIndexFromHash(a.shardsCount, contextHash)]
+	shard.RLock()
+	if set, found := shard.sets[context]; found {
+		set.sample(value)
+		shard.RUnlock()
+		return nil
+	}
+	shard.RUnlock()
+
+	metric := newSetMetric(name, value, tags, cardinality)
+
+	shard.Lock()
+	// Check if another goroutines hasn't created the value between the 'RUnlock' and 'Lock'
+	if set, found := shard.sets[context]; found {
+		set.sample(value)
+		shard.Unlock()
+		return nil
+	}
+	if shard.sets == nil {
+		shard.sets = setsMap{}
+	}
+	shard.sets[context] = metric
+	shard.Unlock()
+	return nil
+}
+
+// samplePrebuiltBuffered routes a prebuilt-context sample to the right buffered
+// context store. tagStart is the offset of the tags inside context, or -1 when
+// there are no tags.
+func (a *aggregator) samplePrebuiltBuffered(mType metricType, context string, tagStart int, name string, value float64, rate float64, cardinality Cardinality) error {
+	var bc *bufferedMetricContexts
+	switch mType {
+	case histogram:
+		bc = &a.histograms
+	case distribution:
+		bc = &a.distributions
+	case timing:
+		bc = &a.timings
+	default:
+		return nil
+	}
+	stringTags := ""
+	if tagStart >= 0 {
+		stringTags = context[tagStart:]
+	}
+	return bc.sampleWithPrebuiltContext(context, stringTags, name, value, rate, cardinality)
 }
 
 // Only histograms, distributions and timings are sampled with a rate since we
