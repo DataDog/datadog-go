@@ -99,3 +99,44 @@ func TestBufferedMetricContextsAlignment(t *testing.T) {
 		}
 	}
 }
+
+func TestBufferedMetricContextsConcurrentFlushKeepsSamples(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		tags []string
+	}{
+		{"untagged", nil},
+		{"tagged", []string{"region:test"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			contexts := newBufferedContexts(newDistributionMetric, 0)
+			const writers, samples = 4, 10000
+			countFlushed := func() int {
+				n := 0
+				for _, m := range contexts.flush(nil) {
+					n += len(m.fvalues)
+				}
+				return n
+			}
+			results := make(chan int, writers)
+			for i := 0; i < writers; i++ {
+				go func() {
+					n := 0
+					for j := 0; j < samples; j++ {
+						contexts.sample("duration", 1, tc.tags, 1, CardinalityNotSet)
+						if j%10 == 0 {
+							n += countFlushed()
+						}
+					}
+					results <- n
+				}()
+			}
+			var flushed int
+			for i := 0; i < writers; i++ {
+				flushed += <-results
+			}
+			flushed += countFlushed()
+			require.Equal(t, writers*samples, flushed)
+		})
+	}
+}

@@ -13,6 +13,7 @@ import (
 type bufferedMetricContexts struct {
 	nbContext uint64
 	mutex     sync.RWMutex
+	// Hold mutex through each sample update so flush cannot detach its context first.
 	values    bufferedMetricMap
 	newMetric func(string, float64, string, float64, Cardinality) *bufferedMetric
 
@@ -71,29 +72,20 @@ func (bc *bufferedMetricContexts) sample(name string, value float64, tags []stri
 
 	if len(tags) == 0 && cardinality == CardinalityNotSet {
 		bc.mutex.RLock()
-		v := bc.values[name]
-		bc.mutex.RUnlock()
-		if v != nil {
+		if v := bc.values[name]; v != nil {
 			v.maybeKeepSample(value, bc.random, &bc.randomLock)
+			bc.mutex.RUnlock()
 			return nil
 		}
+		bc.mutex.RUnlock()
 
-		// Create it if it wasn't found
 		bc.mutex.Lock()
-		// It might have been created by another goroutine since last call
-		v = bc.values[name]
-		if v == nil {
-			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
+		if v := bc.values[name]; v != nil {
+			v.maybeKeepSample(value, bc.random, &bc.randomLock)
+		} else {
 			bc.values[name] = bc.newMetric(name, value, "", rate, cardinality)
-			// We added a new value, we need to unlock the mutex and quit
-			bc.mutex.Unlock()
-			return nil
 		}
 		bc.mutex.Unlock()
-
-		// Now we can keep the sample.
-		v.maybeKeepSample(value, bc.random, &bc.randomLock)
-
 		return nil
 	}
 
@@ -118,35 +110,26 @@ func (bc *bufferedMetricContexts) sampleWithLargeContextBuffer(contextLen int, n
 
 func (bc *bufferedMetricContexts) sampleWithContextBuffer(contextBuffer []byte, name string, value float64, tags []string, rate float64, cardinality Cardinality, cardString string) error {
 	contextBuffer, tagsStart := appendContext(contextBuffer, name, tags, cardString)
-	var v *bufferedMetric
-
 	bc.mutex.RLock()
-	v, _ = bc.values[string(contextBuffer)]
+	if v := bc.values[string(contextBuffer)]; v != nil {
+		v.maybeKeepSample(value, bc.random, &bc.randomLock)
+		bc.mutex.RUnlock()
+		return nil
+	}
 	bc.mutex.RUnlock()
 
-	// Create it if it wasn't found
-	if v == nil {
-		bc.mutex.Lock()
-		// It might have been created by another goroutine since last call
-		v, _ = bc.values[string(contextBuffer)]
-		if v == nil {
-			// If we might keep a sample that we should have skipped, but that should not drastically affect performances.
-			context := string(contextBuffer)
-			stringTags := ""
-			if tagsStart >= 0 {
-				stringTags = context[tagsStart:]
-			}
-			bc.values[context] = bc.newMetric(name, value, stringTags, rate, cardinality)
-			// We added a new value, we need to unlock the mutex and quit
-			bc.mutex.Unlock()
-			return nil
+	bc.mutex.Lock()
+	if v := bc.values[string(contextBuffer)]; v != nil {
+		v.maybeKeepSample(value, bc.random, &bc.randomLock)
+	} else {
+		context := string(contextBuffer)
+		stringTags := ""
+		if tagsStart >= 0 {
+			stringTags = context[tagsStart:]
 		}
-		bc.mutex.Unlock()
+		bc.values[context] = bc.newMetric(name, value, stringTags, rate, cardinality)
 	}
-
-	// Now we can keep the sample.
-	v.maybeKeepSample(value, bc.random, &bc.randomLock)
-
+	bc.mutex.Unlock()
 	return nil
 }
 
