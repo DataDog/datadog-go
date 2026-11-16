@@ -57,6 +57,8 @@ type Options struct {
 	channelModeErrorsWhenFull    bool
 	errorHandler                 ErrorHandler
 	tagCardinality               *Cardinality
+	disableEntityIDFromEnv       bool
+	disableEnvTags               bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -116,6 +118,24 @@ func WithNamespace(namespace string) Option {
 func WithTags(tags []string) Option {
 	return func(o *Options) error {
 		o.tags = tags
+		return nil
+	}
+}
+
+// WithoutEntityIDFromEnv disables the global dd.internal.entity_id tag from DD_ENTITY_ID.
+// Explicit tags and container origin detection are unchanged.
+func WithoutEntityIDFromEnv() Option {
+	return func(o *Options) error {
+		o.disableEntityIDFromEnv = true
+		return nil
+	}
+}
+
+// WithoutEnvTags disables global tags from DD_ENV, DD_SERVICE, and DD_VERSION.
+// Explicit tags and DD_ENTITY_ID are unchanged.
+func WithoutEnvTags() Option {
+	return func(o *Options) error {
+		o.disableEnvTags = true
 		return nil
 	}
 }

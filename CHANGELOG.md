@@ -2,6 +2,9 @@
 
 [//]: # (comment: Don't forget to update statsd/telemetry.go:clientVersionTelemetryTag when releasing a new version)
 
+# Unreleased
+- [FEATURE] Add independent `WithoutEntityIDFromEnv()` and `WithoutEnvTags()` options to disable inherited pod identity and service tags per client.
+
 # 5.9.1 / 2026-08-14
 - [BUGFIX] Prevent a panic when closing a Windows named pipe client that never sent a metric. See [#397][].
 - [BUGFIX] Fix an off-by-one error in reservoir sampling that biased which samples were kept once `WithMaxSamplesPerContext()` was reached. See [#395][].

@@ -470,6 +470,13 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 
 	// Inject values of DD_* environment variables as global tags.
 	for _, mapping := range ddEnvTagsMapping {
+		if mapping.envName == ddEntityID {
+			if o.disableEntityIDFromEnv {
+				continue
+			}
+		} else if o.disableEnvTags {
+			continue
+		}
 		if value := os.Getenv(mapping.envName); value != "" {
 			c.tags = append(c.tags, fmt.Sprintf("%s:%s", mapping.tagName, value))
 		}
