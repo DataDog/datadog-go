@@ -55,9 +55,6 @@ var (
 	expContainerID = regexp.MustCompile(fmt.Sprintf(`(%s|%s|%s)(?:.scope)?$`, uuidSource, containerSource, taskSource))
 
 	cIDMountInfoRegexp = regexp.MustCompile(cIDRegexpStr)
-
-	// initContainerID initializes the container ID.
-	initContainerID = internalInitContainerID
 )
 
 // parseContainerID finds the first container ID reading from r and returns it.
@@ -182,38 +179,29 @@ func inodeForPath(path string) string {
 	return fmt.Sprintf("in-%d", stats.Ino)
 }
 
-// internalInitContainerID initializes the container ID.
-// It can either be provided by the user or read from cgroups.
-func internalInitContainerID(userProvidedID string, cgroupFallback, isHostCgroupNs bool) {
-	initOnce.Do(func() {
-		readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath, cgroupFallback, isHostCgroupNs)
-	})
+// detectContainerID discovers the container ID (or cgroup inode) from cgroups.
+func detectContainerID() string {
+	return readCIDOrInode(cgroupPath, selfMountInfoPath, defaultCgroupMountPath, true, isHostCgroupNamespace())
 }
 
 // readCIDOrInode reads the container ID from the user provided ID, cgroups or mountinfo.
-func readCIDOrInode(userProvidedID, cgroupPath, selfMountInfoPath, defaultCgroupMountPath string, cgroupFallback, isHostCgroupNs bool) {
-	if userProvidedID != "" {
-		storeContainerID(userProvidedID)
-		return
-	}
-
+func readCIDOrInode(cgroupPath, selfMountInfoPath, defaultCgroupMountPath string, cgroupFallback, isHostCgroupNs bool) string {
 	if cgroupFallback {
 		if id := readContainerID(cgroupPath); id != "" {
-			storeContainerID(id)
-			return
+			return id
 		}
 
 		if id := readMountinfo(selfMountInfoPath); id != "" {
-			storeContainerID(id)
-			return
+			return id
 		}
 
 		// If we're in the host cgroup namespace, the cid should be retrievable in /proc/self/cgroup
 		// In private cgroup namespace, we can retrieve the cgroup controller inode.
 		if isHostCgroupNs {
-			return
+			return ""
 		}
 
-		storeContainerID(getCgroupInode(defaultCgroupMountPath, cgroupPath))
+		return getCgroupInode(defaultCgroupMountPath, cgroupPath)
 	}
+	return ""
 }

@@ -120,7 +120,6 @@ func TestNewWithWriter(t *testing.T) {
 	w := statsdWriterWrapper{}
 	client, err := NewWithWriter(&w, WithoutTelemetry(), WithoutOriginDetection())
 	require.Nil(t, err)
-	defer resetContainerID()
 
 	ts := &testServer{}
 	expected := ts.sendAllType(client)
@@ -370,42 +369,49 @@ func TestGetTelemetry(t *testing.T) {
 	assert.Equal(t, uint64(2), tlm.AggregationNbContextTiming, "telmetry AggregationNbContextTiming was wrong")
 }
 
-func TestFillInContainerID(t *testing.T) {
+func TestResolveContainerID(t *testing.T) {
+	detect := func() string { return "detected-id" }
 	tests := []struct {
 		name              string
 		o                 *Options
 		configEnvVarValue string
-		want              bool
+		want              string
 	}{
 		{
 			name:              "nominal case",
 			o:                 &Options{originDetection: defaultOriginDetection},
 			configEnvVarValue: "",
-			want:              true,
+			want:              "detected-id",
 		},
 		{
 			name:              "has user-provided container ID",
-			o:                 &Options{containerID: "user-provided"},
+			o:                 &Options{originDetection: defaultOriginDetection, containerID: "user-provided"},
 			configEnvVarValue: "",
-			want:              false,
+			want:              "user-provided",
+		},
+		{
+			name:              "user-provided container ID with originDetection option disabled",
+			o:                 &Options{originDetection: false, containerID: "user-provided"},
+			configEnvVarValue: "",
+			want:              "user-provided",
 		},
 		{
 			name:              "originDetection option disabled",
 			o:                 &Options{originDetection: false},
 			configEnvVarValue: "",
-			want:              false,
+			want:              "",
 		},
 		{
 			name:              "DD_ORIGIN_DETECTION_ENABLED=false",
 			o:                 &Options{originDetection: defaultOriginDetection},
 			configEnvVarValue: "false",
-			want:              false,
+			want:              "",
 		},
 		{
 			name:              "invalid DD_ORIGIN_DETECTION_ENABLED value",
 			o:                 &Options{originDetection: defaultOriginDetection},
 			configEnvVarValue: "invalid",
-			want:              true,
+			want:              "detected-id",
 		},
 	}
 	for _, tt := range tests {
@@ -413,9 +419,52 @@ func TestFillInContainerID(t *testing.T) {
 			os.Setenv("DD_ORIGIN_DETECTION_ENABLED", tt.configEnvVarValue)
 			defer os.Unsetenv("DD_ORIGIN_DETECTION_ENABLED")
 
-			assert.Equal(t, tt.want, fillInContainerID(tt.o))
+			assert.Equal(t, tt.want, resolveContainerID(tt.o, detect))
 		})
 	}
+}
+
+// The container ID must be resolved per client: options of a client must not
+// leak into clients created afterwards.
+func TestContainerIDIsPerClient(t *testing.T) {
+	withoutOriginGlobals(t)
+	newClient := func(options ...Option) (*ClientEx, *statsdWriterWrapper) {
+		w := &statsdWriterWrapper{}
+		options = append([]Option{WithoutTelemetry()}, options...)
+		c, err := NewWithWriterEx(w, options...)
+		require.NoError(t, err)
+		return c, w
+	}
+	gauge := func(c *ClientEx, w *statsdWriterWrapper) string {
+		require.NoError(t, c.Gauge("metric", 1, nil, 1))
+		require.NoError(t, c.Close())
+		require.Len(t, w.data, 1)
+		return w.data[0]
+	}
+
+	t.Run("WithoutOriginDetection after a client with a container ID", func(t *testing.T) {
+		a, wa := newClient(WithContainerID("container-a"))
+		b, wb := newClient(WithoutOriginDetection())
+
+		assert.Equal(t, "container-a", a.containerID)
+		assert.Equal(t, "", b.containerID)
+		assert.Equal(t, "metric:1|g|c:container-a", gauge(a, wa))
+		assert.Equal(t, "metric:1|g", gauge(b, wb))
+	})
+
+	t.Run("different user-provided container IDs", func(t *testing.T) {
+		a, wa := newClient(WithContainerID("container-a"))
+		b, wb := newClient(WithContainerID("container-b"))
+
+		assert.Equal(t, "metric:1|g|c:container-a", gauge(a, wa))
+		assert.Equal(t, "metric:1|g|c:container-b", gauge(b, wb))
+	})
+
+	t.Run("user-provided container ID with WithoutOriginDetection", func(t *testing.T) {
+		c, w := newClient(WithoutOriginDetection(), WithContainerID("container-x"))
+
+		assert.Equal(t, "metric:1|g|c:container-x", gauge(c, w))
+	})
 }
 
 func TestMessageTooLongError(t *testing.T) {

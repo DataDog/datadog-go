@@ -154,7 +154,7 @@ func newTelemetryClientWithCustomAddr(c *ClientEx, telemetryAddr string, aggrega
 	// FIXME due to performance pitfall, we're always using UDP defaults
 	// even for UDS.
 	t.sender = newSender(telemetryWriter, DefaultUDPBufferPoolSize, pool, c.errorHandler)
-	t.worker = newWorker(pool, t.sender)
+	t.worker = newWorker(pool, t.sender, c.containerID)
 	return t, nil
 }
 

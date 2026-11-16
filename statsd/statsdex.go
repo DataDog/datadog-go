@@ -300,6 +300,7 @@ type ClientEx struct {
 	errorOnBlockedChannel bool
 	errorHandler          ErrorHandler
 	originDetection       bool
+	containerID           string
 	defaultCardinality    Cardinality
 }
 
@@ -466,6 +467,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 		errorOnBlockedChannel: o.channelModeErrorsWhenFull,
 		errorHandler:          o.errorHandler,
 		originDetection:       isOriginDetectionEnabled(o),
+		containerID:           resolveContainerID(o, detectContainerID),
 	}
 
 	// Inject values of DD_* environment variables as global tags.
@@ -486,7 +488,6 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 		c.defaultCardinality = CardinalityNotSet
 	}
 
-	initContainerID(o.containerID, fillInContainerID(o), isHostCgroupNamespace())
 	isUDS := writerName == writerNameUDS
 
 	if o.maxBytesPerPayload == 0 {
@@ -538,7 +539,7 @@ func newWithWriter(w Transport, o *Options, writerName string) (*ClientEx, error
 	}
 
 	for i := 0; i < o.workersCount; i++ {
-		w := newWorker(bufferPool, c.sender)
+		w := newWorker(bufferPool, c.sender, c.containerID)
 		c.workers = append(c.workers, w)
 
 		if c.workersMode == channelMode {
@@ -946,10 +947,17 @@ func isOriginDetectionEnabled(o *Options) bool {
 	return enabled
 }
 
-// fillInContainerID returns whether the clients should fill the container field.
-func fillInContainerID(o *Options) bool {
+// resolveContainerID returns the container ID this client should send.
+//
+// A user-provided container ID (WithContainerID) always wins. Otherwise, the
+// container ID is auto-discovered with detect, only if origin detection is
+// enabled for this client.
+func resolveContainerID(o *Options, detect func() string) string {
 	if o.containerID != "" {
-		return false
+		return o.containerID
 	}
-	return isOriginDetectionEnabled(o)
+	if !isOriginDetectionEnabled(o) {
+		return ""
+	}
+	return detect()
 }
