@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 var benchContextErr error
@@ -251,6 +252,58 @@ func BenchmarkBufferedMetricContextsSampleExistingByTagCount(b *testing.B) {
 			if benchContextErr != nil {
 				b.Fatal(benchContextErr)
 			}
+		})
+	}
+}
+
+func BenchmarkBufferedMetricContextsManyKeys(b *testing.B) {
+	const numKeys = 64
+	names := benchmarkMetricNames(numKeys)
+	tags := []string{"env:prod", "service:api"}
+
+	for _, tc := range []struct {
+		name       string
+		maxSamples int64
+		flush      bool
+	}{
+		{"Cap256", 256, false},
+		{"Cap256_Flush2ms", 256, true},
+		{"Uncapped_Flush2ms", 0, true},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			contexts := newBufferedContexts(newDistributionMetric, tc.maxSamples)
+			if tc.flush {
+				stop := make(chan struct{})
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					ticker := time.NewTicker(2 * time.Millisecond)
+					defer ticker.Stop()
+					for {
+						select {
+						case <-ticker.C:
+							contexts.flush(nil)
+						case <-stop:
+							return
+						}
+					}
+				}()
+				defer func() {
+					close(stop)
+					<-done
+				}()
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				i := 0
+				for pb.Next() {
+					contexts.sample(names[i%numKeys], float64(i), tags, 1, CardinalityNotSet)
+					i++
+				}
+			})
+			b.StopTimer()
 		})
 	}
 }

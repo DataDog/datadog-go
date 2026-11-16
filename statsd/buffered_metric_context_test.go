@@ -99,3 +99,60 @@ func TestBufferedMetricContextsAlignment(t *testing.T) {
 		}
 	}
 }
+
+func TestBufferedMetricContextsConcurrentFlushKeepsSamples(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		tags []string
+	}{
+		{"untagged", nil},
+		{"tagged", []string{"region:test"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			contexts := newBufferedContexts(newDistributionMetric, 0)
+			const writers, samples = 4, 10000
+			results := make(chan []metric, writers)
+			for i := 0; i < writers; i++ {
+				go func(first int) {
+					var batches []metric
+					for j := 0; j < samples; j++ {
+						contexts.sample("duration", float64(first+j), tc.tags, 1, CardinalityNotSet)
+						if j%10 == 0 {
+							batches = contexts.flush(batches)
+						}
+					}
+					results <- batches
+				}(i * samples)
+			}
+			var batches []metric
+			for i := 0; i < writers; i++ {
+				batches = append(batches, (<-results)...)
+			}
+			counts := make(map[float64]int, writers*samples)
+			for _, batch := range contexts.flush(batches) {
+				for _, value := range batch.fvalues {
+					counts[value]++
+				}
+			}
+			for sample := 0; sample < writers*samples; sample++ {
+				if count := counts[float64(sample)]; count != 1 {
+					t.Fatalf("sample %d appeared %d times, want 1", sample, count)
+				}
+			}
+			require.Len(t, counts, writers*samples)
+		})
+	}
+}
+
+func TestBufferedMetricContextsFlushPreservesFullReservoir(t *testing.T) {
+	contexts := newBufferedContexts(newDistributionMetric, 1)
+	contexts.random = rand.New(rand.NewSource(1))
+	require.NoError(t, contexts.sample("duration", 10, nil, 1, CardinalityNotSet))
+	buffer := contexts.values["duration"]
+	batch := contexts.flush(nil)
+
+	// Resume a writer that found the buffer before the flush. This draw would
+	// replace the only value in a live reservoir.
+	buffer.maybeKeepSample(20, contexts.random, &contexts.randomLock)
+	require.Equal(t, []float64{10}, batch[0].fvalues)
+}
