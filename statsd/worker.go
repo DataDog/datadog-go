@@ -16,9 +16,13 @@ type worker struct {
 
 	inputMetrics chan metric
 	stop         chan struct{}
+
+	// containerID is sent with every metric written by this worker (empty
+	// means none). It is resolved per client, see resolveContainerID.
+	containerID string
 }
 
-func newWorker(pool *bufferPool, sender *sender) *worker {
+func newWorker(pool *bufferPool, sender *sender, containerID string) *worker {
 	// Each worker uses its own random source and random lock to prevent
 	// workers in separate goroutines from contending for the lock on the
 	// "math/rand" package-global random source (e.g. calls like
@@ -35,6 +39,8 @@ func newWorker(pool *bufferPool, sender *sender) *worker {
 		buffer: pool.borrowBuffer(),
 		random: random,
 		stop:   make(chan struct{}),
+
+		containerID: containerID,
 	}
 }
 
@@ -92,7 +98,7 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte, prec
 	}
 
 	for {
-		pos, err := w.buffer.writeAggregated(metricSymbol, m.namespace, m.globalTags, m.name, m.fvalues[globalPos:], m.stags, extraSize, precision, rate, m.originDetection, m.cardinality)
+		pos, err := w.buffer.writeAggregated(metricSymbol, m.namespace, m.globalTags, m.name, m.fvalues[globalPos:], m.stags, extraSize, precision, rate, m.originDetection, w.containerID, m.cardinality)
 		if err == errPartialWrite {
 			// We successfully wrote part of the histogram metrics.
 			// We flush the current buffer and finish the histogram
@@ -108,21 +114,21 @@ func (w *worker) writeAggregatedMetricUnsafe(m metric, metricSymbol []byte, prec
 func (w *worker) writeMetricUnsafe(m metric) error {
 	switch m.metricType {
 	case gauge:
-		return w.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.timestamp, m.originDetection, m.cardinality)
+		return w.buffer.writeGauge(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.timestamp, m.originDetection, w.containerID, m.cardinality)
 	case count:
-		return w.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate, m.timestamp, m.originDetection, m.cardinality)
+		return w.buffer.writeCount(m.namespace, m.globalTags, m.name, m.ivalue, m.tags, m.rate, m.timestamp, m.originDetection, w.containerID, m.cardinality)
 	case histogram:
-		return w.buffer.writeHistogram(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.originDetection, m.cardinality)
+		return w.buffer.writeHistogram(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.originDetection, w.containerID, m.cardinality)
 	case distribution:
-		return w.buffer.writeDistribution(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.originDetection, m.cardinality)
+		return w.buffer.writeDistribution(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.originDetection, w.containerID, m.cardinality)
 	case set:
-		return w.buffer.writeSet(m.namespace, m.globalTags, m.name, m.svalue, m.tags, m.rate, m.originDetection, m.cardinality)
+		return w.buffer.writeSet(m.namespace, m.globalTags, m.name, m.svalue, m.tags, m.rate, m.originDetection, w.containerID, m.cardinality)
 	case timing:
-		return w.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.originDetection, m.cardinality)
+		return w.buffer.writeTiming(m.namespace, m.globalTags, m.name, m.fvalue, m.tags, m.rate, m.originDetection, w.containerID, m.cardinality)
 	case event:
-		return w.buffer.writeEvent(m.evalue, m.globalTags, m.originDetection, m.cardinality)
+		return w.buffer.writeEvent(m.evalue, m.globalTags, m.originDetection, w.containerID, m.cardinality)
 	case serviceCheck:
-		return w.buffer.writeServiceCheck(m.scvalue, m.globalTags, m.originDetection, m.cardinality)
+		return w.buffer.writeServiceCheck(m.scvalue, m.globalTags, m.originDetection, w.containerID, m.cardinality)
 	case histogramAggregated:
 		return w.writeAggregatedMetricUnsafe(m, histogramSymbol, -1, m.rate)
 	case distributionAggregated:

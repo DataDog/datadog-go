@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -915,4 +916,57 @@ func TestAggregatorContextBufferSecondCheckLocking(t *testing.T) {
 			require.True(t, found)
 		})
 	})
+}
+
+// TestAggregatedMetricsExternalEnv checks that metrics flushed by the
+// client-side aggregator carry the external env field (|e:) when origin
+// detection is enabled, the same way directly sent metrics do.
+func TestAggregatedMetricsExternalEnv(t *testing.T) {
+	tests := []struct {
+		name        string
+		options     []Option
+		expectedEnv bool
+	}{
+		{
+			name:        "origin detection enabled",
+			options:     []Option{WithOriginDetection()},
+			expectedEnv: true,
+		},
+		{
+			name:        "origin detection disabled",
+			options:     []Option{WithoutOriginDetection()},
+			expectedEnv: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withoutOriginGlobals(t)
+			defer withoutOriginGlobals(t)
+			os.Setenv(ddExternalEnvVarName, "prod")
+
+			w := statsdWriterWrapper{}
+			options := append([]Option{WithoutTelemetry(), WithExtendedClientSideAggregation()}, tt.options...)
+			client, err := NewWithWriter(&w, options...)
+			require.NoError(t, err)
+
+			require.NoError(t, client.Gauge("gauge", 1, []string{"tag"}, 1))
+			require.NoError(t, client.Count("count", 1, []string{"tag"}, 1))
+			require.NoError(t, client.Set("set", "value", []string{"tag"}, 1))
+			require.NoError(t, client.Histogram("histo", 1, []string{"tag"}, 1))
+			require.NoError(t, client.Distribution("distro", 1, []string{"tag"}, 1))
+			require.NoError(t, client.Timing("timing", time.Second, []string{"tag"}, 1))
+			require.NoError(t, client.Flush())
+			require.NoError(t, client.Close())
+
+			require.Len(t, w.data, 6)
+			for _, line := range w.data {
+				if tt.expectedEnv {
+					assert.Contains(t, line, "|e:prod", "aggregated metric is missing the external env: %q", line)
+				} else {
+					assert.NotContains(t, line, "|e:", "aggregated metric should not carry the external env: %q", line)
+				}
+			}
+		})
+	}
 }

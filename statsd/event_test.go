@@ -13,7 +13,7 @@ func encodeEvent(e *Event) (string, error) {
 		return "", err
 	}
 	var buffer []byte
-	buffer = appendEvent(buffer, e, nil, true)
+	buffer = appendEvent(buffer, e, nil, true, "")
 	return string(buffer), nil
 }
 
