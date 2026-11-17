@@ -146,13 +146,15 @@ func TestBufferedMetricContextsConcurrentFlushKeepsSamples(t *testing.T) {
 
 func TestBufferedMetricContextsFlushPreservesFullReservoir(t *testing.T) {
 	contexts := newBufferedContexts(newDistributionMetric, 1)
-	contexts.random = rand.New(rand.NewSource(1))
+	// The first reservoir draw drops 20. The next would replace 10.
+	contexts.random = rand.New(rand.NewSource(0))
 	require.NoError(t, contexts.sample("duration", 10, nil, 1, CardinalityNotSet))
+	require.NoError(t, contexts.sample("duration", 20, nil, 1, CardinalityNotSet))
 	buffer := contexts.values["duration"]
 	batch := contexts.flush(nil)
+	require.Equal(t, 0.5, batch[0].rate)
 
-	// Resume a writer that found the buffer before the flush. This draw would
-	// replace the only value in a live reservoir.
-	buffer.maybeKeepSample(20, contexts.random, &contexts.randomLock)
+	// Resume a writer that found the buffer before the flush.
+	buffer.maybeKeepSample(30, contexts.random, &contexts.randomLock)
 	require.Equal(t, []float64{10}, batch[0].fvalues)
 }
