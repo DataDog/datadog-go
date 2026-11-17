@@ -27,7 +27,6 @@ func TestEnvironmentTagOptOuts(t *testing.T) {
 		require.NoError(t, os.Setenv(env.name, env.value))
 	}
 	withoutOriginGlobals(t)
-	defer resetContainerID()
 
 	allTags := []string{"dd.internal.entity_id:agent-pod", "env:agent-env", "service:agent-service", "version:agent-version"}
 	targetTags := []string{"dd.internal.entity_id:target-pod", "env:target-env", "service:target-service", "version:target-version"}
