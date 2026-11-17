@@ -122,17 +122,15 @@ func WithTags(tags []string) Option {
 	}
 }
 
-// WithoutEntityIDFromEnv disables the global dd.internal.entity_id tag from DD_ENTITY_ID.
-// Explicit tags and container origin detection are unchanged.
-func WithoutEntityIDFromEnv() Option {
+// WithoutEntityID disables origin detection based on DD_ENTITY_ID environment variable.
+func WithoutEntityID() Option {
 	return func(o *Options) error {
 		o.disableEntityIDFromEnv = true
 		return nil
 	}
 }
 
-// WithoutEnvTags disables global tags from DD_ENV, DD_SERVICE, and DD_VERSION.
-// Explicit tags and DD_ENTITY_ID are unchanged.
+// WithoutEnvTags disables Unified Service Tagging. The client will not add tags based on DD_ENV, DD_SERVICE and DD_VERSION environment variables.
 func WithoutEnvTags() Option {
 	return func(o *Options) error {
 		o.disableEnvTags = true

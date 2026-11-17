@@ -37,12 +37,12 @@ func TestEnvironmentTagOptOuts(t *testing.T) {
 		tags    []string
 	}{
 		{"default", nil, allTags},
-		{"without_entity_id", []Option{WithoutEntityIDFromEnv()}, allTags[1:]},
+		{"without_entity_id", []Option{WithoutEntityID()}, allTags[1:]},
 		{"without_env_tags", []Option{WithoutEnvTags()}, allTags[:1]},
-		{"without_both", []Option{WithoutEntityIDFromEnv(), WithoutEnvTags()}, nil},
-		{"without_both_reversed", []Option{WithoutEnvTags(), WithoutEntityIDFromEnv()}, nil},
-		{"explicit_global_tags", []Option{WithoutEntityIDFromEnv(), WithoutEnvTags(), WithTags(targetTags)}, targetTags},
-		{"explicit_global_tags_first", []Option{WithTags(targetTags), WithoutEntityIDFromEnv(), WithoutEnvTags()}, targetTags},
+		{"without_both", []Option{WithoutEntityID(), WithoutEnvTags()}, nil},
+		{"without_both_reversed", []Option{WithoutEnvTags(), WithoutEntityID()}, nil},
+		{"explicit_global_tags", []Option{WithoutEntityID(), WithoutEnvTags(), WithTags(targetTags)}, targetTags},
+		{"explicit_global_tags_first", []Option{WithTags(targetTags), WithoutEntityID(), WithoutEnvTags()}, targetTags},
 		{"default_again", nil, allTags},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestEnvironmentTagOptOuts(t *testing.T) {
 	t.Run("explicit_metric_tags", func(t *testing.T) {
 		var writer statsdWriterWrapper
 		client, err := NewWithWriter(&writer, WithoutTelemetry(), WithoutOriginDetection(),
-			WithoutEntityIDFromEnv(), WithoutEnvTags(), WithWorkersCount(1))
+			WithoutEntityID(), WithoutEnvTags(), WithWorkersCount(1))
 		require.NoError(t, err)
 		defer client.Close()
 
@@ -75,7 +75,7 @@ func TestEnvironmentTagOptOuts(t *testing.T) {
 
 	t.Run("clone", func(t *testing.T) {
 		client, err := New("localhost:8125", WithoutTelemetry(), WithoutOriginDetection(),
-			WithoutEntityIDFromEnv(), WithoutEnvTags())
+			WithoutEntityID(), WithoutEnvTags())
 		require.NoError(t, err)
 		defer client.Close()
 
