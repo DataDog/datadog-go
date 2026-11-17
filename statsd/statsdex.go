@@ -680,6 +680,7 @@ func (c *ClientEx) send(m metric) error {
 func (c *ClientEx) sendBlocking(m metric) error {
 	m.globalTags = c.tags
 	m.namespace = c.namespace
+	m.originDetection = c.originDetection
 
 	h := hashString32(m.name)
 	worker := c.workers[h%uint32(len(c.workers))]
