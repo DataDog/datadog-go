@@ -17,7 +17,7 @@ func TestShouldSample(t *testing.T) {
 		t.Run(fmt.Sprintf("Rate %0.2f", rate), func(t *testing.T) {
 			t.Parallel()
 
-			worker := newWorker(newBufferPool(1, 1, 1), nil)
+			worker := newWorker(newBufferPool(1, 1, 1), nil, "")
 			count := 0
 			for i := 0; i < iterations; i++ {
 				if shouldSample(rate, worker.random, &worker.randomLock) {
@@ -31,7 +31,7 @@ func TestShouldSample(t *testing.T) {
 
 func BenchmarkShouldSample(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
-		worker := newWorker(newBufferPool(1, 1, 1), nil)
+		worker := newWorker(newBufferPool(1, 1, 1), nil, "")
 		for pb.Next() {
 			shouldSample(0.1, worker.random, &worker.randomLock)
 		}
@@ -39,6 +39,10 @@ func BenchmarkShouldSample(b *testing.B) {
 }
 
 func initWorker(bufferSize int) (*bufferPool, *sender, *worker) {
+	return initWorkerWithContainerID(bufferSize, "")
+}
+
+func initWorkerWithContainerID(bufferSize int, containerID string) (*bufferPool, *sender, *worker) {
 	pool := newBufferPool(10, bufferSize, 5)
 	// manually create the sender so the sender loop is not started. All we
 	// need is the queue
@@ -47,7 +51,7 @@ func initWorker(bufferSize int) (*bufferPool, *sender, *worker) {
 		pool:  pool,
 	}
 
-	w := newWorker(pool, s)
+	w := newWorker(pool, s, containerID)
 	return pool, s, w
 }
 
@@ -289,9 +293,6 @@ func TestWorkerDistributionAggregatedMultiple(t *testing.T) {
 }
 
 func TestWorkerHistogramAggregatedMultipleWithContainerID(t *testing.T) {
-	patchContainerID("container-id")
-	defer resetContainerID()
-
 	m := metric{
 		metricType: histogramAggregated,
 		namespace:  "namespace.",
@@ -303,7 +304,7 @@ func TestWorkerHistogramAggregatedMultipleWithContainerID(t *testing.T) {
 	}
 
 	// maxSize=82: single-value packet = 80 bytes (≤82), all-4 packet = 92 bytes (>82 — bug)
-	_, s, w := initWorker(82)
+	_, s, w := initWorkerWithContainerID(82, "container-id")
 	err := w.processMetric(m)
 	assert.Nil(t, err)
 	w.flush()

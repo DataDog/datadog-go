@@ -448,11 +448,6 @@ func TestReadCIDOrInode(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			prevContainerID := getContainerID()
-			defer func() {
-				patchContainerID(prevContainerID)
-			}()
-
 			sysFsCgroupPath := path.Join(os.TempDir(), "sysfscgroup")
 			groupControllerPath := path.Join(sysFsCgroupPath, tc.cgroupNodeDir)
 			err := os.MkdirAll(groupControllerPath, 0755)
@@ -482,8 +477,8 @@ func TestReadCIDOrInode(t *testing.T) {
 			err = mountInfo.Close()
 			require.NoError(t, err)
 
-			readCIDOrInode("", procSelfCgroup.Name(), mountInfo.Name(), sysFsCgroupPath, true, tc.isHostCgroupNs)
-			require.Equal(t, expectedResult, getContainerID())
+			containerID := readCIDOrInode(procSelfCgroup.Name(), mountInfo.Name(), sysFsCgroupPath, true, tc.isHostCgroupNs)
+			require.Equal(t, expectedResult, containerID)
 		})
 	}
 }

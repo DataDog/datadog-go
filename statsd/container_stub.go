@@ -7,10 +7,7 @@ func isHostCgroupNamespace() bool {
 	return false
 }
 
-var initContainerID = func(userProvidedID string, _, _ bool) {
-	initOnce.Do(func() {
-		if userProvidedID != "" {
-			storeContainerID(userProvidedID)
-		}
-	})
+// detectContainerID is not supported on non-Linux platforms.
+func detectContainerID() string {
+	return ""
 }

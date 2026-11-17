@@ -107,12 +107,9 @@ func TestKnownEnvTagsEmptyString(t *testing.T) {
 }
 
 func TestContainerIDWithEntityID(t *testing.T) {
-	resetContainerID()
-
 	entityIDEnvName := "DD_ENTITY_ID"
 	defer func() {
 		os.Unsetenv(entityIDEnvName)
-		resetContainerID()
 	}()
 	os.Setenv(entityIDEnvName, "pod-uid")
 
@@ -131,12 +128,7 @@ func TestContainerIDWithEntityID(t *testing.T) {
 }
 
 func TestContainerIDWithoutEntityID(t *testing.T) {
-	resetContainerID()
 	os.Unsetenv("DD_ENTITY_ID")
-
-	defer func() {
-		resetContainerID()
-	}()
 
 	ts, client := newClientAndTestServer(t,
 		"udp",
@@ -150,7 +142,6 @@ func TestContainerIDWithoutEntityID(t *testing.T) {
 }
 
 func TestOriginDetectionDisabled(t *testing.T) {
-	resetContainerID()
 	os.Unsetenv("DD_ENTITY_ID")
 
 	originDetectionEnvName := "DD_ORIGIN_DETECTION_ENABLED"
@@ -168,12 +159,9 @@ func TestOriginDetectionDisabled(t *testing.T) {
 }
 
 func TestOriginDetectionEnabledWithEntityID(t *testing.T) {
-	resetContainerID()
-
 	entityIDEnvName := "DD_ENTITY_ID"
 	defer func() {
 		os.Unsetenv(entityIDEnvName)
-		resetContainerID()
 	}()
 	os.Setenv(entityIDEnvName, "pod-uid")
 
