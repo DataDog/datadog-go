@@ -57,6 +57,8 @@ type Options struct {
 	channelModeErrorsWhenFull    bool
 	errorHandler                 ErrorHandler
 	tagCardinality               *Cardinality
+	disableEntityIDFromEnv       bool
+	disableEnvTags               bool
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -116,6 +118,22 @@ func WithNamespace(namespace string) Option {
 func WithTags(tags []string) Option {
 	return func(o *Options) error {
 		o.tags = tags
+		return nil
+	}
+}
+
+// WithoutEntityID disables origin detection based on DD_ENTITY_ID environment variable.
+func WithoutEntityID() Option {
+	return func(o *Options) error {
+		o.disableEntityIDFromEnv = true
+		return nil
+	}
+}
+
+// WithoutEnvTags disables Unified Service Tagging. The client will not add tags based on DD_ENV, DD_SERVICE and DD_VERSION environment variables.
+func WithoutEnvTags() Option {
+	return func(o *Options) error {
+		o.disableEnvTags = true
 		return nil
 	}
 }
