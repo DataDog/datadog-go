@@ -31,8 +31,8 @@ func addString32(h uint32, s string) uint32 {
 		i += 8
 	}
 
-	for _, c := range s[i:] {
-		h = (h ^ uint32(c)) * prime32
+	for ; i < len(s); i++ {
+		h = (h ^ uint32(s[i])) * prime32
 	}
 
 	return h
