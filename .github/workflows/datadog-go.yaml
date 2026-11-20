@@ -77,18 +77,19 @@ jobs:
       - name: Run tests with coverage
         run: go test -coverprofile=coverage.out -covermode=atomic ./statsd/...
       - name: Get Datadog credentials
-        id: dd-sts
+        id: datadog-wif
         # Skip on PRs from forks: OIDC token exchange requires repo secrets/trust
         # that aren't available to forked pull requests.
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: DataDog/dd-sts-action@2e8187910199bd93129520183c093e19aa585c75 # v1.0.0
+        uses: DataDog/datadog-workload-identity-federation-github-action/intake@c9456387851248e0a5452f99085b16ad14fc3acb # v1.0.0
         with:
-          policy: datadog-go-coverage-upload
+          org_uuid: 8dee7c38-00cb-11ea-a77b-8b5a08d3b091 # Datadog HQ (org 2)
+          site: datadoghq.com
       - name: Upload coverage to Datadog
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: datadog/coverage-upload-github-action@d9548b1c3c4ab639d5d3ab29a1508af188975f77
         with:
-          api_key: ${{ steps.dd-sts.outputs.api_key }}
+          api_key: ${{ steps.datadog-wif.outputs.api_key }}
           site: datadoghq.com
 
   go_12_test:
