@@ -37,18 +37,41 @@ func appendRate(buffer []byte, rate float64) []byte {
 	return buffer
 }
 
-func appendWithoutNewlines(buffer []byte, s string) []byte {
-	// fastpath for strings without newlines
-	if strings.IndexByte(s, '\n') == -1 {
+func appendSanitizedTag(buffer []byte, s string) []byte {
+	// fastpath for tags without commas or newlines
+	if strings.IndexByte(s, ',') == -1 && strings.IndexByte(s, '\n') == -1 {
 		return append(buffer, s...)
 	}
 
 	for _, b := range []byte(s) {
-		if b != '\n' {
-			buffer = append(buffer, b)
+		if b == '\n' {
+			continue
 		}
+		if b == ',' {
+			b = '_'
+		}
+		buffer = append(buffer, b)
 	}
 	return buffer
+}
+
+// appendSanitizedAggregatedTags writes a pre-joined tag string. Commas are
+// separators between tags and must be preserved; each piece is sanitized.
+func appendSanitizedAggregatedTags(buffer []byte, tags string) []byte {
+	// fastpath: no newlines means each comma-separated piece needs no work
+	if strings.IndexByte(tags, '\n') == -1 {
+		return append(buffer, tags...)
+	}
+
+	start := 0
+	for i := 0; i < len(tags); i++ {
+		if tags[i] == ',' {
+			buffer = appendSanitizedTag(buffer, tags[start:i])
+			buffer = append(buffer, tagSeparatorSymbol...)
+			start = i + 1
+		}
+	}
+	return appendSanitizedTag(buffer, tags[start:])
 }
 
 func appendTags(buffer []byte, globalTags []string, tags []string) []byte {
@@ -62,14 +85,14 @@ func appendTags(buffer []byte, globalTags []string, tags []string) []byte {
 		if !firstTag {
 			buffer = append(buffer, tagSeparatorSymbol...)
 		}
-		buffer = appendWithoutNewlines(buffer, tag)
+		buffer = appendSanitizedTag(buffer, tag)
 		firstTag = false
 	}
 	for _, tag := range tags {
 		if !firstTag {
 			buffer = append(buffer, tagSeparatorSymbol...)
 		}
-		buffer = appendWithoutNewlines(buffer, tag)
+		buffer = appendSanitizedTag(buffer, tag)
 		firstTag = false
 	}
 	return buffer
@@ -87,14 +110,14 @@ func appendTagsAggregated(buffer []byte, globalTags []string, tags string) []byt
 		if !firstTag {
 			buffer = append(buffer, tagSeparatorSymbol...)
 		}
-		buffer = appendWithoutNewlines(buffer, tag)
+		buffer = appendSanitizedTag(buffer, tag)
 		firstTag = false
 	}
 	if tags != "" {
 		if !firstTag {
 			buffer = append(buffer, tagSeparatorSymbol...)
 		}
-		buffer = appendWithoutNewlines(buffer, tags)
+		buffer = appendSanitizedAggregatedTags(buffer, tags)
 	}
 	return buffer
 }
@@ -289,7 +312,7 @@ func appendTimestamp(buffer []byte, timestamp int64) []byte {
 }
 
 func appendExternalEnv(buffer []byte, originDetection bool) []byte {
-	if (!originDetection) {
+	if !originDetection {
 		return buffer
 	}
 
@@ -297,7 +320,7 @@ func appendExternalEnv(buffer []byte, originDetection bool) []byte {
 	if externalEnv != "" {
 		buffer = append(buffer, "|e:"...)
 		buffer = append(buffer, externalEnv...)
-	}	
+	}
 	return buffer
 }
 
