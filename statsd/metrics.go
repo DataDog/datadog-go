@@ -169,9 +169,15 @@ func (s *bufferedMetric) sampleUnsafe(v float64) {
 	s.totalSamples++
 }
 
-func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *sync.Mutex) {
+// maybeKeepSample returns false if a flush has taken the buffer and the caller
+// must retry. A full reservoir still counts the observation if it drops the value.
+// A metric in the write-locked context map cannot have been flushed.
+func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *sync.Mutex) bool {
 	s.Lock()
 	defer s.Unlock()
+	if s.data == nil {
+		return false
+	}
 	if s.maxSamples > 0 {
 		s.totalSamples++
 		if s.storedSamples >= s.maxSamples {
@@ -191,8 +197,8 @@ func (s *bufferedMetric) maybeKeepSample(v float64, rand *rand.Rand, randLock *s
 		// This code path appends to the slice since we did not pre-allocate memory in this case.
 		s.sampleUnsafe(v)
 	}
+	return true
 }
-
 
 func (s *bufferedMetric) flushUnsafe() metric {
 	totalSamples := s.totalSamples

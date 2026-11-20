@@ -363,12 +363,11 @@ func TestAggregatorFlushWithMaxSamplesPerContext(t *testing.T) {
 		assert.Equal(t, expectedMetrics[i].metricType, m.metricType)
 		assert.Equal(t, expectedMetrics[i].name, m.name)
 		assert.Equal(t, expectedMetrics[i].tags, m.tags)
+		assert.Equal(t, expectedMetrics[i].rate, m.rate)
 		if m.metricType == timingAggregated || m.metricType == histogramAggregated || m.metricType == distributionAggregated {
-			assert.Equal(t, expectedMetrics[i].rate, float64(len(m.fvalues))/float64(len(expectedMetrics[i].fvalues)))
 			assert.Subset(t, expectedMetrics[i].fvalues, m.fvalues)
 			assert.Len(t, m.fvalues, int(maxSamples))
 		} else {
-			assert.Equal(t, expectedMetrics[i].rate, m.rate)
 			assert.Equal(t, expectedMetrics[i].fvalues, m.fvalues)
 		}
 	}
