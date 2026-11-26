@@ -4,6 +4,7 @@
 
 # Unreleased
 - [FEATURE] Add independent `WithoutEntityID()` and `WithoutEnvTags()` options to disable inherited pod identity and service tags per client.
+- [BUGFIX] Drop newlines from metric names, namespaces, set values, and event and service check fields so they can no longer split a datagram into several messages, as is already done for tags.
 
 # 5.9.1 / 2026-08-14
 - [BUGFIX] Prevent a panic when closing a Windows named pipe client that never sent a metric. See [#397][].
