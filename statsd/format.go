@@ -22,9 +22,9 @@ const (
 
 func appendHeader(buffer []byte, namespace string, name string) []byte {
 	if namespace != "" {
-		buffer = append(buffer, namespace...)
+		buffer = appendWithoutNewlines(buffer, namespace)
 	}
-	buffer = append(buffer, name...)
+	buffer = appendWithoutNewlines(buffer, name)
 	buffer = append(buffer, ':')
 	return buffer
 }
@@ -125,7 +125,7 @@ func appendIntegerMetric(buffer []byte, typeSymbol []byte, namespace string, glo
 
 func appendStringMetric(buffer []byte, typeSymbol []byte, namespace string, globalTags []string, name string, value string, tags []string, rate float64, originDetection bool, containerID string) []byte {
 	buffer = appendHeader(buffer, namespace, name)
-	buffer = append(buffer, value...)
+	buffer = appendWithoutNewlines(buffer, value)
 	buffer = append(buffer, '|')
 	buffer = append(buffer, typeSymbol...)
 	buffer = appendRate(buffer, rate)
@@ -197,27 +197,27 @@ func appendEvent(buffer []byte, event *Event, globalTags []string, originDetecti
 
 	if len(event.Hostname) != 0 {
 		buffer = append(buffer, "|h:"...)
-		buffer = append(buffer, event.Hostname...)
+		buffer = appendWithoutNewlines(buffer, event.Hostname)
 	}
 
 	if len(event.AggregationKey) != 0 {
 		buffer = append(buffer, "|k:"...)
-		buffer = append(buffer, event.AggregationKey...)
+		buffer = appendWithoutNewlines(buffer, event.AggregationKey)
 	}
 
 	if len(event.Priority) != 0 {
 		buffer = append(buffer, "|p:"...)
-		buffer = append(buffer, event.Priority...)
+		buffer = appendWithoutNewlines(buffer, string(event.Priority))
 	}
 
 	if len(event.SourceTypeName) != 0 {
 		buffer = append(buffer, "|s:"...)
-		buffer = append(buffer, event.SourceTypeName...)
+		buffer = appendWithoutNewlines(buffer, event.SourceTypeName)
 	}
 
 	if len(event.AlertType) != 0 {
 		buffer = append(buffer, "|t:"...)
-		buffer = append(buffer, string(event.AlertType)...)
+		buffer = appendWithoutNewlines(buffer, string(event.AlertType))
 	}
 
 	buffer = appendTags(buffer, globalTags, event.Tags)
@@ -242,7 +242,7 @@ func appendEscapedServiceCheckText(buffer []byte, text string) []byte {
 
 func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []string, originDetection bool, containerID string) []byte {
 	buffer = append(buffer, "_sc|"...)
-	buffer = append(buffer, serviceCheck.Name...)
+	buffer = appendWithoutNewlines(buffer, serviceCheck.Name)
 	buffer = append(buffer, '|')
 	buffer = strconv.AppendInt(buffer, int64(serviceCheck.Status), 10)
 
@@ -253,7 +253,7 @@ func appendServiceCheck(buffer []byte, serviceCheck *ServiceCheck, globalTags []
 
 	if len(serviceCheck.Hostname) != 0 {
 		buffer = append(buffer, "|h:"...)
-		buffer = append(buffer, serviceCheck.Hostname...)
+		buffer = appendWithoutNewlines(buffer, serviceCheck.Hostname)
 	}
 
 	buffer = appendTags(buffer, globalTags, serviceCheck.Tags)

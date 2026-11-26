@@ -370,3 +370,49 @@ func TestFormatSeparator(t *testing.T) {
 	buffer = appendSeparator(buffer)
 	assert.Equal(t, "\n", string(buffer))
 }
+
+func TestFormatMetricNameRemoveNewLines(t *testing.T) {
+	withoutOriginGlobals(t)
+
+	var buffer []byte
+	buffer = appendGauge(buffer, "name\nspace.", nil, "met\nric\n", 1., []string{"tag:tag"}, 1, true, "")
+	assert.Equal(t, `namespace.metric:1|g|#tag:tag`, string(buffer))
+
+	var timing []byte
+	timing = appendTiming(timing, "", nil, "\nlatency", 6., nil, 1, true, "")
+	assert.Equal(t, `latency:6.000000|ms`, string(timing))
+}
+
+func TestFormatSetValueRemoveNewLines(t *testing.T) {
+	withoutOriginGlobals(t)
+	var buffer []byte
+	buffer = appendSet(buffer, "", nil, "set", "fi\nve", nil, 1, true, "")
+	assert.Equal(t, `set:five|s`, string(buffer))
+}
+
+func TestFormatEventFieldsRemoveNewLines(t *testing.T) {
+	withoutOriginGlobals(t)
+	var buffer []byte
+	buffer = appendEvent(buffer, &Event{
+		Title:          "EvenTitle",
+		Text:           "EventText",
+		Hostname:       "host\nname",
+		AggregationKey: "agg\nkey",
+		Priority:       "nor\nmal",
+		SourceTypeName: "source\ntype",
+		AlertType:      "er\nror",
+	}, []string{}, true, "")
+	assert.Equal(t, `_e{9,9}:EvenTitle|EventText|h:hostname|k:aggkey|p:normal|s:sourcetype|t:error`, string(buffer))
+	assert.NotContains(t, string(buffer), "\n")
+}
+
+func TestFormatServiceCheckFieldsRemoveNewLines(t *testing.T) {
+	withoutOriginGlobals(t)
+	var buffer []byte
+	buffer = appendServiceCheck(buffer, &ServiceCheck{
+		Name:     "service.\ncheck",
+		Status:   Ok,
+		Hostname: "host\nname",
+	}, []string{}, true, "")
+	assert.Equal(t, `_sc|service.check|0|h:hostname`, string(buffer))
+}
